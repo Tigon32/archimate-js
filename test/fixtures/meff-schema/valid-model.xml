@@ -20,7 +20,7 @@
     </element>
   </elements>
   <relationships>
-    <relationship identifier="serving-link" xsi:type="archimate:ServingRelationship"
+    <relationship identifier="serving-link" xsi:type="archimate:Serving"
       source="component-source" target="service-target">
       <name xml:lang="en">Synthetic serving relation</name>
     </relationship>
