@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createSvg, sanitizeSvgTree } from '../../lib/util/SvgExportUtil.mjs';
+import { createSvg, normalizeSvgIds, sanitizeSvgTree } from '../../lib/util/SvgExportUtil.mjs';
 
 describe('SVG export serialization', () => {
   const bbox = { x: 0, y: 2, width: 640, height: 480 };
@@ -70,6 +70,46 @@ describe('SVG export serialization', () => {
     expect(root.children).toEqual([ image ]);
     expect(image.attributes).toEqual([]);
   });
+
+  it('canonicalizes private and renderer IDs while preserving local references', () => {
+    const createExportTree = (modelId, markerId) => {
+      const content = makeNode('g', [
+        { name: 'id', value: modelId },
+        { name: 'aria-labelledby', value: modelId }
+      ], [ makeNode('path', [ { name: 'marker-end', value: `url(#${markerId})` } ]) ]);
+      const defs = makeNode('defs', [], [ makeNode('marker', [ { name: 'id', value: markerId } ]) ]);
+      return { content, defs };
+    };
+
+    const sourceA = createExportTree('customer-private-view-17', 'closed-filled-end-black-1');
+    const sourceB = createExportTree('customer-private-view-92', 'closed-filled-end-black-9');
+    const exportA = { content: sourceA.content.cloneNode(true), defs: sourceA.defs.cloneNode(true) };
+    const exportB = { content: sourceB.content.cloneNode(true), defs: sourceB.defs.cloneNode(true) };
+
+    [ exportA, exportB ].forEach(({ content, defs }) => {
+      sanitizeSvgTree(content);
+      sanitizeSvgTree(defs);
+      normalizeSvgIds([ content, defs ]);
+    });
+
+    const snapshot = ({ content, defs }) => JSON.stringify([
+      content.getAttribute('id'),
+      content.getAttribute('aria-labelledby'),
+      content.children[0].getAttribute('marker-end'),
+      defs.children[0].getAttribute('id')
+    ]);
+
+    expect(snapshot(exportA)).toBe(snapshot(exportB));
+    expect(snapshot(exportA)).toBe(JSON.stringify([
+      'archimate-export-id-0',
+      'archimate-export-id-0',
+      'url(#archimate-export-id-1)',
+      'archimate-export-id-1'
+    ]));
+    expect(JSON.stringify(exportA)).not.toContain('customer-private-view');
+    expect(JSON.stringify(exportA)).not.toContain('closed-filled-end-black');
+    expect(sourceA.content.getAttribute('id')).toBe('customer-private-view-17');
+  });
 });
 
 function makeNode(localName, attributes = [], children = []) {
@@ -79,6 +119,20 @@ function makeNode(localName, attributes = [], children = []) {
     textContent: '',
     attributes: attributes.map((attribute) => ({ ...attribute })),
     children,
+    getAttribute(name) {
+      return this.attributes.find((attribute) => attribute.name === name)?.value ?? null;
+    },
+    setAttribute(name, value) {
+      const attribute = this.attributes.find((candidate) => candidate.name === name);
+      if (attribute) {
+        attribute.value = String(value);
+      } else {
+        this.attributes.push({ name, value: String(value) });
+      }
+    },
+    cloneNode(deep) {
+      return makeNode(localName, attributes, deep ? children.map((child) => child.cloneNode(true)) : []);
+    },
     querySelectorAll() {
       return this.children.flatMap((child) => [ child, ...child.querySelectorAll('*') ]);
     },

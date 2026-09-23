@@ -1,0 +1,19 @@
+@import url("../../node_modules/diagram-js/assets/diagram-js.css");
+
+#diagram,
+#diagram .djs-container,
+#diagram svg {
+  width: 100%;
+  height: 100%;
+}
+
+#diagram .djs-container {
+  position: relative;
+  overflow: hidden;
+  background: #fff;
+  font: 13px/1.4 Arial, sans-serif;
+}
+
+#diagram svg {
+  display: block;
+}

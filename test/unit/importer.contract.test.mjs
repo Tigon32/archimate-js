@@ -4,8 +4,57 @@ import { describe, expect, it } from 'vitest';
 import ArchimateModdle from '../../lib/moddle/Moddle';
 import ArchimateDescriptors from '../../lib/moddle/resources/archimate.json';
 import { getLabel } from '../../lib/features/label-editing/LabelUtil';
+import ElementFactory from '../../lib/features/modeling/ElementFactory';
 
 describe('synthetic ArchiMate XML import contract', () => {
+  it('maps qualified element and relationship types to renderer keys with visible defaults', async () => {
+    const xml = await readFile(
+      new URL('../fixtures/synthetic/read-only-showcase.xml', import.meta.url),
+      'utf8'
+    );
+    const moddle = new ArchimateModdle({ archimate: ArchimateDescriptors });
+    const { rootElement: model } = await moddle.fromXML(xml);
+    const view = model.views.diagrams.viewsList[0];
+    const semanticNode = view.viewElements[0];
+    const semanticConnection = view.viewElements.find((element) => element.$type === 'archimate:Connection');
+    const factory = new ElementFactory({ create: () => ({}) }, moddle, (message) => message);
+    factory.baseCreate = (type, attrs) => ({ factoryType: type, ...attrs });
+
+    const shape = factory.createShape({
+      type: semanticNode.elementRef.type,
+      businessObject: semanticNode,
+      x: semanticNode.x,
+      y: semanticNode.y,
+      width: semanticNode.w,
+      height: semanticNode.h
+    });
+    const connection = factory.createConnection({
+      type: semanticConnection.relationshipRef.type,
+      businessObject: semanticConnection,
+      source: {},
+      target: {},
+      waypoints: []
+    });
+
+    expect(semanticNode.elementRef.type).toBe('archimate:BusinessActor');
+    expect(shape).toMatchObject({
+      type: 'BusinessActor',
+      layer: 'Business',
+      aspect: 'Active structure',
+      name: 'Customer',
+      style: {
+        fillColor: '#FFFFB5',
+        lineColor: '#00000066',
+        textAlignment: 'center',
+        textPosition: 'middle'
+      }
+    });
+    expect(connection).toMatchObject({
+      type: 'Assignment',
+      style: { lineColor: '#000000', lineWidth: 1 }
+    });
+  });
+
   it('parses the public synthetic fixture into an ArchiMate model root', async () => {
     const xml = await readFile(
       new URL('../fixtures/synthetic/minimal-application-view.xml', import.meta.url),

@@ -12,6 +12,8 @@ const resultsDirectory = path.join(root, 'test-results');
 const routes = new Map([
   ['/examples/read-only/', [ 'examples/read-only/index.html', 'text/html; charset=utf-8' ]],
   ['/examples/read-only/viewer.js', [ 'examples/read-only/viewer.js', 'text/javascript; charset=utf-8' ]],
+  ['/examples/read-only/diagram.css', [ 'examples/read-only/diagram.css', 'text/css; charset=utf-8' ]],
+  ['/node_modules/diagram-js/assets/diagram-js.css', [ 'node_modules/diagram-js/assets/diagram-js.css', 'text/css; charset=utf-8' ]],
   ['/.ci-build/archimate-js.js', [ '.ci-build/archimate-js.js', 'text/javascript; charset=utf-8' ]],
   ['/test/fixtures/synthetic/read-only-showcase.xml', [
     'test/fixtures/synthetic/read-only-showcase.xml', 'application/xml; charset=utf-8'
@@ -72,6 +74,24 @@ try {
   for (const label of ['Customer', 'Submit request', 'Request service', 'Request portal', 'Cloud platform']) {
     assert.ok(embeddedDiagramText.includes(label), `HTML embed should include ${label}`);
   }
+  const visualState = await page.locator('#diagram').evaluate((container) => {
+    const shapes = [...container.querySelectorAll('.djs-shape .djs-visual rect')];
+    const connections = [...container.querySelectorAll('.djs-connection .djs-visual path')];
+    return {
+      shapes: shapes.length,
+      shapeFills: shapes.map((shape) => getComputedStyle(shape).fill),
+      connections: connections.length,
+      connectionStrokes: connections.map((path) => getComputedStyle(path).stroke),
+      stylesheetLoaded: [...document.styleSheets].some((sheet) => sheet.href?.endsWith('/diagram.css'))
+    };
+  });
+  assert.equal(visualState.stylesheetLoaded, true, 'read-only page should load its local renderer stylesheet');
+  assert.ok(visualState.shapes >= 5, 'all ArchiMate element boxes should be drawn');
+  assert.ok(visualState.shapeFills.every((fill) => fill !== 'rgb(0, 0, 0)' && fill !== 'none'),
+    'element boxes should have visible layer fills');
+  assert.ok(visualState.connections >= 4, 'all ArchiMate relationships should be drawn');
+  assert.ok(visualState.connectionStrokes.every((stroke) => stroke !== 'rgb(255, 0, 255)'),
+    'relationships should not fall back to browser magenta');
   await mkdir(resultsDirectory, { recursive: true });
   await page.screenshot({ path: path.join(resultsDirectory, 'read-only-showcase.png'), fullPage: true });
 
@@ -134,11 +154,15 @@ try {
     };
   });
 
-  stage = 'assert deterministic SVG and Markdown image artifact path';
+  stage = 'assert deterministic report SVG bytes';
   assert.equal(report.deterministic, true);
+  stage = 'assert report SVG labels';
   assert.equal(report.svgHasSyntheticLabels, true);
+  stage = 'assert accessible SVG metadata';
   assert.equal(report.hasSafeSvgMetadata, true);
+  stage = 'assert SVG has no active markup';
   assert.equal(report.hasActiveMarkup, false);
+  stage = 'write and verify SVG artifact';
   const artifactDirectory = await mkdtemp(path.join(os.tmpdir(), 'archimate-synthetic-report-'));
   try {
     const artifactPath = path.join(artifactDirectory, 'synthetic-minimal-view.svg');
