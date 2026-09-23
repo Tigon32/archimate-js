@@ -6,6 +6,12 @@ Tracks #12.
 
 Make ArchiMate Model Exchange File Format import/export behavior measurable and deterministic, so report diagrams can remain portable across tools.
 
+## Current fixture evidence
+
+The Open Group's public MEFF overview identifies the format as an exchange mechanism and describes separate model, view, and diagram exchange schemas; it also cautions that the format is not intended as persistent model storage. The existing `minimal-application-view.xml` is an implementation-focused synthetic fixture, not a verified MEFF conformance sample. `meff-core-candidate.xml` is an independently hand-authored synthetic probe for the model/name/elements core plus a relationship. Neither fixture has been validated against the official XSD. The current parser/serializer contract observes model ID/name round-tripping; it also exposes that candidate element entries are not mapped and relationship endpoints are not resolved (the relationship remains generic). This is evidence of a gap, not a schema-validity, certification, or cross-tool portability claim.
+
+Source: [`opengroup-archimate-meff`](../research/sources.yaml), The Open Group's public [MEFF overview and FAQ](https://www.opengroup.org/open-group-archimate-model-exchange-file-format). The official standard is referenced there via its publications catalog; official schemas and examples are not copied into this repository.
+
 ## Alignment dimensions
 
 | Dimension | Import expectation | Export expectation | Evidence status |

@@ -16,5 +16,21 @@
       "connection waypoints"
     ],
     "review_after": "2026-12-23"
+  },
+  {
+    "id": "synthetic-meff-core-candidate",
+    "path": "test/fixtures/synthetic/meff-core-candidate.xml",
+    "classification": "SYNTHETIC",
+    "purpose": "Exercise the parser's supported core model, name, element, and relationship round-trip behavior using a MEFF-oriented shape.",
+    "provenance": "Hand-authored using generic names after reading The Open Group public MEFF overview and FAQ; not copied from an official example, not XSD-validated, and not a conformance claim.",
+    "contains_private_data": false,
+    "expected_coverage": [
+      "model root and identity",
+      "model name",
+      "typed element IDs and names",
+      "relationship ID and endpoints",
+      "parse serialize parse preservation of supported fields"
+    ],
+    "review_after": "2026-12-23"
   }
 ]
