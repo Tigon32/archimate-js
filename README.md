@@ -49,9 +49,9 @@ the rendering path and visible business, application, and technology elements;
 it is not a screenshot of a customer model or evidence of full MEFF
 interoperability.
 
-The [successful CI run](https://github.com/Tigon32/archimate-js/actions/runs/35904569795)
-generated and validated this screenshot. Download `read-only-showcase-screenshot`
-from the run's **Artifacts** section to inspect the PNG.
+The [CI runs for this branch](https://github.com/Tigon32/archimate-js/actions/workflows/ci.yml?query=branch%3Acodex%2Freadme-visual-overview)
+generate and validate the screenshot. Open the latest successful run and download
+`read-only-showcase-screenshot` from its **Artifacts** section to inspect the PNG.
 
 The sample includes these layers and relations:
 
