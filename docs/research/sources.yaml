@@ -1,0 +1,83 @@
+sources:
+  - id: upstream-archimate-js
+    title: archimodel/archimate-js
+    publisher: archimodel
+    url: https://github.com/archimodel/archimate-js
+    version: main at 9c73897140199e0071dafcc6cd5e513ffb2dfc2a
+    retrieved_at: 2026-09-23
+    license_or_terms: MIT
+    redistribution: Source reuse allowed under MIT with notice preservation.
+    source_revision: 9c73897140199e0071dafcc6cd5e513ffb2dfc2a
+    confidence: high
+    claims:
+      - Public upstream fork source for this repository.
+      - Browser ArchiMate modeler built on diagram-js.
+    constraints:
+      - Current fork must preserve upstream license notices.
+      - Existing behavior is not normative for ArchiMate semantics.
+    review_after: 2026-12-23
+
+  - id: opengroup-archimate-overview
+    title: ArchiMate Forum overview
+    publisher: The Open Group
+    url: https://www.opengroup.org/archimate-forum/archimate-overview
+    version: public web page
+    retrieved_at: 2026-09-23
+    license_or_terms: public web page; verify before redistribution
+    redistribution: Link and summarize; do not copy protected specification content.
+    source_revision: unknown
+    confidence: high
+    claims:
+      - ArchiMate is an Open Group standard and registered trademark.
+    constraints:
+      - Trademark and certification claims require care.
+    review_after: 2026-12-23
+
+  - id: opengroup-archimate-meff
+    title: ArchiMate Model Exchange File Format
+    publisher: The Open Group
+    url: https://www.opengroup.org/open-group-archimate-model-exchange-file-format
+    version: public web page
+    retrieved_at: 2026-09-23
+    license_or_terms: public web page; schemas/artifacts require separate verification
+    redistribution: Link and summarize; verify artifact redistribution before bundling.
+    source_revision: unknown
+    confidence: high
+    claims:
+      - Exchange format is the primary interoperability boundary between tools.
+    constraints:
+      - Exchange format should not be treated as native persistence without analysis.
+    review_after: 2026-12-23
+
+  - id: archi-reference
+    title: archimatetool/archi
+    publisher: Archi project
+    url: https://github.com/archimatetool/archi
+    version: public repository
+    retrieved_at: 2026-09-23
+    license_or_terms: MIT for repository source; ArchiMate marks/spec remain separate
+    redistribution: Behavioral reference preferred; direct code reuse requires provenance and notices.
+    source_revision: not pinned
+    confidence: high
+    claims:
+      - Mature public ArchiMate desktop tool useful as interoperability reference.
+    constraints:
+      - Not normative; does not override The Open Group specification.
+    review_after: 2026-12-23
+
+  - id: archimate-renderer-reference
+    title: ThomasRohde/archimate-renderer
+    publisher: Thomas Rohde
+    url: https://github.com/ThomasRohde/archimate-renderer
+    version: public repository observed at 1.5.1
+    retrieved_at: 2026-09-23
+    license_or_terms: MIT
+    redistribution: May inform rendering design; direct reuse requires provenance and notices.
+    source_revision: not pinned
+    confidence: medium
+    claims:
+      - TypeScript library for rendering ArchiMate model XML as SVG in Node.js and browsers.
+      - Useful reference for deterministic report rendering but not a full live modeler replacement.
+    constraints:
+      - Must verify semantic fidelity and exchange-format support before relying on behavior.
+    review_after: 2026-12-23
