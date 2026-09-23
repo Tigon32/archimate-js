@@ -24,6 +24,48 @@ Supported imports, deep-import policy, version channels, and release criteria ar
 
 See the [read-only HTML example guide](docs/rendering/read-only-html-embed.md) for consumer integration notes.
 
+## Architecture at a glance
+
+```mermaid
+flowchart LR
+  XML["ArchiMate XML"] --> I["Bounded importer"]
+  I --> V["Viewer and diagram-js"]
+  V --> SVG["Accessible SVG"]
+  XML --> Q["Conservative validator"]
+  XML --> CLI["Validate / render CLI"]
+  CLI --> SVG
+```
+
+The public package surface is intentionally small. Browser consumers mount a
+selected view and can export it as SVG; the validator and CLI provide bounded
+input checks and deterministic diagnostics. The modeler/editor code remains
+internal and is not part of the root package API.
+
+### What works today
+
+This screenshot is generated from the checked-in, hand-authored synthetic
+service-delivery fixture by the Playwright browser smoke test. It demonstrates
+the rendering path and visible business, application, and technology elements;
+it is not a screenshot of a customer model or evidence of full MEFF
+interoperability.
+
+![Read-only browser rendering of the synthetic service-delivery view](test-results/read-only-showcase.png)
+
+The sample includes these layers and relations:
+
+```mermaid
+flowchart LR
+  C["Customer<br/>Business actor"] -->|Assignment| P["Submit request<br/>Business process"]
+  P -->|Realization| S["Request service<br/>Application service"]
+  A["Request portal<br/>Application component"] -->|Serving| S
+  A -->|Assignment| N["Cloud platform<br/>Technology node"]
+```
+
+Fixture provenance and safety checks are recorded in
+[`test/fixtures/manifest.json`](test/fixtures/manifest.json). A real public
+sample will be added only when its source and redistribution terms are reviewed
+and recorded there.
+
 ## Exchange-format status
 
 The repository is testing its XML handling against synthetic inputs, but it does **not** yet claim full ArchiMate Model Exchange File Format (MEFF) conformance or cross-tool portability. The hand-authored MEFF-oriented candidate is not validated against The Open Group XSD. Its current characterization test shows that element entries are not reconstructed and relationships remain generic with unresolved endpoints.
@@ -69,7 +111,7 @@ In a terminal, start a loopback-only static server from the repository root:
 python3 -m http.server 8000 --bind 127.0.0.1
 ```
 
-Open <http://127.0.0.1:8000/examples/read-only/> in your browser. The example loads the checked-in synthetic model fixture and the bundle built at `.ci-build/archimate-js.js`. Keep the server running while you use the page. Do not open the HTML file directly with a `file:` URL; its same-origin model fetch will not work. Binding to `127.0.0.1` keeps this development server off your LAN.
+Open <http://127.0.0.1:8000/examples/read-only/> in your browser. The example loads the checked-in, hand-authored synthetic service-delivery model across business, application, and technology layers and the bundle built at `.ci-build/archimate-js.js`. Keep the server running while you use the page. Do not open the HTML file directly with a `file:` URL; its same-origin model fetch will not work. Binding to `127.0.0.1` keeps this development server off your LAN.
 
 To run the automated checks, use another terminal from the repository root:
 
