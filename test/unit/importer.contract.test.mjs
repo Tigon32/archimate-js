@@ -103,7 +103,7 @@ describe('synthetic ArchiMate XML import contract', () => {
     });
   });
 
-  it('round-trips supported model identity and name while exposing current content loss', async () => {
+  it('records parser-level identity and name round-trip while exposing content loss', async () => {
     const xml = await readFile(
       new URL('../fixtures/synthetic/meff-core-candidate.xml', import.meta.url),
       'utf8'

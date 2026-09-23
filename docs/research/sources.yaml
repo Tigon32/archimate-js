@@ -63,14 +63,14 @@ sources:
     confidence: high
     claims:
       - The Open Group describes MEFF as a standard file format for exchanging ArchiMate models between tools.
-      - The public FAQ distinguishes model exchange, view exchange, and diagram exchange schemas.
+      - The official FAQ distinguishes model exchange, view exchange, and diagram exchange schemas.
       - The FAQ says the format conveys model data between tools and is not intended as persistent model storage.
-      - The public FAQ describes a minimal model/name/elements core and points to schema/example resources.
+      - The FAQ applies the exchange format to ArchiMate 3.1 and 3.2 and points to schema/example resources.
     constraints:
       - Exchange format should not be treated as native persistence without analysis.
       - Public overview/FAQ statements do not prove any repository fixture conforms to the licensed standard.
       - Do not copy or bundle official XSDs or examples without verifying their redistribution terms.
-      - Treat local synthetic XML as parser test data until schema validation is run against a permitted official artifact.
+      - Keep public example resources distinct from permission to redistribute them.
     review_after: 2026-12-23
 
   - id: opengroup-archimate-meff-xsd
@@ -86,9 +86,30 @@ sources:
     claims:
       - Public MEFF resources expose the 3.1 schema set and divide it into model, view, and diagram exchange schemas.
       - The model schema URL uses the archimate/3.0 namespace.
+      - Generated Model schema documentation requires model identity and name fields and uses XML ID/IDREF types for identifiers and relationship endpoints.
     constraints:
       - These public schema artifacts are not bundled or treated as permission for redistribution.
       - The existence of a schema resource does not validate repository fixtures or demonstrate interoperability.
+      - The public 3.1 XSD set does not establish a separate 3.2 XSD artifact.
+    review_after: 2026-12-23
+
+  - id: opengroup-archimate-tool-certification
+    title: ArchiMate Tool Certification
+    publisher: The Open Group
+    url: https://www.opengroup.org/certifications/archimate/tool
+    version: Public program page reviewed 2026-09-23
+    retrieved_at: 2026-09-23
+    license_or_terms: Certification and trademark license terms apply; program page is public.
+    redistribution: Link and summarize only; do not claim certification without completing the program.
+    source_revision: Public indexed page observed 2026-09-23
+    confidence: high
+    claims:
+      - The Open Group says ArchiMate 3 certified tools have been required to support MEFF since June 2018.
+      - The certification page describes a formal supporting-documentation and audit process.
+      - The linked Test Model directory requires member login.
+    constraints:
+      - Public XSD validation or example interoperability is not certification evidence.
+      - Do not use The Open Group certification marks without applicable authorization.
     review_after: 2026-12-23
 
   - id: opengroup-archimate4-spec
@@ -99,11 +120,12 @@ sources:
     retrieved_at: 2026-09-23
     license_or_terms: Open Group downloads page advertises a free personal 90-day evaluation; exact license scope not reviewed
     redistribution: Do not reproduce or redistribute specification text.
-    source_revision: public HTML documentation opened 2026-09-23 after authentication; chapter navigation subsequently timed out
+    source_revision: HTML specification and Chapter 5 opened/read after user-assisted authentication on 2026-09-23
     confidence: medium
     claims:
       - The Open Group announced ArchiMate 4 in April 2026 and lists it as the latest specification on its licensed-downloads page.
       - The documentation URL opened as HTML after the user completed secure sign-in.
+      - Chapter 5 says Association relationships may be directed or undirected.
     constraints:
       - Do not infer ArchiMate 4 exchange-schema availability from this language specification.
       - Verify the applicable license and access path before using the specification for product implementation.

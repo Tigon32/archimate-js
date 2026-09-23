@@ -70,7 +70,7 @@ and recorded there.
 
 ## Exchange-format status
 
-The repository is testing its XML handling against synthetic inputs, but it does **not** yet claim full ArchiMate Model Exchange File Format (MEFF) conformance or cross-tool portability. The hand-authored MEFF-oriented candidate is not validated against The Open Group XSD. Its current characterization test shows that element entries are not reconstructed and relationships remain generic with unresolved endpoints.
+The repository is testing its XML handling against synthetic inputs, but it does **not** yet claim full ArchiMate Model Exchange File Format (MEFF) conformance or cross-tool portability. The hand-authored candidate is not XSD-validated and uses `id` where the official Model schema requires `identifier`; its model ID/name round-trip is parser-only evidence. The importer reports unmapped element records and generic relationships with unresolved endpoints through stable `MEFF_ELEMENTS_UNSUPPORTED` and `MEFF_RELATIONSHIPS_UNSUPPORTED` warnings. See the [P08 alignment notes](docs/standards/model-exchange-alignment.md).
 
 Until those gaps are closed and tested with schema-valid, safe fixtures, treat import/export as incomplete for interchange workflows. See [the exchange-format alignment notes](docs/standards/model-exchange-alignment.md) and [fixture provenance rules](test/fixtures/README.md).
 
