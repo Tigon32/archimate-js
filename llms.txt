@@ -1,0 +1,24 @@
+# archimate-js fork knowledge entrypoint
+
+This repository is a public fork of `archimodel/archimate-js` owned by `Tigon32`.
+
+Primary instructions for AI agents and contributors:
+
+- Read `AGENTS.md` before making changes.
+- Read `UPSTREAM.md` for fork provenance.
+- Use `docs/roadmap.md` for implementation order.
+- Use `docs/adr/` for architectural decisions.
+- Use `docs/research/` for public-source research and citations.
+
+Hard boundary:
+
+- Do not use private architecture, PLM, Confluence, customer, or internal project material.
+- Do not create fixtures from real architecture models.
+- Do not log full model XML or parsed model payloads by default.
+
+Current mission:
+
+- Stabilize an embeddable ArchiMate browser modeler.
+- Add deterministic SVG/report rendering.
+- Support a single model/view source for both HTML diagrams and Markdown-rendered images.
+- Ground interoperability in The Open Group ArchiMate standard and exchange artifacts.
