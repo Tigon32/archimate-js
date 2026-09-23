@@ -14,11 +14,12 @@
   ],
   "scripts": {
     "all": "run-s lint test",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "node test/package-metadata.test.cjs"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/archimodel/archimate-js"
+    "url": "https://github.com/Tigon32/archimate-js"
   },
   "files": [
     "index.js",
