@@ -34,8 +34,8 @@ Import, validation, and exchange behavior should produce stable diagnostics that
 
 ## Current MEFF import warnings
 
-XML preflight returns these fixed, content-free warnings when it recognizes exchange
-records that the importer does not reconstruct. Codes are deduplicated and sorted
+MEFF import returns fixed, content-free warnings for recognized records and fields
+outside the currently reconstructed subset. Codes are deduplicated and sorted
 lexicographically, so the same input yields the same ordered list.
 
 | Code | Trigger | Current behavior |
@@ -43,14 +43,17 @@ lexicographically, so the same input yields the same ordered list.
 | `MEFF_ELEMENTS_UNSUPPORTED` | An `elements/element` record | Model element records are not reconstructed. |
 | `MEFF_RELATIONSHIPS_UNSUPPORTED` | A `relationships/relationship` record | Relationship records are not fully reconstructed. |
 | `MEFF_MODEL_METADATA_UNSUPPORTED` | Model `metadata`, `organizations`, `properties`, or `propertyDefinitions` | These model-level records are not reconstructed. |
-| `MEFF_VIEWS_UNSUPPORTED` | A `views/view` record | Exchange view records are not reconstructed. |
-| `MEFF_DIAGRAMS_UNSUPPORTED` | A `node`, `connection`, or `label` under a view | Exchange diagram records are not reconstructed. |
+| `MEFF_VIEWS_UNSUPPORTED` | A View/Viewpoint structure outside the supported Diagram subset, or unreadable View data | That view data is skipped. |
+| `MEFF_DIAGRAMS_UNSUPPORTED` | A non-Element node, non-Relationship connection, or unsupported style/label/documentation/drill-down field | That record or field is skipped; supported records in the same Diagram remain importable. |
 | `MEFF_EXTENSIONS_UNSUPPORTED` | An element in a namespace outside the MEFF ArchiMate namespace | Extension content is not reconstructed. |
 
 All are `warning` diagnostics at stage `parse`. Messages do not include source
 XML, model names, identifiers, extension namespace URIs, or parser text. These
 checks recognize a bounded set of common MEFF structures; they are not schema
-validation and do not prove every unknown record has been detected. The package
+validation and do not prove every unknown record has been detected. The initial supported
+View/Diagram subset maps named Diagram views, nested Element nodes, and Relationship
+connections to the existing view tree. Geometry is used where required by the renderer;
+styles, labels, and full Diagram fidelity remain outside this subset. The package
 does not currently provide a MEFF XML exporter, so no export-omission diagnostic
 is emitted. Add those diagnostics with the supported-subset exporter tracked by
 [#59](https://github.com/Tigon32/archimate-js/issues/59).

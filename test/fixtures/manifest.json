@@ -151,5 +151,22 @@
       "expected XSD validation failure"
     ],
     "review_after": "2026-12-23"
+  },
+  {
+    "id": "synthetic-meff-xsd-valid-view-diagram",
+    "path": "test/fixtures/meff-schema/valid-view-diagram.xml",
+    "classification": "SYNTHETIC",
+    "purpose": "Positive MEFF 3.1 View and Diagram fixture for view identity, membership, and semantic reference import.",
+    "provenance": "Hand-authored for this repository from public MEFF schema documentation; not copied from an official example. CI fetches official XSDs to runner temp only.",
+    "contains_private_data": false,
+    "expected_coverage": [
+      "Diagram view identifier and localized name",
+      "Element node identifiers and nested membership",
+      "elementRef links to model elements",
+      "Relationship connection identifier and endpoints",
+      "relationshipRef link to model relationship",
+      "MEFF 3.1 Diagram XSD validation"
+    ],
+    "review_after": "2026-12-23"
   }
 ]

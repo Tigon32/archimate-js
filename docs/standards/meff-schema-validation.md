@@ -1,4 +1,4 @@
-# MEFF 3.1 Model schema validation
+# MEFF 3.1 Model, View, and Diagram schema validation
 
 This CI check fetches and validates against The Open Group's official ArchiMate
 Model Exchange File Format (MEFF) 3.1 schema resources.
@@ -10,8 +10,9 @@ Model Exchange File Format (MEFF) 3.1 schema resources.
 - Files are stored only in the ephemeral GitHub runner's `RUNNER_TEMP` directory.
   They are not added to the repository, package, workflow artifacts, or cache.
 - CI verifies the downloads against the SHA-256 digests recorded below.
-- The synthetic positive fixture passes the Model XSD. The negative fixture fails
-  because it deliberately omits the required model `identifier`.
+- `valid-model.xml` is validated against the Model XSD; `valid-view-diagram.xml`
+  is validated against the Diagram XSD, which includes the View schema. The negative
+  Model fixture fails because it deliberately omits the required model `identifier`.
 - The validator is `xmllint` from Ubuntu 24.04's `libxml2-utils` package.
 - This verifies XML schema constraints only. It does not establish ArchiMate semantic
   validity, interoperability, certification, or complete MEFF support.
@@ -48,5 +49,11 @@ Model Exchange File Format (MEFF) 3.1 schema resources.
   Node.js 22, Node.js 24, and browser smoke jobs passed.
 - Both runs were triggered for PR head `f19857ff1b278d6b8a585d5cb3fff1e5c71b61fb`.
 
-These results establish schema validity for the positive fixture under the MEFF 3.1
-Model XSD only. They make no claim of full MEFF conformance.
+The Model fixture establishes schema validity under the MEFF 3.1 Model XSD. The
+View/Diagram fixture establishes schema validity under the MEFF 3.1 Diagram XSD
+(including View). These checks do not establish semantic validity, full MEFF
+conformance, interoperability, or tool certification.
+
+## View and Diagram fixture
+
+`test/fixtures/meff-schema/valid-view-diagram.xml` is a synthetic full model with two elements, one relationship, a named Diagram view, nested Element nodes, and a Relationship connection. CI validates it against the Diagram XSD, which includes the View schema. This proves schema structure only; parser mapping and geometry fidelity are covered by separate tests and work items.
