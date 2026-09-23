@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Classification: SYNTHETIC; hand-authored for Tigon32/archimate-js; no real architecture data. -->
+<archimate:Model xmlns:archimate="http://www.opengroup.org/xsd/archimate/3.0/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="model-synthetic-showcase" name="Synthetic Service Delivery">
+  <archimate:Elements>
+    <archimate:BaseElement id="business-actor" xsi:type="archimate:BusinessActor" name="Customer" />
+    <archimate:BaseElement id="business-process" xsi:type="archimate:BusinessProcess" name="Submit request" />
+    <archimate:BaseElement id="application-service" xsi:type="archimate:ApplicationService" name="Request service" />
+    <archimate:BaseElement id="application-component" xsi:type="archimate:ApplicationComponent" name="Request portal" />
+    <archimate:BaseElement id="technology-node" xsi:type="archimate:Node" name="Cloud platform" />
+  </archimate:Elements>
+  <archimate:Relationships>
+    <archimate:Relationship id="assignment-customer-process" xsi:type="archimate:AssignmentRelationship" source="business-actor" target="business-process" />
+    <archimate:Relationship id="realization-process-service" xsi:type="archimate:RealizationRelationship" source="business-process" target="application-service" />
+    <archimate:Relationship id="serving-component-service" xsi:type="archimate:ServingRelationship" source="application-component" target="application-service" />
+    <archimate:Relationship id="deployment-component-node" xsi:type="archimate:AssignmentRelationship" source="application-component" target="technology-node" />
+  </archimate:Relationships>
+  <archimate:Views><archimate:Diagrams><archimate:View id="view-synthetic-showcase" name="Service delivery overview">
+    <archimate:Node id="view-customer" elementRef="business-actor" x="40" y="130" w="150" h="80" />
+    <archimate:Node id="view-process" elementRef="business-process" x="260" y="130" w="170" h="80" />
+    <archimate:Node id="view-service" elementRef="application-service" x="510" y="130" w="170" h="80" />
+    <archimate:Node id="view-component" elementRef="application-component" x="510" y="300" w="170" h="80" />
+    <archimate:Node id="view-platform" elementRef="technology-node" x="760" y="300" w="170" h="80" />
+    <archimate:Connection id="view-assignment" relationshipRef="assignment-customer-process" source="view-customer" target="view-process"><archimate:Waypoints><archimate:Waypoint x="190" y="170"/><archimate:Waypoint x="260" y="170"/></archimate:Waypoints></archimate:Connection>
+    <archimate:Connection id="view-realization" relationshipRef="realization-process-service" source="view-process" target="view-service"><archimate:Waypoints><archimate:Waypoint x="430" y="170"/><archimate:Waypoint x="510" y="170"/></archimate:Waypoints></archimate:Connection>
+    <archimate:Connection id="view-serving" relationshipRef="serving-component-service" source="view-component" target="view-service"><archimate:Waypoints><archimate:Waypoint x="595" y="300"/><archimate:Waypoint x="595" y="210"/></archimate:Waypoints></archimate:Connection>
+    <archimate:Connection id="view-deployment" relationshipRef="deployment-component-node" source="view-component" target="view-platform"><archimate:Waypoints><archimate:Waypoint x="680" y="340"/><archimate:Waypoint x="760" y="340"/></archimate:Waypoints></archimate:Connection>
+  </archimate:View></archimate:Diagrams></archimate:Views>
+</archimate:Model>
