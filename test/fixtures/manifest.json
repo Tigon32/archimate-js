@@ -48,5 +48,33 @@
       "parse serialize parse preservation of supported fields"
     ],
     "review_after": "2026-12-23"
+  },
+  {
+    "id": "synthetic-valid-relationship-semantics",
+    "path": "test/fixtures/synthetic/valid-relationship-semantics.xml",
+    "classification": "SYNTHETIC",
+    "purpose": "Exercise one explicitly supported ArchiMate 3.2 relationship interpretation.",
+    "provenance": "Hand-authored from public Open Group relationship and application-layer definitions; contains no real architecture data and is not copied from a standards artifact.",
+    "contains_private_data": false,
+    "expected_coverage": [
+      "allowed application access relationship",
+      "pure relationship semantics service",
+      "XML validator integration"
+    ],
+    "review_after": "2026-12-23"
+  },
+  {
+    "id": "synthetic-invalid-relationship-semantics",
+    "path": "test/fixtures/synthetic/invalid-relationship-semantics.xml",
+    "classification": "SYNTHETIC",
+    "purpose": "Exercise a deterministic diagnostic for a reversed application access relationship.",
+    "provenance": "Hand-authored from public Open Group relationship and application-layer definitions; contains no real architecture data and is not copied from a standards artifact.",
+    "contains_private_data": false,
+    "expected_coverage": [
+      "disallowed reverse application access relationship",
+      "stable semantic diagnostic",
+      "no source mutation"
+    ],
+    "review_after": "2026-12-23"
   }
 ]

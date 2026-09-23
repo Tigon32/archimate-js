@@ -48,9 +48,9 @@ npm pack
 
 ## Phase 2: Standards and interoperability
 
-- Define supported ArchiMate version explicitly.
+- [x] Define supported ArchiMate version explicitly.
 - Add public-source research records for ArchiMate, Model Exchange File Format, `diagram-js`, Archi, and relevant renderer references.
-- Add relationship-validation tests.
+- [x] Add a conservative relationship-validation service and synthetic tests; unsupported combinations remain explicit.
 - Add import diagnostics for malformed or partially imported models.
 - Add Open Group exchange-format compatibility tests where redistribution terms allow.
 

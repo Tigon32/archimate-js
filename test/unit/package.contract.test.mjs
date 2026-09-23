@@ -24,6 +24,7 @@ describe('package contract', () => {
   });
 
   it('exposes the compiled validator through its stable package subpath', () => {
+    expect(packageJson.archimateLanguageVersion).toBe('3.2');
     expect(ARCHIMATE_LANGUAGE_VERSION).toBe('3.2');
     expect(typeof validateArchimateXml).toBe('function');
   });

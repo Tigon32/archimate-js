@@ -1,5 +1,10 @@
 import { SaxesParser } from 'saxes';
 
+import {
+  RELATIONSHIP_SEMANTICS_VERSION,
+  validateRelationshipSemantics
+} from './relationship-semantics.js';
+
 import type {
   Diagnostic,
   DiagnosticLayer,
@@ -25,14 +30,16 @@ const DEFAULT_LIMITS = {
 };
 
 /** Semantic profile target; exchange-format namespace and language version are distinct. */
-export const ARCHIMATE_LANGUAGE_VERSION = '3.2';
+export const ARCHIMATE_LANGUAGE_VERSION = RELATIONSHIP_SEMANTICS_VERSION;
 
 const knownRelationships = new Set([
   'AccessRelationship', 'AggregationRelationship', 'AssignmentRelationship',
   'AssociationRelationship', 'CompositionRelationship', 'FlowRelationship',
   'InfluenceRelationship', 'RealizationRelationship', 'ServingRelationship',
-  'SpecializationRelationship', 'TriggeringRelationship', 'Junction'
+  'SpecializationRelationship', 'TriggeringRelationship'
 ]);
+
+const junctionTypes = new Set(['Junction', 'AndJunction', 'OrJunction']);
 
 const knownElements = new Set([
   'Assessment', 'Constraint', 'Driver', 'Goal', 'Meaning', 'Outcome', 'Principle', 'Requirement', 'Stakeholder', 'Value',
@@ -44,7 +51,7 @@ const knownElements = new Set([
   'Artifact', 'CommunicationNetwork', 'Device', 'Node', 'Path', 'SystemSoftware', 'TechnologyCollaboration',
   'TechnologyEvent', 'TechnologyFunction', 'TechnologyInteraction', 'TechnologyInterface', 'TechnologyProcess', 'TechnologyService',
   'DistributionNetwork', 'Equipment', 'Facility', 'Material', 'Deliverable', 'ImplementationEvent', 'WorkPackage', 'Gap', 'Plateau',
-  'Location', 'Grouping'
+  'Location', 'Grouping', 'Junction', 'AndJunction', 'OrJunction'
 ]);
 
 const sortDiagnostics = (items: Diagnostic[]): Diagnostic[] => items.sort((a, b) =>
@@ -270,21 +277,43 @@ export function validateArchimateXml(xml: string, options: ValidatorOptions = {}
     if (relType === 'relationship') {
       pushDiagnostic(diagnostics, 'SEMANTICS_RELATIONSHIP_TYPE_UNSPECIFIED', 'warning', 'semantics', 'Relationship type is not specified in the built-in vocabulary.', node, id);
     }
-    if (relType === 'Junction') {
-      pushDiagnostic(diagnostics, 'SEMANTICS_JUNCTION_UNSUPPORTED', 'warning', 'semantics', 'Junction semantics are not covered by the built-in profile.', node, id);
-    }
     if (relType !== 'relationship' && !knownRelationships.has(relType)) {
       pushDiagnostic(diagnostics, 'SEMANTICS_RELATIONSHIP_TYPE_UNKNOWN', 'warning', 'semantics', 'Relationship type is outside the built-in ArchiMate vocabulary.', node, id);
       suggestions.push({ code: 'REVIEW_RELATIONSHIP_TYPE', subjectId: id, message: 'Review the relationship type against the organization profile.', operation: 'review-type' });
     }
   }
 
+  const relationshipsById = new Map(relationships.flatMap((node) => {
+    const id = attribute(node, 'id') ?? attribute(node, 'identifier');
+    return id ? [[id, node] as const] : [];
+  }));
   for (const node of relationships) {
     const id = attribute(node, 'id') ?? attribute(node, 'identifier') ?? '';
     const source = attribute(node, 'source');
     const target = attribute(node, 'target');
-    if ((source && relationshipIds.has(source)) || (target && relationshipIds.has(target))) {
+    if (!source || !target) continue;
+    const sourceRelationship = relationshipsById.get(source);
+    const targetRelationship = relationshipsById.get(target);
+    const sourceType = elementTypes.get(source) ?? (sourceRelationship ? typeName(sourceRelationship) : undefined);
+    const targetType = elementTypes.get(target) ?? (targetRelationship ? typeName(targetRelationship) : undefined);
+    const relType = typeName(node);
+    if (!sourceType || !targetType || relType === 'relationship' || !knownRelationships.has(relType)) continue;
+
+    const semanticResult = validateRelationshipSemantics({
+      sourceType,
+      relationshipType: relType,
+      targetType,
+      sourceKind: sourceRelationship ? 'relationship' : junctionTypes.has(sourceType) ? 'junction' : 'element',
+      targetKind: targetRelationship ? 'relationship' : junctionTypes.has(targetType) ? 'junction' : 'element'
+    });
+    if (semanticResult.decision === 'disallowed') {
+      pushDiagnostic(diagnostics, 'SEMANTICS_RELATIONSHIP_DISALLOWED', 'error', 'semantics', 'The relationship combination is disallowed by the built-in ArchiMate 3.2 profile.', node, id);
+    } else if (semanticResult.reasonCode === 'RELATIONSHIP_ENDPOINT_UNSUPPORTED') {
       pushDiagnostic(diagnostics, 'SEMANTICS_RELATIONSHIP_TO_RELATIONSHIP_UNSUPPORTED', 'warning', 'semantics', 'Relationship-to-relationship semantics are not covered by the built-in profile.', node, id);
+    } else if (semanticResult.reasonCode === 'JUNCTION_UNSUPPORTED') {
+      pushDiagnostic(diagnostics, 'SEMANTICS_JUNCTION_UNSUPPORTED', 'warning', 'semantics', 'Junction semantics are not covered by the built-in profile.', node, id);
+    } else if (semanticResult.decision === 'unsupported') {
+      pushDiagnostic(diagnostics, 'SEMANTICS_RELATIONSHIP_COMBINATION_UNSUPPORTED', 'warning', 'semantics', 'The relationship combination is outside the built-in ArchiMate 3.2 decision set.', node, id);
     }
   }
 
@@ -345,3 +374,15 @@ export function validateArchimateXml(xml: string, options: ValidatorOptions = {}
 }
 
 export type { Diagnostic, OrganizationRule, RepairSuggestion, ValidationResult, ValidatorOptions } from './types';
+export {
+  RELATIONSHIP_SEMANTICS_VERSION,
+  RELATIONSHIP_SEMANTIC_ROWS,
+  validateRelationshipSemantics
+} from './relationship-semantics.js';
+export type {
+  RelationshipEndpointKind,
+  RelationshipSemanticDecision,
+  RelationshipSemanticInput,
+  RelationshipSemanticResult,
+  RelationshipSemanticRow
+} from './relationship-semantics.js';

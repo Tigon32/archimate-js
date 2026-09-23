@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model identifier="synthetic-invalid-semantics" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <name>Synthetic Invalid Relationship Semantics</name>
+  <elements>
+    <element identifier="synthetic-data" xsi:type="archimate:DataObject" />
+    <element identifier="synthetic-function" xsi:type="archimate:ApplicationFunction" />
+  </elements>
+  <relationships>
+    <relationship identifier="synthetic-reversed-access" source="synthetic-data" target="synthetic-function" xsi:type="archimate:AccessRelationship" />
+  </relationships>
+</model>
