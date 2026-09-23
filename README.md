@@ -49,7 +49,9 @@ the rendering path and visible business, application, and technology elements;
 it is not a screenshot of a customer model or evidence of full MEFF
 interoperability.
 
-![Read-only browser rendering of the synthetic service-delivery view](test-results/read-only-showcase.png)
+The [successful CI run](https://github.com/Tigon32/archimate-js/actions/runs/35904569795)
+generated and validated this screenshot. Download `read-only-showcase-screenshot`
+from the run's **Artifacts** section to inspect the PNG.
 
 The sample includes these layers and relations:
 
