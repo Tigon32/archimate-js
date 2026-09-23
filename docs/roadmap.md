@@ -85,7 +85,7 @@ Exit criteria:
 - [x] Add third-party notices and asset provenance.
 - [x] Add SBOM/release provenance plan.
 - [x] Document stable public exports, deep-import policy, SemVer channels, and release-note template.
-- [x] Test the actual `npm pack` archive through a consumer fixture with registry access disabled.
+- [x] Install the actual `npm pack` archive in an isolated consumer with lifecycle scripts disabled; dependency resolution uses the configured npm registry.
 - [x] Add a read-only release gate for lint, full tests, compile, and browser rendering; it does not publish or use secrets.
 - [x] Keep stable operational releases blocked until importer/exporter/render and Archi comparison evidence is recorded.
 - Publish a prerelease only after CI, tests, and package smoke tests pass.

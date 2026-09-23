@@ -34,6 +34,26 @@ Until those gaps are closed and tested with schema-valid, safe fixtures, treat i
 
 The package exposes a TypeScript validator at `archimate-js/validator`. It checks bounded XML input, a conservative model structure subset, references, and relationship vocabulary, then optionally runs caller-supplied organization quality rules. Its ArchiMate 3.2 relationship service returns `allowed`, `disallowed`, or `unsupported`; only explicitly reviewed rows are decided. It reports deterministic review suggestions and does not mutate the source. This is not XSD validation, a complete ArchiMate semantic matrix, a conformance claim, or an automatic repair workflow. See [the validator profile](docs/standards/validator-profile.md) and [relationship matrix](docs/standards/relationship-validation-matrix.md).
 
+## Headless CLI
+
+The package includes a CI-oriented `archimate-js` command. Validation emits deterministic JSON diagnostics and exits non-zero when the model has fatal errors:
+
+```sh
+npx archimate-js validate ./model.xml
+```
+
+Render one selected view with an existing Chrome or Chromium installation:
+
+```sh
+CHROME_BIN=/usr/bin/chromium npx archimate-js render ./model.xml \
+  --view-id view-id \
+  --output ./view.svg
+```
+
+Use `--view-name` in place of `--view-id` when names are unique, or `--chrome /path/to/chrome` in place of `CHROME_BIN`. The CLI does not download a browser or make model requests. Its browser context blocks network traffic, and its JSON output omits model XML, model summaries, identifiers, local paths, parser details, and browser console output. Rendering writes the SVG atomically after validation succeeds.
+
+From a source checkout, run `npm run compile` first and replace `npx archimate-js` with `node ./bin/archimate-js.mjs` in these examples.
+
 ## Run and test locally
 
 Use Node.js 22.12 or later. From the repository root, install dependencies and build the browser bundle:

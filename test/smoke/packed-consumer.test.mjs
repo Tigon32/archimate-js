@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const temp = await mkdtemp(path.join(root, '.release-consumer-'));
+const temp = await mkdtemp(path.join(os.tmpdir(), 'archimate-release-consumer-'));
 const run = (command, args, options = {}) => {
   const result = spawnSync(command, args, { encoding: 'utf8', ...options });
   if (result.error || result.status !== 0) {
@@ -18,18 +19,20 @@ const run = (command, args, options = {}) => {
 
 try {
   run(process.execPath, ['test/smoke/compile-validator.mjs'], { cwd: root });
+  run(process.execPath, ['test/smoke/compile.mjs'], { cwd: root });
   const packOutput = run('npm', [
     'pack', '--ignore-scripts', '--json', '--pack-destination', temp
   ], { cwd: root });
   const [packed] = JSON.parse(packOutput);
   const archive = path.join(temp, packed.filename);
-  execFileSync('tar', ['-xzf', archive, '-C', temp]);
-
-  const packageRoot = path.join(temp, 'package');
   const consumer = path.join(temp, 'consumer');
-  await mkdir(path.join(consumer, 'node_modules'), { recursive: true });
-  await symlink(path.join(root, 'node_modules'), path.join(temp, 'node_modules'), 'dir');
-  await symlink(packageRoot, path.join(consumer, 'node_modules', 'archimate-js'), 'dir');
+  await mkdir(consumer, { recursive: true });
+  await writeFile(path.join(consumer, 'package.json'), '{"private":true}\n');
+  run('npm', [
+    'install', '--ignore-scripts', '--no-audit', '--no-fund', '--package-lock=false', archive
+  ], { cwd: consumer });
+
+  const packageRoot = path.join(consumer, 'node_modules', 'archimate-js');
 
   const consumerEntry = path.join(consumer, 'consumer-entry.mjs');
   await writeFile(consumerEntry, `
@@ -48,7 +51,7 @@ try {
     target: 'node',
     entry: consumerEntry,
     output: { path: consumer, filename: path.basename(bundlePath), library: { type: 'commonjs2' } },
-    resolve: { modules: [ path.join(consumer, 'node_modules'), path.join(root, 'node_modules') ] }
+    resolve: { modules: [ path.join(consumer, 'node_modules') ] }
   }, (error, stats) => {
     if (error || stats.hasErrors()) {
       reject(new Error('Bundler could not resolve the packed root API.'));
@@ -83,6 +86,26 @@ try {
   const packageJson = JSON.parse(await readFile(path.join(packageRoot, 'package.json'), 'utf8'));
   assert.equal(packageJson.exports['./validator'].import, './dist/validator/index.js');
   assert.deepEqual(Object.keys(packageJson.exports).sort(), ['.', './validator']);
+  assert.equal(packageJson.bin['archimate-js'], 'bin/archimate-js.mjs');
+  await readFile(path.join(packageRoot, 'dist/browser/archimate-js.js'), 'utf8');
+  const installedBin = process.platform === 'win32'
+    ? path.join(consumer, 'node_modules/.bin/archimate-js.cmd')
+    : path.join(consumer, 'node_modules/.bin/archimate-js');
+  const packedCli = run(installedBin, [
+    'validate', path.join(root, 'test/fixtures/synthetic/minimal-application-view.xml')
+  ], { cwd: consumer });
+  assert.equal(JSON.parse(packedCli).valid, true);
+  const consumerRequire = createRequire(path.join(consumer, 'package.json'));
+  assert.ok(consumerRequire.resolve('playwright-core'));
+  assert.ok(consumerRequire.resolve('archimate-font/package.json'));
+  await assert.rejects(readFile(path.join(
+    consumer,
+    'node_modules/archimate-font/lib/css/archimate-font-ie7.css'
+  ), 'utf8'));
+  await assert.rejects(readFile(path.join(
+    consumer,
+    'node_modules/archimate-font/lib/demo.html'
+  ), 'utf8'));
   console.log('packed package consumer smoke test passed');
 } catch (error) {
   throw new Error(`Packed package consumer smoke test failed: ${error.message}`);

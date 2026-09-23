@@ -66,12 +66,10 @@ synthetic/public fixtures plus Archi import/export comparison. Keep claims
 limited to what those checks establish. At this revision the latter
 interoperability evidence has not been completed, so `1.0.0` is not cleared.
 
-The workflow installs dependencies with lifecycle scripts disabled and
-`npm test` performs the package build/test locally without publishing or
-contacting a registry. The repository currently has no lockfile; until one is
-committed, dependency installation is not a reproducible `npm ci` operation.
-This is a release-readiness limitation and must be resolved before claiming a
-reproducible operational release.
+The workflow installs dependencies with lifecycle scripts disabled and uses the
+committed lockfile through `npm ci --ignore-scripts`. It does not publish the
+package. The packed-consumer check may use the configured npm registry to
+resolve the archive's declared runtime dependencies.
 
 ## Local release checks
 
@@ -89,8 +87,9 @@ The browser check needs a local Chrome/Chromium binary:
 CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" npm run release:check
 ```
 
-The packed consumer test compiles the validator, packs the actual project
-archive with lifecycle scripts disabled, extracts it into a temporary
-consumer, bundles the root API as a browser consumer, imports the validator
-subpath in Node, and checks blocked deep imports. It uses the already-installed
-dependency tree and does not install from a registry.
+The packed consumer test compiles the validator and browser artifact, packs the
+actual project archive, and installs that archive into an isolated temporary
+consumer with lifecycle scripts disabled. It invokes the installed CLI, bundles
+the root API as a browser consumer, imports the validator subpath in Node, and
+checks blocked deep imports. npm may contact the configured registry to resolve
+the archive's declared runtime dependencies; the test never publishes.
