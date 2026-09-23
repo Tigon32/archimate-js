@@ -37,11 +37,13 @@ try {
   });
   const page = await browser.newPage();
   const origin = `http://127.0.0.1:${server.address().port}`;
+  const offOriginRequests = [];
   await page.setRequestInterception(true);
   page.on('request', (request) => {
     if (request.url().startsWith(origin + '/')) {
       request.continue();
     } else {
+      offOriginRequests.push(request.url().split(':')[0]);
       request.abort();
     }
   });
@@ -93,6 +95,11 @@ try {
       description: 'Synthetic application component and service'
     });
     const parsed = new DOMParser().parseFromString(first, 'image/svg+xml');
+    const firstText = parsed.documentElement.textContent;
+    const firstPaths = Array.from(parsed.querySelectorAll('path'), (path) => path.getAttribute('d') || '').join(' ');
+    const firstPathCount = parsed.querySelectorAll('path').length;
+    const firstNestedGroupCount = parsed.querySelectorAll('g g').length;
+    const hasUnsafeExportMarkup = parsed.querySelector('script, foreignObject, img') !== null;
     const mounted = await api.mountViewer({
       xml,
       viewId: 'view-synthetic-minimal',
@@ -101,9 +108,25 @@ try {
       height: 480
     });
     const componentShape = mounted.get('elementRegistry').get('node-application-component-1');
-    const modelNameBeforeExport = mounted.getModel().name;
+    const modelBeforeExport = mounted.getModel();
+    const modelSnapshotBeforeExport = JSON.stringify({
+      name: modelBeforeExport.name,
+      elementCount: modelBeforeExport.elements.length,
+      relationshipCount: modelBeforeExport.relationships.length,
+      viewCount: modelBeforeExport.views.diagrams.viewsList.length,
+      viewName: modelBeforeExport.views.diagrams.viewsList[0].name
+    });
     await mounted.saveSVG({ title: 'Mounted synthetic view' });
-    const modelNameAfterExport = mounted.getModel().name;
+    const modelAfterExport = mounted.getModel();
+    const modelSnapshotAfterExport = JSON.stringify({
+      name: modelAfterExport.name,
+      elementCount: modelAfterExport.elements.length,
+      relationshipCount: modelAfterExport.relationships.length,
+      viewCount: modelAfterExport.views.diagrams.viewsList.length,
+      viewName: modelAfterExport.views.diagrams.viewsList[0].name
+    });
+    const exportedTextHasLabel = host.textContent.includes('Component label');
+    const exportedTextCount = host.querySelectorAll('text').length;
     mounted.destroy();
     host.remove();
 
@@ -113,19 +136,20 @@ try {
       hasDescription: parsed.querySelector('desc')?.textContent === 'Synthetic application component and service',
       liveTextElementCount: document.querySelectorAll('#diagram text').length,
       exportedShapeHasLabel: componentShape?.businessObject?.label?.includes('Component label') === true,
-      exportedTextHasLabel: host.textContent.includes('Component label'),
-      exportedTextCount: host.querySelectorAll('text').length,
-      hasComponentName: parsed.documentElement.textContent.includes('Application Component'),
-      hasServiceName: parsed.documentElement.textContent.includes('Application Service'),
-      hasViewLabel: parsed.documentElement.textContent.includes('Component label'),
+      exportedTextHasLabel,
+      exportedTextCount,
+      hasComponentName: firstText.includes('Application Component'),
+      hasServiceName: firstText.includes('Application Service'),
+      hasViewLabel: firstText.includes('Component label'),
       textElementCount: parsed.querySelectorAll('text').length,
-      pathCount: parsed.querySelectorAll('path').length,
-      pathData: Array.from(parsed.querySelectorAll('path'), (path) => path.getAttribute('d') || '').join(' '),
-      nestedGroups: Array.from(parsed.querySelectorAll('g g')).length,
-      hasScriptMarkup: parsed.querySelector('script, foreignObject, img') !== null,
+      pathCount: firstPathCount,
+      pathData: firstPaths,
+      nestedGroups: firstNestedGroupCount,
+      hasScriptMarkup: hasUnsafeExportMarkup,
       liveModelScriptCount: document.querySelectorAll('#diagram script, #diagram img').length,
       payloadCodeRan: window.__syntheticModelCodeRan === true,
-      modelUnchanged: modelNameBeforeExport === modelNameAfterExport
+      modelUnchanged: modelBeforeExport === modelAfterExport &&
+        modelSnapshotBeforeExport === modelSnapshotAfterExport
     };
   });
 
@@ -143,6 +167,8 @@ try {
   assert.equal(result.exportedTextHasLabel, true);
   assert.equal(result.hasViewLabel, true);
   assert.ok(result.textElementCount > 0, 'SVG should render labels as text');
+  stage = 'check fixture element names';
+  assert.equal(result.hasServiceName, true);
   stage = 'check rendered paths';
   assert.ok(result.pathCount > 0, 'SVG should contain relationship or shape paths');
   stage = 'check rendered bendpoints';
@@ -155,6 +181,7 @@ try {
   assert.equal(result.hasScriptMarkup, false);
   assert.equal(result.liveModelScriptCount, 0);
   assert.equal(result.payloadCodeRan, false);
+  assert.equal(offOriginRequests.length, 0);
   stage = 'check export model immutability';
   assert.equal(result.modelUnchanged, true);
   console.log('browser render smoke test passed');
