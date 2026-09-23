@@ -110,6 +110,7 @@ try {
       same: first === second,
       hasTitle: parsed.querySelector('title')?.textContent === 'Synthetic report view',
       hasDescription: parsed.querySelector('desc')?.textContent === 'Synthetic application component and service',
+      liveTextElementCount: document.querySelectorAll('#diagram text').length,
       liveViewLabel: document.querySelector('#diagram')?.textContent.includes('Component label') === true,
       hasComponentName: parsed.documentElement.textContent.includes('Application Component'),
       hasServiceName: parsed.documentElement.textContent.includes('Application Service'),
@@ -131,6 +132,7 @@ try {
   assert.equal(result.hasTitle, true);
   assert.equal(result.hasDescription, true);
   stage = 'check live example label';
+  assert.ok(result.liveTextElementCount > 0, 'example should render SVG text nodes');
   assert.equal(result.liveViewLabel, true);
   stage = 'check custom view label';
   assert.equal(result.hasViewLabel, true);
