@@ -82,31 +82,50 @@ try {
     const host = document.createElement('div');
     document.body.appendChild(host);
     const xml = await (await fetch('/test/fixtures/synthetic/minimal-application-view.xml')).text();
-    const first = await api.renderViewToSvg({
-      xml,
-      viewName: 'Synthetic Minimal View',
-      title: 'Synthetic report view',
-      description: 'Synthetic application component and service'
-    });
-    const second = await api.renderViewToSvg({
-      xml,
-      viewId: 'view-synthetic-minimal',
-      title: 'Synthetic report view',
-      description: 'Synthetic application component and service'
-    });
+    const safeCode = (error) => error && [
+      'INVALID_OPTIONS', 'MODEL_TOO_LARGE', 'MODEL_IMPORT_FAILED', 'VIEW_NOT_FOUND',
+      'VIEW_NAME_AMBIGUOUS', 'VIEW_RENDER_FAILED', 'VIEW_SELECTION_FAILED', 'VIEWER_FAILURE'
+    ].includes(error.code) ? error.code : 'UNEXPECTED_FAILURE';
+    let first;
+    try {
+      first = await api.renderViewToSvg({
+        xml,
+        viewName: 'Synthetic Minimal View',
+        title: 'Synthetic report view',
+        description: 'Synthetic application component and service'
+      });
+    } catch (error) {
+      return { failurePhase: 'render by name', failureCode: safeCode(error) };
+    }
+    let second;
+    try {
+      second = await api.renderViewToSvg({
+        xml,
+        viewId: 'view-synthetic-minimal',
+        title: 'Synthetic report view',
+        description: 'Synthetic application component and service'
+      });
+    } catch (error) {
+      return { failurePhase: 'render by id', failureCode: safeCode(error) };
+    }
     const parsed = new DOMParser().parseFromString(first, 'image/svg+xml');
     const firstText = parsed.documentElement.textContent;
     const firstPaths = Array.from(parsed.querySelectorAll('path'), (path) => path.getAttribute('d') || '').join(' ');
     const firstPathCount = parsed.querySelectorAll('path').length;
     const firstNestedGroupCount = parsed.querySelectorAll('g g').length;
     const hasUnsafeExportMarkup = parsed.querySelector('script, foreignObject, img') !== null;
-    const mounted = await api.mountViewer({
-      xml,
-      viewId: 'view-synthetic-minimal',
-      container: host,
-      width: 640,
-      height: 480
-    });
+    let mounted;
+    try {
+      mounted = await api.mountViewer({
+        xml,
+        viewId: 'view-synthetic-minimal',
+        container: host,
+        width: 640,
+        height: 480
+      });
+    } catch (error) {
+      return { failurePhase: 'mount selected view', failureCode: safeCode(error) };
+    }
     const componentShape = mounted.get('elementRegistry').get('node-application-component-1');
     const modelBeforeExport = mounted.getModel();
     const modelSnapshotBeforeExport = JSON.stringify({
@@ -116,7 +135,13 @@ try {
       viewCount: modelBeforeExport.views.diagrams.viewsList.length,
       viewName: modelBeforeExport.views.diagrams.viewsList[0].name
     });
-    await mounted.saveSVG({ title: 'Mounted synthetic view' });
+    try {
+      await mounted.saveSVG({ title: 'Mounted synthetic view' });
+    } catch (error) {
+      mounted.destroy();
+      host.remove();
+      return { failurePhase: 'export mounted view', failureCode: safeCode(error) };
+    }
     const modelAfterExport = mounted.getModel();
     const modelSnapshotAfterExport = JSON.stringify({
       name: modelAfterExport.name,
@@ -152,6 +177,11 @@ try {
         modelSnapshotBeforeExport === modelSnapshotAfterExport
     };
   });
+
+  if (result.failurePhase) {
+    stage = `${result.failurePhase} (${result.failureCode})`;
+    throw new Error('Synthetic browser render failed.');
+  }
 
   stage = 'check repeated SVG stability';
   assert.equal(result.same, true);
