@@ -219,3 +219,5 @@ describe('synthetic ArchiMate XML import contract', () => {
     }]);
 
 });
+  });
+});
