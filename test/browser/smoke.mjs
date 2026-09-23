@@ -154,11 +154,15 @@ try {
     };
   });
 
-  stage = 'assert deterministic SVG and Markdown image artifact path';
+  stage = 'assert deterministic report SVG bytes';
   assert.equal(report.deterministic, true);
+  stage = 'assert report SVG labels';
   assert.equal(report.svgHasSyntheticLabels, true);
+  stage = 'assert accessible SVG metadata';
   assert.equal(report.hasSafeSvgMetadata, true);
+  stage = 'assert SVG has no active markup';
   assert.equal(report.hasActiveMarkup, false);
+  stage = 'write and verify SVG artifact';
   const artifactDirectory = await mkdtemp(path.join(os.tmpdir(), 'archimate-synthetic-report-'));
   try {
     const artifactPath = path.join(artifactDirectory, 'synthetic-minimal-view.svg');
