@@ -19,9 +19,10 @@
     "all": "run-s test compile",
     "compile": "node test/smoke/compile.mjs",
     "lint": "eslint .",
-    "test": "run-s test:package test:security",
+    "test": "run-s test:package test:security test:unit",
     "test:package": "node test/smoke/package.test.mjs",
-    "test:security": "node test/security/logger.test.mjs"
+    "test:security": "node test/security/logger.test.mjs",
+    "test:unit": "vitest run"
   },
   "repository": {
     "type": "git",
@@ -45,7 +46,8 @@
     "npm-run-all": "^4.1.5",
     "puppeteer": "^10.4.0",
     "raw-loader": "^4.0.2",
-    "webpack": "^5.61.0"
+    "webpack": "^5.61.0",
+    "vitest": "^2.1.9"
   },
   "dependencies": {
     "archimate-font": "file:./archimate-font",
