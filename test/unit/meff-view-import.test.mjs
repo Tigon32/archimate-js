@@ -4,6 +4,9 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { parseMeffViews } from '../../lib/import/MeffView.js';
+import ArchimateModdle from '../../lib/moddle/Moddle';
+import ArchimateDescriptors from '../../lib/moddle/resources/archimate.json';
+import { preflightImportXml } from '../../lib/import/XmlPreflight.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fixturePath = path.resolve(here, '../fixtures/meff-schema/valid-view-diagram.xml');
@@ -60,6 +63,22 @@ describe('MEFF View and Diagram import', () => {
     expect(connection.relationshipRef).toBe(relationship);
     expect(connection.source).toBe(componentNode);
     expect(connection.target).toBe(serviceNode);
+  });
+
+
+  it('imports the schema-valid fixture through ArchimateModdle without blanket warnings', async () => {
+    const xml = await readFile(fixturePath, 'utf8');
+    const parsed = await new ArchimateModdle({ archimate: ArchimateDescriptors }).fromXML(xml);
+    const model = parsed.rootElement;
+    const view = model.views.diagrams.viewsList[0];
+    const component = model.elementsById['component-one'];
+    const relationship = model.relationshipsById['serving-one-two'];
+
+    expect(parsed.diagnostics).toEqual([]);
+    expect(preflightImportXml(xml).warnings.map(({ code }) => code)).not.toContain('MEFF_DIAGRAMS_UNSUPPORTED');
+    expect(view.id).toBe('view-synthetic-one');
+    expect(view.viewElements[0].elementRef).toBe(component);
+    expect(view.viewElements[2].relationshipRef).toBe(relationship);
   });
 
   it('returns no views for a schema Model without a views section', () => {
