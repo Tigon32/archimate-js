@@ -179,8 +179,9 @@ describe('synthetic ArchiMate XML import contract', () => {
     expect(relationship.source).toBe(source);
     expect(relationship.target).toBe(target);
     expect(first.elementsById['component-source']).toBe(source);
-    expect(first.elementsById['serving-link']).toBe(relationship);
+    expect(first.elementsById['serving-link']).toBeUndefined();
     expect(model.elementsById).toBe(first.elementsById);
+    expect(model.relationshipsById['serving-link']).toBe(relationship);
     expect(first.diagnostics).toEqual([]);
 
     const project = ({ rootElement, diagnostics }) => ({
