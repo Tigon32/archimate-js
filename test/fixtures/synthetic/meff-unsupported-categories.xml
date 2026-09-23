@@ -2,7 +2,8 @@
 <!-- Synthetic MEFF structure probe. Not validated against the Open Group XSD. -->
 <model xmlns="http://www.opengroup.org/xsd/archimate/3.0/"
   xmlns:archimate="http://www.opengroup.org/xsd/archimate/3.0/"
-  xmlns:ext="urn:synthetic:extension" id="private-model">
+  xmlns:ext="urn:synthetic:extension"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="private-model">
   <name>Private model name</name>
   <metadata><property key="private-key">private-value</property></metadata>
   <elements>
