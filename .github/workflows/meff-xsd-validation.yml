@@ -1,4 +1,4 @@
-name: MEFF XSD validation experiment
+name: MEFF XSD validation
 
 on:
   pull_request:
@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 jobs:
-  validate-meff-model:
-    name: Validate synthetic MEFF Model fixture
+  validate-meff-fixtures:
+    name: Validate synthetic MEFF Model and Diagram fixtures
     runs-on: ubuntu-24.04
     timeout-minutes: 10
 
@@ -55,10 +55,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          schema="${RUNNER_TEMP}/meff-xsd-3.1/archimate3_Model.xsd"
-          xmllint --noout --schema "$schema" test/fixtures/meff-schema/valid-model.xml
+          model_schema="${RUNNER_TEMP}/meff-xsd-3.1/archimate3_Model.xsd"
+          diagram_schema="${RUNNER_TEMP}/meff-xsd-3.1/archimate3_Diagram.xsd"
+          xmllint --noout --schema "$model_schema" test/fixtures/meff-schema/valid-model.xml
+          xmllint --noout --schema "$diagram_schema" test/fixtures/meff-schema/valid-view-diagram.xml
           invalid_log="${RUNNER_TEMP}/meff-invalid-fixture.log"
-          if xmllint --noout --schema "$schema" test/fixtures/meff-schema/invalid-missing-model-identifier.xml >"$invalid_log" 2>&1; then
+          if xmllint --noout --schema "$model_schema" test/fixtures/meff-schema/invalid-missing-model-identifier.xml >"$invalid_log" 2>&1; then
             echo "Expected the missing-model-identifier fixture to fail XSD validation."
             exit 1
           fi
@@ -67,4 +69,4 @@ jobs:
             echo "Negative fixture failed for an unexpected reason; expected the missing identifier."
             exit 1
           fi
-          echo "Positive fixture is schema-valid; negative fixture failed for missing model identifier."
+          echo "Positive Model and View/Diagram fixtures are schema-valid; negative Model fixture failed for missing identifier."
