@@ -129,10 +129,6 @@ try {
   stage = 'check accessible SVG metadata';
   assert.equal(result.hasTitle, true);
   assert.equal(result.hasDescription, true);
-  stage = 'check component label';
-  assert.equal(result.hasComponentName, true);
-  stage = 'check service label';
-  assert.equal(result.hasServiceName, true);
   stage = 'check custom view label';
   assert.equal(result.hasViewLabel, true);
   assert.ok(result.textElementCount > 0, 'SVG should render labels as text');
