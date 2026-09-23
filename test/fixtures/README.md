@@ -26,6 +26,10 @@ Every fixture must appear in `manifest.json` with:
 - `expected_coverage`
 - `review_after`
 
-## Review rule
+For `PUBLIC` fixtures, also record `source`, `license`, `retrieved_on`, and `allowed_use`.
 
-If a fixture cannot be explained from public standards terminology and synthetic names alone, it does not belong here.
+## Automated safety gate
+
+`npm test` scans all files under this directory and validates the manifest. The scan checks common email, private host/IP, credential-shaped value, symlink, binary, and manifest hazards. It intentionally reports rule identifiers and sorted file numbers rather than paths or matched text, so CI logs cannot expose a value that caused a finding.
+
+Projects with sensitive vocabulary can supply `ARCHIMATE_FIXTURE_BLOCK_TERMS` as a comma- or newline-separated environment variable for local checks. Terms are matched case-insensitively as whole words/phrases and are never printed. Do not commit organization-specific terms to this public repository or expose them to CI running untrusted pull requests.
