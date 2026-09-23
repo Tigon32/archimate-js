@@ -121,5 +121,33 @@
       "stable ordered content-free warnings"
     ],
     "review_after": "2026-12-23"
+  },
+  {
+    "id": "synthetic-meff-xsd-valid-model",
+    "path": "test/fixtures/meff-schema/valid-model.xml",
+    "classification": "SYNTHETIC",
+    "purpose": "Positive candidate for transient validation against the official MEFF 3.1 Model XSD.",
+    "provenance": "Authored for this repository from public MEFF schema documentation; not copied from an official example. CI fetches official XSDs to runner temp only.",
+    "contains_private_data": false,
+    "expected_coverage": [
+      "model identifier and localized name",
+      "element identifiers, types, and localized names",
+      "relationship identifier and IDREF endpoints",
+      "MEFF 3.1 Model XSD validation"
+    ],
+    "review_after": "2026-12-23"
+  },
+  {
+    "id": "synthetic-meff-xsd-invalid-model",
+    "path": "test/fixtures/meff-schema/invalid-missing-model-identifier.xml",
+    "classification": "SYNTHETIC",
+    "purpose": "Negative control for transient validation against the official MEFF 3.1 Model XSD.",
+    "provenance": "Authored as a negative counterpart to valid-model.xml; deliberately omits the required model identifier.",
+    "contains_private_data": false,
+    "expected_coverage": [
+      "required model identifier rejection",
+      "expected XSD validation failure"
+    ],
+    "review_after": "2026-12-23"
   }
 ]
