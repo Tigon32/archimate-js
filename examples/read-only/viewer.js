@@ -1,4 +1,4 @@
-const FIXTURE_PATH = '../../test/fixtures/synthetic/minimal-application-view.xml';
+const FIXTURE_PATH = '../../test/fixtures/synthetic/read-only-showcase.xml';
 const MAX_FIXTURE_BYTES = 256 * 1024;
 
 const status = document.querySelector('#status');
@@ -73,12 +73,12 @@ async function renderExample() {
 
     await api.mountViewer({
       xml,
-      viewId: 'view-synthetic-minimal',
+      viewId: 'view-synthetic-showcase',
       container,
       width: '100%',
       height: '100%'
     });
-    status.textContent = 'Loaded the public synthetic example.';
+    status.textContent = 'Loaded the public synthetic service delivery example.';
   } catch {
     // Keep parser, network, and model details out of the page and browser console.
     showFailure();
