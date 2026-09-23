@@ -113,7 +113,10 @@ try {
     }
     phase = 'inspect SVG output';
     const parsed = new DOMParser().parseFromString(first, 'image/svg+xml');
-    const firstText = parsed.documentElement.textContent;
+    const firstText = Array.from(parsed.querySelectorAll('text'), (text) => {
+      const lines = Array.from(text.querySelectorAll('tspan'), (line) => line.textContent || '');
+      return lines.length ? lines.join(' ') : text.textContent || '';
+    }).join(' ');
     const firstPaths = Array.from(parsed.querySelectorAll('path'), (path) => path.getAttribute('d') || '').join(' ');
     const firstPathCount = parsed.querySelectorAll('path').length;
     const firstNestedGroupCount = parsed.querySelectorAll('g g').length;
