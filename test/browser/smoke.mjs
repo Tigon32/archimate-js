@@ -110,8 +110,10 @@ try {
       same: first === second,
       hasTitle: parsed.querySelector('title')?.textContent === 'Synthetic report view',
       hasDescription: parsed.querySelector('desc')?.textContent === 'Synthetic application component and service',
-      hasExpectedText: parsed.documentElement.textContent.includes('Application Component') &&
-        parsed.documentElement.textContent.includes('Component label'),
+      hasComponentName: parsed.documentElement.textContent.includes('Application Component'),
+      hasServiceName: parsed.documentElement.textContent.includes('Application Service'),
+      hasViewLabel: parsed.documentElement.textContent.includes('Component label'),
+      textElementCount: parsed.querySelectorAll('text').length,
       pathCount: parsed.querySelectorAll('path').length,
       pathData: Array.from(parsed.querySelectorAll('path'), (path) => path.getAttribute('d') || '').join(' '),
       nestedGroups: Array.from(parsed.querySelectorAll('g g')).length,
@@ -127,8 +129,12 @@ try {
   stage = 'check accessible SVG metadata';
   assert.equal(result.hasTitle, true);
   assert.equal(result.hasDescription, true);
-  stage = 'check representative labels';
-  assert.equal(result.hasExpectedText, true);
+  stage = 'check element labels';
+  assert.equal(result.hasComponentName, true);
+  assert.equal(result.hasServiceName, true);
+  stage = 'check custom view label';
+  assert.equal(result.hasViewLabel, true);
+  assert.ok(result.textElementCount > 0, 'SVG should render labels as text');
   stage = 'check rendered paths';
   assert.ok(result.pathCount > 0, 'SVG should contain relationship or shape paths');
   stage = 'check rendered bendpoints';
