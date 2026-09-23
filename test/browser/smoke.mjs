@@ -78,14 +78,17 @@ try {
 
   stage = 'render selected view to SVG';
   const result = await page.evaluate(async () => {
-    const api = window.ArchimateJS;
-    const host = document.createElement('div');
-    document.body.appendChild(host);
-    const xml = await (await fetch('/test/fixtures/synthetic/minimal-application-view.xml')).text();
     const safeCode = (error) => error && [
       'INVALID_OPTIONS', 'MODEL_TOO_LARGE', 'MODEL_IMPORT_FAILED', 'VIEW_NOT_FOUND',
       'VIEW_NAME_AMBIGUOUS', 'VIEW_RENDER_FAILED', 'VIEW_SELECTION_FAILED', 'VIEWER_FAILURE'
     ].includes(error.code) ? error.code : 'UNEXPECTED_FAILURE';
+    let phase = 'initialize render context';
+    try {
+    const api = window.ArchimateJS;
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    phase = 'load synthetic model';
+    const xml = await (await fetch('/test/fixtures/synthetic/minimal-application-view.xml')).text();
     let first;
     try {
       first = await api.renderViewToSvg({
@@ -108,6 +111,7 @@ try {
     } catch (error) {
       return { failurePhase: 'render by id', failureCode: safeCode(error) };
     }
+    phase = 'inspect SVG output';
     const parsed = new DOMParser().parseFromString(first, 'image/svg+xml');
     const firstText = parsed.documentElement.textContent;
     const firstPaths = Array.from(parsed.querySelectorAll('path'), (path) => path.getAttribute('d') || '').join(' ');
@@ -116,6 +120,7 @@ try {
     const hasUnsafeExportMarkup = parsed.querySelector('script, foreignObject, img') !== null;
     let mounted;
     try {
+      phase = 'mount selected view';
       mounted = await api.mountViewer({
         xml,
         viewId: 'view-synthetic-minimal',
@@ -127,6 +132,7 @@ try {
       return { failurePhase: 'mount selected view', failureCode: safeCode(error) };
     }
     const componentShape = mounted.get('elementRegistry').get('node-application-component-1');
+    phase = 'snapshot mounted model';
     const modelBeforeExport = mounted.getModel();
     const modelSnapshotBeforeExport = JSON.stringify({
       name: modelBeforeExport.name,
@@ -136,6 +142,7 @@ try {
       viewName: modelBeforeExport.views.diagrams.viewsList[0].name
     });
     try {
+      phase = 'export mounted view';
       await mounted.saveSVG({ title: 'Mounted synthetic view' });
     } catch (error) {
       mounted.destroy();
@@ -152,6 +159,7 @@ try {
     });
     const exportedTextHasLabel = host.textContent.includes('Component label');
     const exportedTextCount = host.querySelectorAll('text').length;
+    phase = 'clean up mounted view';
     mounted.destroy();
     host.remove();
 
@@ -176,6 +184,9 @@ try {
       modelUnchanged: modelBeforeExport === modelAfterExport &&
         modelSnapshotBeforeExport === modelSnapshotAfterExport
     };
+    } catch (error) {
+      return { failurePhase: phase, failureCode: safeCode(error) };
+    }
   });
 
   if (result.failurePhase) {
