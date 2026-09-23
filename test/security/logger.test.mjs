@@ -81,5 +81,5 @@ const importer = await readFile(new URL('../../lib/import/Importer.js', import.m
 
 assert.equal(importer.includes('elementToString'), false);
 assert.equal(importer.includes('summarizeError'), false);
-assert.match(importer, /logger\\.warn\\('failed to import view element'\\)/);
-assert.match(importer, /logger\\.warn\\('failed to import connection element'\\)/);
+assert.ok(importer.includes("logger.warn('failed to import view element')"));
+assert.ok(importer.includes("logger.warn('failed to import connection element')"));
