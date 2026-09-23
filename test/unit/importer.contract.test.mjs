@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import ArchimateModdle from '../../lib/moddle/Moddle';
 import ArchimateDescriptors from '../../lib/moddle/resources/archimate.json';
+import { getLabel } from '../../lib/features/label-editing/LabelUtil';
 
 describe('synthetic ArchiMate XML import contract', () => {
   it('parses the public synthetic fixture into an ArchiMate model root', async () => {
@@ -19,6 +20,10 @@ describe('synthetic ArchiMate XML import contract', () => {
     expect(model.elementsNode.baseElements).toHaveLength(2);
     expect(model.views.diagrams.viewsList.map((view) => view.id)).toEqual(['view-synthetic-minimal']);
     expect(model.views.diagrams.viewsList[0].viewElements).toHaveLength(3);
+    const componentViewNode = model.views.diagrams.viewsList[0].viewElements[0];
+    expect(componentViewNode.label).toContain('Component label');
+    expect(getLabel({ businessObject: componentViewNode, name: 'Semantic element name' }))
+      .toContain('Component label');
   });
 
   it('round-trips supported model identity and name while exposing current content loss', async () => {
