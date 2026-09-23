@@ -6,7 +6,11 @@
     "purpose": "Reproduce imported directed Association rendering and SVG export behavior.",
     "provenance": "Hand-authored from the public #51 issue reproduction; contains generic names and no real architecture data.",
     "contains_private_data": false,
-    "expected_coverage": ["isDirected true import", "target half-arrowhead", "browser SVG export"],
+    "expected_coverage": [
+      "isDirected true import",
+      "target half-arrowhead",
+      "browser SVG export"
+    ],
     "review_after": "2026-12-23"
   },
   {
@@ -16,7 +20,13 @@
     "purpose": "Presentation-quality read-only example with business, application, and technology elements and relationships.",
     "provenance": "Hand-authored for this public repository using generic ArchiMate terms and non-domain-specific names.",
     "contains_private_data": false,
-    "expected_coverage": ["business actor and process", "application service and component", "technology node", "assignment, realization, and serving relationships", "multi-element diagram rendering"],
+    "expected_coverage": [
+      "business actor and process",
+      "application service and component",
+      "technology node",
+      "assignment, realization, and serving relationships",
+      "multi-element diagram rendering"
+    ],
     "review_after": "2026-12-23"
   },
   {
@@ -94,6 +104,21 @@
       "disallowed reverse application access relationship",
       "stable semantic diagnostic",
       "no source mutation"
+    ],
+    "review_after": "2026-12-23"
+  },
+  {
+    "id": "synthetic-meff-unsupported-categories",
+    "path": "test/fixtures/synthetic/meff-unsupported-categories.xml",
+    "classification": "SYNTHETIC",
+    "purpose": "Exercise deterministic diagnostics for unsupported MEFF model, view, diagram, and extension data.",
+    "provenance": "Hand-authored as a structure probe; not copied from an official example and not validated against the Open Group XSD.",
+    "contains_private_data": false,
+    "expected_coverage": [
+      "unsupported model metadata and organizations",
+      "unsupported view and diagram records",
+      "foreign-namespace extensions",
+      "stable ordered content-free warnings"
     ],
     "review_after": "2026-12-23"
   }
