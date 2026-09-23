@@ -65,6 +65,15 @@ jobs:
           npm run test:browser
           npm run test:cli:browser
 
+      - name: Retain verified synthetic rendering screenshot
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: read-only-showcase-screenshot
+          path: test-results/read-only-showcase.png
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Retain synthetic browser diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

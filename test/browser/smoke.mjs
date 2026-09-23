@@ -13,8 +13,8 @@ const routes = new Map([
   ['/examples/read-only/', [ 'examples/read-only/index.html', 'text/html; charset=utf-8' ]],
   ['/examples/read-only/viewer.js', [ 'examples/read-only/viewer.js', 'text/javascript; charset=utf-8' ]],
   ['/.ci-build/archimate-js.js', [ '.ci-build/archimate-js.js', 'text/javascript; charset=utf-8' ]],
-  ['/test/fixtures/synthetic/minimal-application-view.xml', [
-    'test/fixtures/synthetic/minimal-application-view.xml', 'application/xml; charset=utf-8'
+  ['/test/fixtures/synthetic/read-only-showcase.xml', [
+    'test/fixtures/synthetic/read-only-showcase.xml', 'application/xml; charset=utf-8'
   ]]
 ]);
 
@@ -63,27 +63,33 @@ try {
     const status = document.querySelector('#status')?.textContent;
     return status && !status.startsWith('Loading');
   }, null, { timeout: 10000 });
-  assert.equal(await page.locator('#status').textContent(), 'Loaded the public synthetic example.');
-  assert.ok(await page.locator('#diagram svg text').count() > 0, 'HTML embed should render the synthetic view');
+  assert.equal(await page.locator('#status').textContent(), 'Loaded the public synthetic service delivery example.');
+  assert.ok(await page.locator('#diagram svg text').count() >= 5, 'HTML embed should render the multi-layer synthetic view');
   const embeddedDiagramText = await page.locator('#diagram svg').textContent();
-  assert.ok(embeddedDiagramText.includes('Component label'));
-  assert.ok(embeddedDiagramText.includes('Application Service'));
+  const diagramBounds = await page.locator('#diagram svg').boundingBox();
+  assert.ok(diagramBounds && diagramBounds.width > 0 && diagramBounds.height > 0,
+    'HTML embed should have visible diagram dimensions');
+  for (const label of ['Customer', 'Submit request', 'Request service', 'Request portal', 'Cloud platform']) {
+    assert.ok(embeddedDiagramText.includes(label), `HTML embed should include ${label}`);
+  }
+  await mkdir(resultsDirectory, { recursive: true });
+  await page.screenshot({ path: path.join(resultsDirectory, 'read-only-showcase.png'), fullPage: true });
 
   stage = 'render deterministic report SVG from the embedded view source';
   const report = await page.evaluate(async () => {
-    const xml = await (await fetch('/test/fixtures/synthetic/minimal-application-view.xml')).text();
+    const xml = await (await fetch('/test/fixtures/synthetic/read-only-showcase.xml')).text();
     const api = window.ArchimateJS;
     const first = await api.renderViewToSvg({
       xml,
-      viewId: 'view-synthetic-minimal',
+      viewId: 'view-synthetic-showcase',
       title: 'Synthetic report view',
-      description: 'Synthetic application component and service'
+      description: 'Synthetic service delivery across business, application, and technology'
     });
     const second = await api.renderViewToSvg({
       xml,
-      viewId: 'view-synthetic-minimal',
+      viewId: 'view-synthetic-showcase',
       title: 'Synthetic report view',
-      description: 'Synthetic application component and service'
+      description: 'Synthetic service delivery across business, application, and technology'
     });
     const parsed = new DOMParser().parseFromString(first, 'image/svg+xml');
     const markdown = '![Synthetic report view](synthetic-minimal-view.svg)';
@@ -98,7 +104,7 @@ try {
     try {
       await api.renderViewToSvg({
         xml: `<model>${malformedMarker}</model><`,
-        viewId: 'view-synthetic-minimal'
+        viewId: 'view-synthetic-showcase'
       });
     } catch (error) {
       diagnostic = {
@@ -116,9 +122,10 @@ try {
     }
     return {
       deterministic: first === second,
-      svgHasSyntheticLabels: first.includes('Component label') && first.includes('Application Service'),
+      svgHasSyntheticLabels: ['Customer', 'Submit request', 'Request service', 'Request portal', 'Cloud platform']
+        .every((label) => first.includes(label)),
       hasSafeSvgMetadata: parsed.querySelector('title')?.textContent === 'Synthetic report view' &&
-        parsed.querySelector('desc')?.textContent === 'Synthetic application component and service',
+        parsed.querySelector('desc')?.textContent === 'Synthetic service delivery across business, application, and technology',
       hasActiveMarkup: parsed.querySelector('script, foreignObject, img') !== null,
       markdown,
       svg: first,
