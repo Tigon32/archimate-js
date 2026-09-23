@@ -1,6 +1,8 @@
-# Research ledger
+# Research knowledge base
 
 This directory is the repository's governed knowledge base. It is intentionally stored in Git rather than GitHub Wiki so changes are reviewable and traceable.
+
+New external-source synopses live in the [OKF v0.2 bundle](okf/index.md). Add one concept document per source, or per tightly related source set, and record the public URL in `sources`. The existing `sources.yaml` remains the compatibility ledger used by current standards documents while its entries are migrated.
 
 ## Rules
 
@@ -9,8 +11,12 @@ This directory is the repository's governed knowledge base. It is intentionally 
 - Prefer links plus concise interpretation.
 - Record source version, retrieval date, license/redistribution constraints, and confidence.
 - Keep research reusable for the generic library; do not encode private PLM or customer architecture assumptions.
+- Treat source authority explicitly: The Open Group materials are authoritative for ArchiMate standards; tools, examples, and community material are implementation or learning references.
+- Link and summarize external material. Do not copy protected tables, models, diagrams, schemas, or other assets without an explicit compatible licensing decision.
 
-## Source record fields
+## Legacy YAML ledger fields
+
+`sources.yaml` uses the following compatibility shape. New concept documents follow the OKF v0.2 frontmatter described in the bundle's [format reference](okf/open-knowledge-format.md).
 
 ```yaml
 id:
