@@ -2,6 +2,7 @@ node_modules/
 .ci-build/
 dist/
 coverage/
+test-results/
 .idea
 *.iml
 .DS_Store

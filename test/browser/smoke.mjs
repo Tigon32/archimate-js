@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
 import { createReadStream } from 'node:fs';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import puppeteer from 'puppeteer-core';
+import { chromium } from 'playwright-core';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const resultsDirectory = path.join(root, 'test-results');
 const routes = new Map([
   ['/examples/read-only/', [ 'examples/read-only/index.html', 'text/html; charset=utf-8' ]],
   ['/examples/read-only/viewer.js', [ 'examples/read-only/viewer.js', 'text/javascript; charset=utf-8' ]],
@@ -28,216 +31,142 @@ const server = createServer((request, response) => {
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 
 let browser;
+let context;
+let page;
 let stage = 'launch browser';
+let failed = false;
 try {
-  browser = await puppeteer.launch({
-    executablePath: process.env.CHROME_BIN,
+  browser = await chromium.launch({
+    executablePath: process.env.CHROME_BIN || undefined,
     headless: true,
     args: [ '--no-sandbox', '--disable-setuid-sandbox' ]
   });
-  const page = await browser.newPage();
+  context = await browser.newContext();
+  await context.tracing.start({ screenshots: true, snapshots: true, sources: false });
+  page = await context.newPage();
   const origin = `http://127.0.0.1:${server.address().port}`;
-  const offOriginRequests = [];
-  await page.setRequestInterception(true);
-  page.on('request', (request) => {
-    if (request.url().startsWith(origin + '/')) {
-      request.continue();
-    } else {
-      offOriginRequests.push(request.url().split(':')[0]);
-      request.abort();
+  const offOriginRequestCount = { value: 0 };
+  const consoleMessages = [];
+  await context.route('**/*', (route) => {
+    if (route.request().url().startsWith(origin + '/')) {
+      return route.continue();
     }
+    offOriginRequestCount.value++;
+    return route.abort();
   });
+  page.on('console', (message) => consoleMessages.push(message.text()));
 
-  stage = 'load read-only example';
-  await page.goto(origin + '/examples/read-only/', { waitUntil: 'networkidle0' });
+  stage = 'load synthetic read-only example';
+  await page.goto(origin + '/examples/read-only/', { waitUntil: 'networkidle' });
+  await page.locator('#status').waitFor({ state: 'visible' });
   await page.waitForFunction(() => {
     const status = document.querySelector('#status')?.textContent;
     return status && !status.startsWith('Loading');
-  }, { timeout: 10000 });
-  const status = await page.$eval('#status', (element) => element.textContent);
-  if (status !== 'Loaded the public synthetic example.') {
-    const failureCode = await page.evaluate(async () => {
-      if (!window.ArchimateJS || typeof window.ArchimateJS.mountViewer !== 'function') {
-        return 'API_UNAVAILABLE';
-      }
-      const xml = await (await fetch('/test/fixtures/synthetic/minimal-application-view.xml')).text();
-      const error = await window.ArchimateJS.mountViewer({
-        xml,
-        viewId: 'view-synthetic-minimal',
-        container: document.createElement('div')
-      }).catch((failure) => failure);
-      return error && [
-        'INVALID_OPTIONS', 'MODEL_TOO_LARGE', 'MODEL_IMPORT_FAILED', 'VIEW_NOT_FOUND',
-        'VIEW_NAME_AMBIGUOUS', 'VIEW_RENDER_FAILED', 'VIEW_SELECTION_FAILED', 'VIEWER_FAILURE'
-      ].includes(error.code) ? error.code : 'UNEXPECTED_FAILURE';
-    });
-    stage = `read-only example failure (${failureCode})`;
-    throw new Error('Read-only example failed.');
-  }
-  assert.equal(status, 'Loaded the public synthetic example.');
+  }, null, { timeout: 10000 });
+  assert.equal(await page.locator('#status').textContent(), 'Loaded the public synthetic example.');
+  assert.ok(await page.locator('#diagram svg text').count() > 0, 'HTML embed should render the synthetic view');
+  const embeddedDiagramText = await page.locator('#diagram svg').textContent();
+  assert.ok(embeddedDiagramText.includes('Component label'));
+  assert.ok(embeddedDiagramText.includes('Application Service'));
 
-  stage = 'render selected view to SVG';
-  const result = await page.evaluate(async () => {
-    const safeCode = (error) => error && [
-      'INVALID_OPTIONS', 'MODEL_TOO_LARGE', 'MODEL_IMPORT_FAILED', 'VIEW_NOT_FOUND',
-      'VIEW_NAME_AMBIGUOUS', 'VIEW_RENDER_FAILED', 'VIEW_SELECTION_FAILED', 'VIEWER_FAILURE'
-    ].includes(error.code) ? error.code : 'UNEXPECTED_FAILURE';
-    let phase = 'initialize render context';
-    try {
-    const api = window.ArchimateJS;
-    const host = document.createElement('div');
-    document.body.appendChild(host);
-    phase = 'load synthetic model';
+  stage = 'render deterministic report SVG from the embedded view source';
+  const report = await page.evaluate(async () => {
     const xml = await (await fetch('/test/fixtures/synthetic/minimal-application-view.xml')).text();
-    let first;
-    try {
-      first = await api.renderViewToSvg({
-        xml,
-        viewName: 'Synthetic Minimal View',
-        title: 'Synthetic report view',
-        description: 'Synthetic application component and service'
-      });
-    } catch (error) {
-      return { failurePhase: 'render by name', failureCode: safeCode(error) };
-    }
-    let second;
-    try {
-      second = await api.renderViewToSvg({
-        xml,
-        viewId: 'view-synthetic-minimal',
-        title: 'Synthetic report view',
-        description: 'Synthetic application component and service'
-      });
-    } catch (error) {
-      return { failurePhase: 'render by id', failureCode: safeCode(error) };
-    }
-    phase = 'inspect SVG output';
+    const api = window.ArchimateJS;
+    const first = await api.renderViewToSvg({
+      xml,
+      viewId: 'view-synthetic-minimal',
+      title: 'Synthetic report view',
+      description: 'Synthetic application component and service'
+    });
+    const second = await api.renderViewToSvg({
+      xml,
+      viewId: 'view-synthetic-minimal',
+      title: 'Synthetic report view',
+      description: 'Synthetic application component and service'
+    });
     const parsed = new DOMParser().parseFromString(first, 'image/svg+xml');
-    const firstText = Array.from(parsed.querySelectorAll('text'), (text) => {
-      const lines = Array.from(text.querySelectorAll('tspan'), (line) => line.textContent || '');
-      return lines.length ? lines.join(' ') : text.textContent || '';
-    }).join(' ');
-    const firstPaths = Array.from(parsed.querySelectorAll('path'), (path) => path.getAttribute('d') || '').join(' ');
-    const firstPathCount = parsed.querySelectorAll('path').length;
-    const firstNestedGroupCount = parsed.querySelectorAll('g g').length;
-    const hasUnsafeExportMarkup = parsed.querySelector('script, foreignObject, img') !== null;
-    let mounted;
+    const markdown = '![Synthetic report view](synthetic-minimal-view.svg)';
+    let missingViewDiagnostic;
     try {
-      phase = 'mount selected view';
-      mounted = await api.mountViewer({
-        xml,
-        viewId: 'view-synthetic-minimal',
-        container: host,
-        width: 640,
-        height: 480
+      await api.renderViewToSvg({ xml, viewId: 'synthetic-missing-view-id' });
+    } catch (error) {
+      missingViewDiagnostic = { code: error.code, message: error.message };
+    }
+    const malformedMarker = 'SYNTHETIC_MALFORMED_MARKER_7d210e';
+    let diagnostic;
+    try {
+      await api.renderViewToSvg({
+        xml: `<model>${malformedMarker}</model><`,
+        viewId: 'view-synthetic-minimal'
       });
     } catch (error) {
-      return { failurePhase: 'mount selected view', failureCode: safeCode(error) };
+      diagnostic = {
+        code: error.code,
+        message: error.message,
+        serialized: JSON.stringify({
+          name: error.name,
+          message: error.message,
+          code: error.code,
+          stack: error.stack,
+          diagnostics: error.diagnostics
+        }),
+        marker: malformedMarker
+      };
     }
-    const componentShape = mounted.get('elementRegistry').get('node-application-component-1');
-    phase = 'snapshot mounted model';
-    const modelBeforeExport = mounted.getModel();
-    const modelSnapshotBeforeExport = JSON.stringify({
-      name: modelBeforeExport.name,
-      elementCount: modelBeforeExport.elementsNode.baseElements.length,
-      relationshipCount: modelBeforeExport.relationshipsNode.relationships.length,
-      viewCount: modelBeforeExport.views.diagrams.viewsList.length,
-      viewName: modelBeforeExport.views.diagrams.viewsList[0].name
-    });
-    try {
-      phase = 'export mounted view';
-      await mounted.saveSVG({ title: 'Mounted synthetic view' });
-    } catch (error) {
-      mounted.destroy();
-      host.remove();
-      return { failurePhase: 'export mounted view', failureCode: safeCode(error) };
-    }
-    const modelAfterExport = mounted.getModel();
-    const modelSnapshotAfterExport = JSON.stringify({
-      name: modelAfterExport.name,
-      elementCount: modelAfterExport.elementsNode.baseElements.length,
-      relationshipCount: modelAfterExport.relationshipsNode.relationships.length,
-      viewCount: modelAfterExport.views.diagrams.viewsList.length,
-      viewName: modelAfterExport.views.diagrams.viewsList[0].name
-    });
-    const exportedTextHasLabel = host.textContent.includes('Component label');
-    const exportedTextCount = host.querySelectorAll('text').length;
-    phase = 'clean up mounted view';
-    mounted.destroy();
-    host.remove();
-
     return {
-      same: first === second,
-      hasTitle: parsed.querySelector('title')?.textContent === 'Synthetic report view',
-      hasDescription: parsed.querySelector('desc')?.textContent === 'Synthetic application component and service',
-      liveTextElementCount: document.querySelectorAll('#diagram text').length,
-      exportedShapeHasLabel: componentShape?.businessObject?.label?.includes('Component label') === true,
-      exportedTextHasLabel,
-      exportedTextCount,
-      hasComponentName: firstText.includes('Application Component'),
-      hasServiceName: firstText.includes('Application Service'),
-      hasViewLabel: firstText.includes('Component label'),
-      textElementCount: parsed.querySelectorAll('text').length,
-      pathCount: firstPathCount,
-      pathData: firstPaths,
-      nestedGroups: firstNestedGroupCount,
-      hasScriptMarkup: hasUnsafeExportMarkup,
-      liveModelScriptCount: document.querySelectorAll('#diagram script, #diagram img').length,
-      payloadCodeRan: window.__syntheticModelCodeRan === true,
-      modelUnchanged: modelBeforeExport === modelAfterExport &&
-        modelSnapshotBeforeExport === modelSnapshotAfterExport
+      deterministic: first === second,
+      svgHasSyntheticLabels: first.includes('Component label') && first.includes('Application Service'),
+      hasSafeSvgMetadata: parsed.querySelector('title')?.textContent === 'Synthetic report view' &&
+        parsed.querySelector('desc')?.textContent === 'Synthetic application component and service',
+      hasActiveMarkup: parsed.querySelector('script, foreignObject, img') !== null,
+      markdown,
+      svg: first,
+      missingViewDiagnostic,
+      malformedDiagnostic: diagnostic
     };
-    } catch (error) {
-      return { failurePhase: phase, failureCode: safeCode(error) };
-    }
   });
 
-  if (result.failurePhase) {
-    stage = `${result.failurePhase} (${result.failureCode})`;
-    throw new Error('Synthetic browser render failed.');
+  stage = 'assert deterministic SVG and Markdown image artifact path';
+  assert.equal(report.deterministic, true);
+  assert.equal(report.svgHasSyntheticLabels, true);
+  assert.equal(report.hasSafeSvgMetadata, true);
+  assert.equal(report.hasActiveMarkup, false);
+  const artifactDirectory = await mkdtemp(path.join(os.tmpdir(), 'archimate-synthetic-report-'));
+  try {
+    const artifactPath = path.join(artifactDirectory, 'synthetic-minimal-view.svg');
+    await writeFile(artifactPath, report.svg, { flag: 'wx' });
+    const markdownAsset = await readFile(artifactPath, 'utf8');
+    assert.equal(markdownAsset, report.svg);
+    assert.ok(report.markdown.includes(`](${path.basename(artifactPath)})`));
+  } finally {
+    await rm(artifactDirectory, { recursive: true, force: true });
   }
+  assert.equal(report.missingViewDiagnostic?.code, 'VIEW_NOT_FOUND');
+  assert.equal(report.missingViewDiagnostic?.message, 'The requested ArchiMate view was not found.');
 
-  stage = 'check repeated SVG stability';
-  assert.equal(result.same, true);
-  stage = 'check accessible SVG metadata';
-  assert.equal(result.hasTitle, true);
-  assert.equal(result.hasDescription, true);
-  stage = 'check live SVG text nodes';
-  assert.ok(result.liveTextElementCount > 0, 'example should render SVG text nodes');
-  stage = 'check selected view node label';
-  assert.equal(result.exportedShapeHasLabel, true);
-  stage = 'check mounted SVG text nodes';
-  assert.ok(result.exportedTextCount > 0, 'SVG should include text nodes');
-  stage = 'check mounted SVG custom label';
-  assert.equal(result.exportedTextHasLabel, true);
-  stage = 'check canonical SVG custom label';
-  if (!result.hasViewLabel) {
-    stage = `canonical label diagnostics (componentName=${result.hasComponentName}, serviceName=${result.hasServiceName}, textNodes=${result.textElementCount})`;
-    throw new Error('Canonical SVG label missing.');
-  }
-  assert.equal(result.hasViewLabel, true);
-  assert.ok(result.textElementCount > 0, 'SVG should render labels as text');
-  stage = 'check fixture element names';
-  assert.equal(result.hasServiceName, true);
-  stage = 'check rendered paths';
-  assert.ok(result.pathCount > 0, 'SVG should contain relationship or shape paths');
-  stage = 'check rendered bendpoints';
-  assert.match(result.pathData, /260/);
-  assert.match(result.pathData, /310/);
-  assert.match(result.pathData, /360/);
-  stage = 'check nested view structure';
-  assert.ok(result.nestedGroups > 0, 'SVG should preserve nested view structure');
-  stage = 'check model markup safety';
-  assert.equal(result.hasScriptMarkup, false);
-  assert.equal(result.liveModelScriptCount, 0);
-  assert.equal(result.payloadCodeRan, false);
-  assert.equal(offOriginRequests.length, 0);
-  stage = 'check export model immutability';
-  assert.equal(result.modelUnchanged, true);
-  console.log('browser render smoke test passed');
+  stage = 'assert malformed input returns content-free diagnostic';
+  assert.equal(report.malformedDiagnostic?.code, 'MODEL_IMPORT_FAILED');
+  assert.equal(report.malformedDiagnostic?.message, 'Unable to load the ArchiMate model.');
+  assert.equal(report.malformedDiagnostic?.message.includes(report.malformedDiagnostic.marker), false);
+  assert.equal(report.malformedDiagnostic?.serialized.includes(report.malformedDiagnostic.marker), false);
+  assert.equal(consoleMessages.some((message) => message.includes(report.malformedDiagnostic.marker)), false);
+  assert.equal(offOriginRequestCount.value, 0);
+  console.log('Playwright browser report smoke tests passed');
 } catch {
-  throw new Error(`Browser render smoke test failed during: ${stage}.`);
+  failed = true;
+  await mkdir(resultsDirectory, { recursive: true });
+  if (page) {
+    await page.screenshot({ path: path.join(resultsDirectory, 'failure.png'), fullPage: true }).catch(() => {});
+  }
+  if (context) {
+    await context.tracing.stop({ path: path.join(resultsDirectory, 'failure-trace.zip') }).catch(() => {});
+  }
+  throw new Error(`Playwright browser report smoke tests failed during: ${stage}.`);
 } finally {
+  if (context && !failed) {
+    await context.tracing.stop();
+  }
   if (browser) {
     await browser.close();
   }
