@@ -17,13 +17,18 @@
   },
   "scripts": {
     "all": "run-s test compile",
-    "compile": "node test/smoke/compile.mjs",
+    "compile": "run-s compile:validator compile:browser",
+    "compile:validator": "node test/smoke/compile-validator.mjs",
+    "compile:browser": "node test/smoke/compile.mjs",
+    "prepack": "npm run compile:validator",
     "lint": "eslint .",
-    "test": "run-s test:package test:security test:fixtures test:unit",
+    "test": "run-s test:package test:security test:fixtures test:typecheck test:validator-build test:unit",
     "test:package": "node test/smoke/package.test.mjs",
     "test:security": "node test/security/logger.test.mjs",
     "test:fixtures": "node test/security/scan-fixtures.mjs",
-    "test:unit": "vitest run"
+    "test:typecheck": "tsc --noEmit",
+    "test:validator-build": "node test/smoke/compile-validator.mjs",
+    "test:unit": "vitest run --coverage.enabled --coverage.reporter=text"
   },
   "repository": {
     "type": "git",
@@ -39,16 +44,26 @@
   "sideEffects": [
     "*.css"
   ],
+  "exports": {
+    ".": "./index.js",
+    "./validator": {
+      "types": "./dist/validator/index.d.ts",
+      "import": "./dist/validator/index.js"
+    }
+  },
   "devDependencies": {
+    "@vitest/coverage-v8": "^2.1.9",
     "eslint": "^7.32.0",
     "eslint-plugin-bpmn-io": "^0.12.0",
     "eslint-plugin-import": "^2.25.2",
     "file-loader": "^6.2.0",
+    "jsdom": "^30.1.1",
     "npm-run-all": "^4.1.5",
     "puppeteer": "^10.4.0",
     "raw-loader": "^4.0.2",
-    "webpack": "^5.61.0",
-    "vitest": "^2.1.9"
+    "typescript": "^7.0.2",
+    "vitest": "^2.1.9",
+    "webpack": "^5.61.0"
   },
   "dependencies": {
     "archimate-font": "file:./archimate-font",
@@ -66,6 +81,7 @@
     "moddle": "^5.0.2",
     "moddle-xml": "^9.0.5",
     "object-refs": "^0.3.0",
+    "saxes": "^6.0.0",
     "tiny-svg": "^2.2.2"
   }
 }

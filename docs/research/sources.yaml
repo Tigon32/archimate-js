@@ -33,6 +33,24 @@ sources:
       - Trademark and certification claims require care.
     review_after: 2026-12-23
 
+  - id: opengroup-archimate-3.2-licensed-downloads
+    title: ArchiMate Licensed Downloads
+    publisher: The Open Group
+    url: https://www.opengroup.org/archimate-licensed-downloads
+    version: ArchiMate Specification 3.2, latest version stated on source page
+    retrieved_at: 2026-09-23
+    license_or_terms: licensed specification; terms differ by evaluation, non-commercial, member, and commercial use
+    redistribution: Do not copy specification text, tables, or artifacts into this MIT repository without an explicit compatible permission review.
+    source_revision: public web page observed 2026-09-23
+    confidence: high
+    claims:
+      - The Open Group identifies ArchiMate 3.2 as the latest specification version on this page.
+      - The ArchiMate specification is distributed under licensing conditions.
+    constraints:
+      - This repository records links and implementation interpretations only; it does not redistribute specification content.
+      - Rule-matrix rows must be traceable to permitted source evidence and must not be inferred from Archi behavior.
+    review_after: 2026-12-23
+
   - id: opengroup-archimate-meff
     title: ArchiMate Model Exchange File Format
     publisher: The Open Group

@@ -16,6 +16,9 @@ describe('synthetic ArchiMate XML import contract', () => {
     expect(model).toBeDefined();
     expect(model.$type).toBe('archimate:Model');
     expect(model.id).toBe('model-synthetic-minimal');
+    expect(model.elementsNode.baseElements).toHaveLength(2);
+    expect(model.views.diagrams.viewsList.map((view) => view.id)).toEqual(['view-synthetic-minimal']);
+    expect(model.views.diagrams.viewsList[0].viewElements).toHaveLength(3);
   });
 
   it('round-trips supported model identity and name while exposing current content loss', async () => {

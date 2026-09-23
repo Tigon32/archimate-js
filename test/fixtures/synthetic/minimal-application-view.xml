@@ -11,24 +11,29 @@
   name="Synthetic Minimal Application View">
   <name>Synthetic Minimal Application View</name>
   <documentation>Public synthetic fixture for import/render tests.</documentation>
-  <elements>
-    <element id="application-component-1" xsi:type="archimate:ApplicationComponent" name="Application Component" />
-    <element id="application-service-1" xsi:type="archimate:ApplicationService" name="Application Service" />
-  </elements>
-  <relationships>
-    <relationship id="serving-relationship-1" xsi:type="archimate:ServingRelationship" source="application-component-1" target="application-service-1" />
-  </relationships>
-  <views>
-    <diagrams>
-      <view id="view-synthetic-minimal" xsi:type="archimate:ArchimateDiagramModel" name="Synthetic Minimal View">
-        <node id="node-application-component-1" elementRef="application-component-1" xsi:type="archimate:DiagramObject" x="100" y="100" w="160" h="80" />
-        <node id="node-application-service-1" elementRef="application-service-1" xsi:type="archimate:DiagramObject" x="360" y="100" w="160" h="80" />
-        <connection id="connection-serving-relationship-1" relationshipRef="serving-relationship-1" xsi:type="archimate:Connection" source="node-application-component-1" target="node-application-service-1">
-          <sourceAttachment x="260" y="140" />
-          <targetAttachment x="360" y="140" />
-          <bendpoint x="310" y="140" />
-        </connection>
-      </view>
-    </diagrams>
-  </views>
+  <archimate:Elements>
+    <archimate:BaseElement id="application-component-1" xsi:type="archimate:ApplicationComponent" name="Application Component" />
+    <archimate:BaseElement id="application-service-1" xsi:type="archimate:ApplicationService" name="Application Service" />
+  </archimate:Elements>
+  <archimate:Relationships>
+    <archimate:Relationship id="serving-relationship-1" xsi:type="archimate:ServingRelationship" source="application-component-1" target="application-service-1" />
+  </archimate:Relationships>
+  <archimate:Views>
+    <archimate:Diagrams>
+      <archimate:View id="view-synthetic-minimal" name="Synthetic Minimal View">
+        <archimate:Node id="node-application-component-1" elementRef="application-component-1" x="100" y="100" w="160" h="80">
+          <archimate:label>Component label</archimate:label>
+          <archimate:Node id="node-application-service-nested" elementRef="application-service-1" x="20" y="20" w="120" h="60" />
+        </archimate:Node>
+        <archimate:Node id="node-application-service-1" elementRef="application-service-1" x="360" y="100" w="160" h="80" />
+        <archimate:Connection id="connection-serving-relationship-1" relationshipRef="serving-relationship-1" source="node-application-component-1" target="node-application-service-1">
+          <archimate:Waypoints>
+            <archimate:Waypoint x="260" y="140" />
+            <archimate:Waypoint x="310" y="140" />
+            <archimate:Waypoint x="360" y="140" />
+          </archimate:Waypoints>
+        </archimate:Connection>
+      </archimate:View>
+    </archimate:Diagrams>
+  </archimate:Views>
 </archimate:Model>

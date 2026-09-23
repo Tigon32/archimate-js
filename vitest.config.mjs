@@ -6,6 +6,10 @@ export default defineConfig({
     include: [
       'test/unit/**/*.test.mjs'
     ],
-    reporters: 'default'
+    reporters: 'default',
+    coverage: {
+      include: ['src/validator/**/*.ts'],
+      reporter: ['text']
+    }
   }
 });

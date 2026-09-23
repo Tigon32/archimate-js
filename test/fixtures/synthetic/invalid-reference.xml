@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Classification: SYNTHETIC; hand-authored; no private architecture data. -->
+<model xmlns="http://www.opengroup.org/xsd/archimate/3.0/" id="synthetic-invalid-reference">
+  <elements>
+    <element id="known-component" xsi:type="archimate:ApplicationComponent" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" />
+  </elements>
+  <relationships>
+    <relationship id="broken-serving" source="known-component" target="missing-element" />
+  </relationships>
+  <views>
+    <diagrams>
+      <view id="broken-view">
+        <node id="known-view-node" elementRef="known-component" />
+        <node id="broken-node" elementRef="missing-view-element" />
+        <connection id="broken-view-connection" relationshipRef="missing-view-relationship" source="known-view-node" target="broken-node" />
+      </view>
+    </diagrams>
+  </views>
+</model>
