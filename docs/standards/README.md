@@ -1,5 +1,15 @@
 # Standards validation workspace
 
+The Open Group ArchiMate specification and published exchange/conformance
+artifacts are normative references for language and interchange behavior.
+Behavior observed in Archi or another product is an interoperability reference,
+not a substitute for the standard. See [how to report a suspected gap](../rendering/read-only-html-embed.md#reporting-suspected-standards-gaps).
+
+The current implementation and limits are documented in the [validator
+profile](validator-profile.md), [relationship matrix](relationship-validation-matrix.md),
+and [Model Exchange alignment record](model-exchange-alignment.md). The project
+does not claim ArchiMate or MEFF conformance.
+
 This directory contains public-source-only planning material for ArchiMate semantic validation and Model Exchange File Format alignment.
 
 The files here are deliberately deterministic: they define the records, evidence fields, and acceptance gates that future implementation PRs should update as public information improves.

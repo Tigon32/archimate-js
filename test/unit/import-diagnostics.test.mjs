@@ -1,10 +1,15 @@
 /** @vitest-environment jsdom */
 
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 
 import { displayGraphicalView } from '../../lib/import/Importer.js';
 import { logger } from '../../lib/util/Logger.js';
 import BaseViewer from '../../lib/BaseViewer.js';
+import ArchimateModdle from '../../lib/moddle/Moddle';
+import ArchimateDescriptors from '../../lib/moddle/resources/archimate.json';
 import {
   preflightImportXml,
   summarizeParseWarnings,
@@ -182,5 +187,57 @@ describe('safe importer diagnostics', () => {
       'IMPORT_REFERENCE_UNRESOLVED', 'IMPORT_TYPE_UNSUPPORTED'
     ]);
     expect(JSON.stringify(diagnostics)).not.toMatch(/PrivateCustomerSystem|PrivateSecretType/);
+  });
+
+  it('reports Model Exchange records the current importer does not reconstruct', async () => {
+    const xml = await readFile(
+      path.join(path.dirname(fileURLToPath(import.meta.url)), '../fixtures/synthetic/meff-core-candidate.xml'),
+      'utf8'
+    );
+    const events = [];
+    const viewer = {
+      _moddle: new ArchimateModdle({ archimate: ArchimateDescriptors }),
+      _emit(name, data) {
+        events.push({ name, data });
+        return undefined;
+      },
+      _setModel() {},
+      _setElementsById() {},
+      async importModel() {
+        return { warnings: [], diagnostics: [] };
+      }
+    };
+
+    const result = await BaseViewer.prototype.importXML.call(viewer, xml);
+
+    expect(result.diagnostics).toEqual([
+      {
+        code: 'MEFF_ELEMENTS_UNSUPPORTED',
+        severity: 'warning',
+        stage: 'parse',
+        message: 'One or more Model Exchange element records are not reconstructed by this importer.'
+      },
+      {
+        code: 'MEFF_RELATIONSHIPS_UNSUPPORTED',
+        severity: 'warning',
+        stage: 'parse',
+        message: 'One or more Model Exchange relationship records are not fully reconstructed by this importer.'
+      },
+      {
+        code: 'IMPORT_REFERENCE_UNRESOLVED',
+        severity: 'warning',
+        stage: 'parse',
+        message: 'One or more model references could not be resolved.'
+      },
+      {
+        code: 'IMPORT_TYPE_UNSUPPORTED',
+        severity: 'warning',
+        stage: 'parse',
+        message: 'One or more model types are not supported by this importer.'
+      }
+    ]);
+    expect(result.warnings).toEqual(result.diagnostics.map(({ message }) => message));
+    expect(events.at(-1).data.diagnostics).toEqual(result.diagnostics);
+    expect(JSON.stringify(result)).not.toMatch(/exchange-application|Generic Component/);
   });
 });

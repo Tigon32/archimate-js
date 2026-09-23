@@ -34,17 +34,17 @@ sources:
     review_after: 2026-12-23
 
   - id: opengroup-archimate-3.2-licensed-downloads
-    title: ArchiMate Licensed Downloads
+    title: ArchiMate 3.2 Non-Commercial License
     publisher: The Open Group
-    url: https://www.opengroup.org/archimate-licensed-downloads
-    version: ArchiMate Specification 3.2, latest version stated on source page
+    url: https://www.opengroup.org/archimate-32-non-commercial-license
+    version: ArchiMate 3.2 non-commercial license
     retrieved_at: 2026-09-23
     license_or_terms: licensed specification; terms differ by evaluation, non-commercial, member, and commercial use
     redistribution: Do not copy specification text, tables, or artifacts into this MIT repository without an explicit compatible permission review.
     source_revision: public web page observed 2026-09-23
     confidence: high
     claims:
-      - The Open Group identifies ArchiMate 3.2 as the latest specification version on this page.
+      - The Open Group provides licensing material for ArchiMate 3.2.
       - The ArchiMate specification is distributed under licensing conditions.
     constraints:
       - This repository records links and implementation interpretations only; it does not redistribute specification content.
@@ -63,14 +63,88 @@ sources:
     confidence: high
     claims:
       - The Open Group describes MEFF as a standard file format for exchanging ArchiMate models between tools.
-      - The public FAQ distinguishes model exchange, view exchange, and diagram exchange schemas.
+      - The official FAQ distinguishes model exchange, view exchange, and diagram exchange schemas.
       - The FAQ says the format conveys model data between tools and is not intended as persistent model storage.
-      - The public FAQ describes a minimal model/name/elements core and points to schema/example resources.
+      - The FAQ applies the exchange format to ArchiMate 3.1 and 3.2 and points to schema/example resources.
     constraints:
       - Exchange format should not be treated as native persistence without analysis.
       - Public overview/FAQ statements do not prove any repository fixture conforms to the licensed standard.
       - Do not copy or bundle official XSDs or examples without verifying their redistribution terms.
-      - Treat local synthetic XML as parser test data until schema validation is run against a permitted official artifact.
+      - Keep public example resources distinct from permission to redistribute them.
+    review_after: 2026-12-23
+
+  - id: opengroup-archimate-meff-xsd
+    title: ArchiMate Model Exchange File Format schema resources
+    publisher: The Open Group
+    url: https://www.opengroup.org/xsd/archimate/
+    version: Public page describing the ArchiMate 3.1 Model, View, and Diagram schema set
+    retrieved_at: 2026-09-23
+    license_or_terms: Schema files and examples linked from the Open Group resource page; redistribution terms not verified
+    redistribution: Link only; do not bundle schemas or examples until terms are reviewed.
+    source_revision: public web resource page observed 2026-09-23
+    confidence: high
+    claims:
+      - Public MEFF resources expose the 3.1 schema set and divide it into model, view, and diagram exchange schemas.
+      - The model schema URL uses the archimate/3.0 namespace.
+      - Generated Model schema documentation requires model identity and name fields and uses XML ID/IDREF types for identifiers and relationship endpoints.
+    constraints:
+      - These public schema artifacts are not bundled or treated as permission for redistribution.
+      - The existence of a schema resource does not validate repository fixtures or demonstrate interoperability.
+      - The public 3.1 XSD set does not establish a separate 3.2 XSD artifact.
+    review_after: 2026-12-23
+
+  - id: opengroup-archimate-tool-certification
+    title: ArchiMate Tool Certification
+    publisher: The Open Group
+    url: https://www.opengroup.org/certifications/archimate/tool
+    version: Public program page reviewed 2026-09-23
+    retrieved_at: 2026-09-23
+    license_or_terms: Certification and trademark license terms apply; program page is public.
+    redistribution: Link and summarize only; do not claim certification without completing the program.
+    source_revision: Public indexed page observed 2026-09-23
+    confidence: high
+    claims:
+      - The Open Group says ArchiMate 3 certified tools have been required to support MEFF since June 2018.
+      - The certification page describes a formal supporting-documentation and audit process.
+      - The linked Test Model directory requires member login.
+    constraints:
+      - Public XSD validation or example interoperability is not certification evidence.
+      - Do not use The Open Group certification marks without applicable authorization.
+    review_after: 2026-12-23
+
+  - id: opengroup-archimate4-spec
+    title: ArchiMate 4 specification documentation
+    publisher: The Open Group
+    url: https://pubs.opengroup.org/architecture/archimate4-doc
+    version: ArchiMate 4, released April 2026; HTML specification opened after secure user sign-in
+    retrieved_at: 2026-09-23
+    license_or_terms: Open Group downloads page advertises a free personal 90-day evaluation; exact license scope not reviewed
+    redistribution: Do not reproduce or redistribute specification text.
+    source_revision: HTML specification and Chapter 5 opened/read after user-assisted authentication on 2026-09-23
+    confidence: medium
+    claims:
+      - The Open Group announced ArchiMate 4 in April 2026 and lists it as the latest specification on its licensed-downloads page.
+      - The documentation URL opened as HTML after the user completed secure sign-in.
+      - Chapter 5 says Association relationships may be directed or undirected.
+    constraints:
+      - Do not infer ArchiMate 4 exchange-schema availability from this language specification.
+      - Verify the applicable license and access path before using the specification for product implementation.
+    review_after: 2026-12-23
+
+  - id: opengroup-archimate4-downloads
+    title: ArchiMate Licensed Downloads
+    publisher: The Open Group
+    url: https://www.opengroup.org/archimate-licensed-downloads
+    version: ArchiMate 4, released April 2026
+    retrieved_at: 2026-09-23
+    license_or_terms: Page advertises a free personal 90-day evaluation; confirm current terms before relying on access.
+    redistribution: Link only; do not copy or redistribute specification text.
+    source_revision: public page search result observed 2026-09-23
+    confidence: high
+    claims:
+      - The Open Group lists ArchiMate 4 as the latest specification and offers a personal evaluation download.
+    constraints:
+      - Product/tool usage licensing may differ from an individual specification evaluation license.
     review_after: 2026-12-23
 
   - id: archi-reference

@@ -11,4 +11,8 @@ okf_version: "0.2"
 * [ArchiModels repository](archi-models.md) - Archived collection of outdated example models.
 * [The ArchiMate Community landing page](opengroup-community-landing-page.md) - Public community project and landing site source.
 * [The Open Group exchange-format resources](opengroup-exchange-format-resources.md) - Official XSD, documentation, examples, snippets, and FAQ directory.
+* [The Open Group MEFF FAQ](opengroup-meff-faq.md) - Purpose, exchange layers, and scope boundaries.
+* [The Open Group MEFF 3.1 Model schema](opengroup-meff-model-schema.md) - Model identity, records, and relationship references.
+* [The Open Group ArchiMate certification](opengroup-archimate-certification.md) - Certification and restricted test-model boundary.
+* [The Open Group ArchiMate 4 specification](archimate4-spec.md) - Relationship semantics relevant to Association direction.
 * [Open Knowledge Format specification](open-knowledge-format.md) - Format authority for this bundle.
