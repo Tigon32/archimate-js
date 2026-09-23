@@ -158,7 +158,7 @@ function descendants(root: XmlNode, name: string): XmlNode[] {
   const todo = [root];
   while (todo.length) {
     const current = todo.pop()!;
-    if (localName(current.name) === name) found.push(current);
+    if (localName(current.name).toLowerCase() === name.toLowerCase()) found.push(current);
     for (let i = current.children.length - 1; i >= 0; i -= 1) todo.push(current.children[i]);
   }
   return found;
@@ -218,13 +218,13 @@ export function validateArchimateXml(xml: string, options: ValidatorOptions = {}
   }
   const allowedRootChildren = new Set(['name', 'documentation', 'elements', 'relationships', 'views', 'organizations', 'propertyDefinitions']);
   for (const child of root.children) {
-    const name = localName(child.name);
+    const name = localName(child.name).toLowerCase();
     if (!allowedRootChildren.has(name)) {
       pushDiagnostic(diagnostics, 'SCHEMA_EXTENSION_UNCHECKED', 'warning', 'schema', 'An extension element was not checked by the built-in profile.', child);
     }
   }
 
-  const elements = descendants(root, 'element');
+  const elements = [...descendants(root, 'element'), ...descendants(root, 'baseelement')];
   const relationships = descendants(root, 'relationship');
   const views = descendants(root, 'view');
   const identifiers = new Map<string, XmlNode>();
@@ -242,7 +242,7 @@ export function validateArchimateXml(xml: string, options: ValidatorOptions = {}
     if (identifiers.has(id)) {
       pushDiagnostic(diagnostics, 'STRUCTURE_DUPLICATE_ID', 'error', 'structure', 'Identifier is used more than once.', node, id);
     } else identifiers.set(id, node);
-    if (localName(node.name) === 'element') {
+    if (['element', 'baseelement'].includes(localName(node.name).toLowerCase())) {
       const elementType = typeName(node);
       elementTypes.set(id, elementType);
       if (!knownElements.has(elementType)) {
