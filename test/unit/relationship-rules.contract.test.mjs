@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  RELATIONSHIP_AGGREGATION,
+  RELATIONSHIP_ASSIGNMENT,
   RELATIONSHIP_ASSOCIATION,
   RELATIONSHIP_FLOW,
   RELATIONSHIP_REALIZATION,
@@ -16,7 +16,7 @@ import {
 describe('relationship rule utility', () => {
   it('returns allowed relationship kinds for an application component and service', () => {
     expect(getRelationshipsAllowed('ApplicationComponent', 'ApplicationService')).toEqual([
-      RELATIONSHIP_AGGREGATION,
+      RELATIONSHIP_ASSIGNMENT,
       RELATIONSHIP_REALIZATION,
       RELATIONSHIP_SERVING,
       RELATIONSHIP_TRIGGERING,
