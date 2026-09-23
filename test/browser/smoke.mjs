@@ -66,7 +66,7 @@ try {
       }).catch((failure) => failure);
       return error && [
         'INVALID_OPTIONS', 'MODEL_TOO_LARGE', 'MODEL_IMPORT_FAILED', 'VIEW_NOT_FOUND',
-        'VIEW_NAME_AMBIGUOUS', 'VIEW_SELECTION_FAILED', 'VIEWER_FAILURE'
+        'VIEW_NAME_AMBIGUOUS', 'VIEW_RENDER_FAILED', 'VIEW_SELECTION_FAILED', 'VIEWER_FAILURE'
       ].includes(error.code) ? error.code : 'UNEXPECTED_FAILURE';
     });
     stage = `read-only example failure (${failureCode})`;
