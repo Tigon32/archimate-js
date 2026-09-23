@@ -28,7 +28,7 @@ Until those gaps are closed and tested with schema-valid, safe fixtures, treat i
 
 ## Model quality tools
 
-There is no built-in ArchiMate model linter, semantic validator, converter pipeline, or repair workflow in this package today. These are separate candidate capabilities and must not be inferred from XML parsing or SVG rendering.
+The package exposes an initial TypeScript validator at `archimate-js/validator`. It checks bounded XML input, a conservative model structure subset, references, and relationship vocabulary, then optionally runs caller-supplied organization quality rules. It reports deterministic review suggestions and does not mutate the source. This is not XSD validation, a complete ArchiMate semantic matrix, a conformance claim, or an automatic repair workflow. See [the validator profile](docs/standards/validator-profile.md).
 
 ## Development checks
 

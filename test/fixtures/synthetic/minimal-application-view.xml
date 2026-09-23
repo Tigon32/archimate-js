@@ -21,7 +21,10 @@
   <views>
     <diagrams>
       <view id="view-synthetic-minimal" xsi:type="archimate:ArchimateDiagramModel" name="Synthetic Minimal View">
-        <node id="node-application-component-1" elementRef="application-component-1" xsi:type="archimate:DiagramObject" x="100" y="100" w="160" h="80" />
+        <node id="node-application-component-1" elementRef="application-component-1" xsi:type="archimate:DiagramObject" x="100" y="100" w="160" h="80">
+          <label>Component label</label>
+          <node id="node-application-service-nested" elementRef="application-service-1" xsi:type="archimate:DiagramObject" x="20" y="20" w="120" h="60" />
+        </node>
         <node id="node-application-service-1" elementRef="application-service-1" xsi:type="archimate:DiagramObject" x="360" y="100" w="160" h="80" />
         <connection id="connection-serving-relationship-1" relationshipRef="serving-relationship-1" xsi:type="archimate:Connection" source="node-application-component-1" target="node-application-service-1">
           <sourceAttachment x="260" y="140" />

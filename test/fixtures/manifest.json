@@ -3,7 +3,7 @@
     "id": "synthetic-minimal-application-view",
     "path": "test/fixtures/synthetic/minimal-application-view.xml",
     "classification": "SYNTHETIC",
-    "purpose": "Minimal import/render fixture for one application component view and one serving relationship.",
+    "purpose": "Minimal import/render fixture with nested nodes, a label, a bendpoint, and one serving relationship.",
     "provenance": "Hand-authored for this public repository using generic ArchiMate terms and non-domain-specific names.",
     "contains_private_data": false,
     "expected_coverage": [
@@ -13,7 +13,23 @@
       "serving relationship",
       "single diagram view",
       "node bounds",
+      "nested view nodes",
+      "view labels",
       "connection waypoints"
+    ],
+    "review_after": "2026-12-23"
+  },
+  {
+    "id": "synthetic-invalid-reference",
+    "path": "test/fixtures/synthetic/invalid-reference.xml",
+    "classification": "SYNTHETIC",
+    "purpose": "Exercise deterministic diagnostics for unresolved model and view references.",
+    "provenance": "Hand-authored for this public repository using generic ArchiMate names; contains no real architecture data.",
+    "contains_private_data": false,
+    "expected_coverage": [
+      "relationship endpoint reference",
+      "diagram node element reference",
+      "stable unresolved-reference diagnostic"
     ],
     "review_after": "2026-12-23"
   },
