@@ -76,3 +76,10 @@ const unsafeImporterPatterns = [
 for (const pattern of unsafeImporterPatterns) {
   assert.equal(pattern.test(importerSource), false, 'Importer must not bypass logger redaction');
 }
+
+const importer = await readFile(new URL('../../lib/import/Importer.js', import.meta.url), 'utf8');
+
+assert.equal(importer.includes('elementToString'), false);
+assert.equal(importer.includes('summarizeError'), false);
+assert.ok(importer.includes("logger.warn('failed to import view element')"));
+assert.ok(importer.includes("logger.warn('failed to import connection element')"));
