@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic MEFF structure probe. Not validated against the Open Group XSD. -->
+<model xmlns="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:archimate="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:ext="urn:synthetic:extension"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="private-model">
+  <name>Private model name</name>
+  <metadata><property key="private-key">private-value</property></metadata>
+  <elements>
+    <element id="private-element" xsi:type="archimate:ApplicationComponent" />
+  </elements>
+  <relationships>
+    <relationship id="private-relationship" xsi:type="archimate:ServingRelationship"
+      source="private-element" target="missing-private-target" />
+  </relationships>
+  <views>
+    <view identifier="private-view">
+      <node identifier="private-node"><bounds x="1" y="2" /></node>
+    </view>
+  </views>
+  <ext:extension privateAttribute="private-value">Private extension payload</ext:extension>
+</model>
