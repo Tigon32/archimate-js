@@ -42,3 +42,6 @@ Projects with sensitive vocabulary can supply `ARCHIMATE_FIXTURE_BLOCK_TERMS` as
 
 
 The `meff-schema/valid-model.xml` and `meff-schema/invalid-missing-model-identifier.xml` fixtures are synthetic positive/negative candidates for the official MEFF 3.1 Model XSD. Their validation workflow fetches the published XSD set into ephemeral runner storage, verifies pinned digests, and never commits, caches, or uploads schema files. The positive fixture is evidence of XSD validity only after the workflow passes; neither fixture proves ArchiMate semantic validity or tool certification.
+
+
+`meff-schema/valid-view-diagram.xml` is a synthetic MEFF 3.1 Model+View+Diagram fixture. CI validates the combined document against the official Diagram XSD fetched transiently to runner storage. It contains a named Diagram, nested Element nodes, and a Relationship connection linked to the fixture's Model records. The fixture is schema-structure evidence; parser tests establish only the explicitly supported mapping and do not claim complete MEFF support.
