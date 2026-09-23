@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Classification: SYNTHETIC
+  Provenance: Authored for archimate-js from the public MEFF 3.1 Model schema
+  documentation; not copied from an Open Group example and intended for
+  transient validation only.
+-->
+<model
+  xmlns="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:archimate="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  identifier="model-synthetic-meff">
+  <name xml:lang="en">Synthetic MEFF Schema Check</name>
+  <elements>
+    <element identifier="component-source" xsi:type="archimate:ApplicationComponent">
+      <name xml:lang="en">Source component</name>
+    </element>
+    <element identifier="service-target" xsi:type="archimate:ApplicationService">
+      <name xml:lang="en">Target service</name>
+    </element>
+  </elements>
+  <relationships>
+    <relationship identifier="serving-link" xsi:type="archimate:Serving"
+      source="component-source" target="service-target">
+      <name xml:lang="en">Synthetic serving relation</name>
+    </relationship>
+  </relationships>
+</model>
