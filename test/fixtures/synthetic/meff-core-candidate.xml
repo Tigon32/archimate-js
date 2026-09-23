@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Classification: SYNTHETIC
+  Provenance: Authored for this repository from the public Open Group MEFF overview;
+  not copied from an Open Group example and not validated against its XSD.
+  Contains no private project, customer, PLM, Confluence, or real architecture data.
+-->
+<model
+  xmlns="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:archimate="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  id="model-synthetic-exchange">
+  <name>Synthetic Exchange Candidate</name>
+  <elements>
+    <element id="exchange-application-component" xsi:type="archimate:ApplicationComponent" name="Generic Component" />
+    <element id="exchange-application-service" xsi:type="archimate:ApplicationService" name="Generic Service" />
+  </elements>
+  <relationships>
+    <relationship id="exchange-serving-relationship" xsi:type="archimate:ServingRelationship" source="exchange-application-component" target="exchange-application-service" />
+  </relationships>
+</model>

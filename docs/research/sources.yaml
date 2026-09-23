@@ -44,9 +44,15 @@ sources:
     source_revision: unknown
     confidence: high
     claims:
-      - Exchange format is the primary interoperability boundary between tools.
+      - The Open Group describes MEFF as a standard file format for exchanging ArchiMate models between tools.
+      - The public FAQ distinguishes model exchange, view exchange, and diagram exchange schemas.
+      - The FAQ says the format conveys model data between tools and is not intended as persistent model storage.
+      - The public FAQ describes a minimal model/name/elements core and points to schema/example resources.
     constraints:
       - Exchange format should not be treated as native persistence without analysis.
+      - Public overview/FAQ statements do not prove any repository fixture conforms to the licensed standard.
+      - Do not copy or bundle official XSDs or examples without verifying their redistribution terms.
+      - Treat local synthetic XML as parser test data until schema validation is run against a permitted official artifact.
     review_after: 2026-12-23
 
   - id: archi-reference
