@@ -14,6 +14,7 @@
   <elements>
     <element identifier="component-source" xsi:type="archimate:ApplicationComponent">
       <name xml:lang="en">Source component</name>
+      <documentation>Synthetic source documentation.</documentation>
     </element>
     <element identifier="service-target" xsi:type="archimate:ApplicationService">
       <name xml:lang="en">Target service</name>

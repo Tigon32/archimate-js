@@ -134,7 +134,8 @@
       "element identifiers, types, and localized names",
       "relationship identifier and IDREF endpoints",
       "MEFF 3.1 Model XSD validation",
-      "internal Model-core import contract"
+      "internal Model-core import contract",
+      "element documentation"
     ],
     "review_after": "2026-12-23"
   },

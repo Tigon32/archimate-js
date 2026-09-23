@@ -162,6 +162,7 @@ describe('synthetic ArchiMate XML import contract', () => {
       type: 'archimate:ApplicationComponent',
       conceptType: 'archimate:ApplicationComponent',
       name: 'Source component',
+      documentation: 'Synthetic source documentation.',
       localizedNames: [{ language: 'en', value: 'Source component' }]
     });
     expect(target).toMatchObject({
@@ -218,6 +219,5 @@ describe('synthetic ArchiMate XML import contract', () => {
       message: 'One or more model references could not be resolved.'
     }]);
 
-});
   });
 });
