@@ -16,8 +16,10 @@ been verified, so they are not bundled here.
 The repository's candidate fixture is hand-authored and is **not** proven
 schema-valid. Its test demonstrates the current parser's limits: model ID/name
 survive, while element entries are dropped and relationship endpoints are not
-resolved. This is a deterministic finding of silent loss, not evidence of
-schema validity or conformance. See the test for the exact supported projection.
+resolved. The public import path now emits stable `MEFF_ELEMENTS_UNSUPPORTED`
+and `MEFF_RELATIONSHIPS_UNSUPPORTED` warnings for these lower-case exchange
+records. This is an explicit unsupported boundary, not evidence of schema
+validity or conformance. See the test for the exact supported projection.
 
 The Open Group announced ArchiMate 4 in April 2026 and lists it as the latest
 specification on its [licensed-downloads page](https://www.opengroup.org/archimate-licensed-downloads).
@@ -45,13 +47,13 @@ Source: [`opengroup-archimate-meff`](../research/sources.yaml), The Open Group's
 
 | Dimension | Import expectation | Export expectation | Evidence status |
 |---|---|---|---|
-| Model identity | Preserve stable model IDs when present. | Emit stable IDs. | Planned. |
-| Elements | Preserve IDs, type, name, documentation where supported. | Emit supported concept fields deterministically. | Planned. |
-| Relationships | Preserve IDs, type, source, target, and specialization fields where supported. | Emit relationships using the shared validation matrix. | Planned. |
-| Views | Preserve view IDs, names, child nodes, connections, and bounds where supported. | Emit selected supported view data deterministically. | Planned. |
+| Model identity | Preserve stable model IDs when present. | Emit stable IDs. | Synthetic test confirms model ID/name round-trip only. |
+| Elements | Preserve IDs, type, name, documentation where supported. | Emit supported concept fields deterministically. | Candidate element records are not reconstructed; stable unsupported warning is tested. |
+| Relationships | Preserve IDs, type, source, target, and specialization fields where supported. | Emit relationships using the shared validation matrix. | Candidate records remain generic with unresolved endpoints; stable unsupported warning is tested. |
+| Views | Preserve view IDs, names, child nodes, connections, and bounds where supported. | Emit selected supported view data deterministically. | A separate implementation fixture parses, but MEFF view exchange is unverified. |
 | Styling | Preserve style fields where supported; warn for unsupported fields. | Emit only supported styling fields. | Planned. |
 | Properties | Preserve supported properties and warn on unsupported fields. | Emit supported properties deterministically. | Planned. |
-| Diagnostics | Report unsupported or lossy fields. | Report unsupported export omissions. | Planned. |
+| Diagnostics | Report unsupported or lossy fields. | Report unsupported export omissions. | Stable import warnings tested for candidate elements and relationships; export omission reporting remains planned. |
 
 ## Deterministic evidence record
 
@@ -73,7 +75,7 @@ Each exchange-format finding should use this shape:
 1. Add a smallest synthetic exchange fixture with one model, one view, one element pair, and one relationship.
 2. Add import preservation checks for IDs and view membership.
 3. Add export or round-trip checks only after current serialization behavior is characterized.
-4. Convert silent loss into deterministic warnings before claiming round-trip support.
+4. Emit stable warnings for the candidate's currently unsupported element and relationship records; extend this coverage as additional fields are characterized.
 5. Compare against Archi or other public tools only with license/provenance notes.
 
 ## Acceptance gates
@@ -86,7 +88,9 @@ Each exchange-format finding should use this shape:
 ## Current disposition
 
 P08 remains open. The repository now records the exchange-schema version and
-artifact provenance boundary, but still lacks a permitted schema-validation
-oracle, faithful element/relationship/view import, stable warnings for lossy
-fields, and semantic export/re-import coverage. Do not close P08 or claim
-interoperability until those gates have evidence.
+artifact provenance boundary, tests model ID/name round-tripping, and reports
+the candidate's element and relationship gaps with stable warnings. It still
+lacks a permitted schema-validation oracle, faithful element/relationship/view
+import, export omission reporting, and broader semantic export/re-import
+coverage. Do not close P08 or claim interoperability until those gates have
+evidence.
