@@ -9,7 +9,7 @@ describe('Association direction rendering', () => {
     const { renderer, graphics } = createRenderer();
 
     renderer.drawConnection(graphics, directedAssociation({ typeOption: undefined, isDirected: true }));
-    expect(graphics.querySelector('path')?.getAttribute('style')).toContain('half-opened-end');
+    expect(graphics.querySelector('path')?.getAttribute('style')).toMatch(/marker-end: url\(#half-opened-end-000000-/);
     expect(document.querySelector('defs marker path')?.getAttribute('d')).toBe('M 1 5 L 11 10');
   });
 
