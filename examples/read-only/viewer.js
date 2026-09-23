@@ -28,10 +28,48 @@ async function renderExample() {
       throw new Error('Fixture request failed');
     }
 
-    const xml = await response.text();
-    if (new TextEncoder().encode(xml).byteLength > MAX_FIXTURE_BYTES) {
+    const declaredLength = Number(response.headers.get('content-length'));
+    if (Number.isFinite(declaredLength) && declaredLength > MAX_FIXTURE_BYTES) {
       throw new Error('Fixture exceeds example size limit');
     }
+
+    if (!response.body || typeof response.body.getReader !== 'function') {
+      throw new Error('Fixture stream unavailable');
+    }
+
+    const reader = response.body.getReader();
+    const chunks = [];
+    let totalBytes = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+
+        totalBytes += value.byteLength;
+        if (totalBytes > MAX_FIXTURE_BYTES) {
+          throw new Error('Fixture exceeds example size limit');
+        }
+
+        chunks.push(value);
+      }
+    } catch (error) {
+      try {
+        await reader.cancel();
+      } catch {
+        // Cancellation is best effort; the page still reports only a generic failure.
+      }
+      throw error;
+    }
+
+    const fixtureBytes = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+      fixtureBytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    const xml = new TextDecoder('utf-8', { fatal: true }).decode(fixtureBytes);
 
     const viewer = new Viewer({
       container,

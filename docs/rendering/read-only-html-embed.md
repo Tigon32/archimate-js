@@ -22,10 +22,13 @@ and is not committed. Do not open `index.html` as a `file:` URL because browsers
 block its local fixture fetch.
 
 The example presents a non-interactive view-only diagram; it provides no editing
-controls or save operation. It caps the fixture response size, uses only a
-same-origin local URL, and shows a generic failure message without logging or
-rendering parser errors or model contents. This is a demonstration boundary,
-not a substitute for application-level authorization or content security policy.
+controls or save operation. Its CSS `pointer-events: none` is demo-level
+non-interactivity only, not an authorization or security boundary. The fixture
+loader uses only a same-origin local URL, rejects an oversized declared length,
+and incrementally cancels reads that exceed the byte cap. It shows a generic
+failure message without logging or rendering parser errors or model contents.
+This is a demonstration boundary, not a substitute for application-level
+authorization or content security policy.
 
 ## Use from a consuming application
 
