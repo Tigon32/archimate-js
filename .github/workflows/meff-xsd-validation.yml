@@ -1,0 +1,69 @@
+name: MEFF XSD validation experiment
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/meff-xsd-validation.yml"
+      - "test/fixtures/meff-schema/**"
+      - "docs/standards/meff-schema-validation.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-meff-model:
+    name: Validate synthetic MEFF Model fixture
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Fetch official MEFF 3.1 schemas into runner temp
+        shell: bash
+        run: |
+          set -euo pipefail
+          schema_dir="${RUNNER_TEMP}/meff-xsd-3.1"
+          mkdir -p "$schema_dir"
+          base_url="https://www.opengroup.org/xsd/archimate/3.1"
+          for schema in archimate3_Model.xsd archimate3_View.xsd archimate3_Diagram.xsd; do
+            curl --fail --location --silent --show-error \
+              --retry 2 --connect-timeout 20 --max-time 120 \
+              "${base_url}/${schema}" --output "${schema_dir}/${schema}"
+            test -s "${schema_dir}/${schema}"
+          done
+          sha256sum "${schema_dir}"/*.xsd | tee "${RUNNER_TEMP}/meff-xsd-sha256.txt"
+          {
+            echo "### Transient MEFF schema fetch"
+            echo
+            echo "Schemas were fetched for this job only; file bytes are not uploaded or committed."
+            echo
+            echo '~~~'
+            cat "${RUNNER_TEMP}/meff-xsd-sha256.txt"
+            echo '~~~'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install XML Schema validator
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends libxml2-utils
+
+      - name: Validate positive and negative synthetic fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          schema="${RUNNER_TEMP}/meff-xsd-3.1/archimate3_Model.xsd"
+          xmllint --noout --schema "$schema" test/fixtures/meff-schema/valid-model.xml
+          invalid_log="${RUNNER_TEMP}/meff-invalid-fixture.log"
+          if xmllint --noout --schema "$schema" test/fixtures/meff-schema/invalid-missing-model-identifier.xml >"$invalid_log" 2>&1; then
+            echo "Expected the missing-model-identifier fixture to fail XSD validation."
+            exit 1
+          fi
+          cat "$invalid_log"
+          if ! grep -Eiq "identifier" "$invalid_log"; then
+            echo "Negative fixture failed for an unexpected reason; expected the missing identifier."
+            exit 1
+          fi
+          echo "Positive fixture is schema-valid; negative fixture failed for missing model identifier."
