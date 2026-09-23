@@ -8,3 +8,9 @@ ArchiMate® is a registered trademark of [The Open Group](https://www.opengroup.
 
 * Create/modify ArchiMate® models and views
 * Import/export ArchiMate® model in XML format
+
+## Browser embedding
+
+See the [read-only HTML embed example](docs/rendering/read-only-html-embed.md)
+for a locally served demonstration using the public package entrypoint and the
+repository's provenance-documented synthetic fixture.
