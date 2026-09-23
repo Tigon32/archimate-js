@@ -53,6 +53,25 @@ try {
     return status && !status.startsWith('Loading');
   }, { timeout: 10000 });
   const status = await page.$eval('#status', (element) => element.textContent);
+  if (status !== 'Loaded the public synthetic example.') {
+    const failureCode = await page.evaluate(async () => {
+      if (!window.ArchimateJS || typeof window.ArchimateJS.mountViewer !== 'function') {
+        return 'API_UNAVAILABLE';
+      }
+      const xml = await (await fetch('/test/fixtures/synthetic/minimal-application-view.xml')).text();
+      const error = await window.ArchimateJS.mountViewer({
+        xml,
+        viewId: 'view-synthetic-minimal',
+        container: document.createElement('div')
+      }).catch((failure) => failure);
+      return error && [
+        'INVALID_OPTIONS', 'MODEL_TOO_LARGE', 'MODEL_IMPORT_FAILED', 'VIEW_NOT_FOUND',
+        'VIEW_NAME_AMBIGUOUS', 'VIEW_SELECTION_FAILED', 'VIEWER_FAILURE'
+      ].includes(error.code) ? error.code : 'UNEXPECTED_FAILURE';
+    });
+    stage = `read-only example failure (${failureCode})`;
+    throw new Error('Read-only example failed.');
+  }
   assert.equal(status, 'Loaded the public synthetic example.');
 
   stage = 'render selected view to SVG';
