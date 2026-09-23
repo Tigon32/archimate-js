@@ -211,6 +211,10 @@ try {
   stage = 'check mounted SVG custom label';
   assert.equal(result.exportedTextHasLabel, true);
   stage = 'check canonical SVG custom label';
+  if (!result.hasViewLabel) {
+    stage = `canonical label diagnostics (componentName=${result.hasComponentName}, serviceName=${result.hasServiceName}, textNodes=${result.textElementCount})`;
+    throw new Error('Canonical SVG label missing.');
+  }
   assert.equal(result.hasViewLabel, true);
   assert.ok(result.textElementCount > 0, 'SVG should render labels as text');
   stage = 'check fixture element names';
