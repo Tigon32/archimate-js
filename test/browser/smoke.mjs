@@ -100,6 +100,7 @@ try {
       width: 640,
       height: 480
     });
+    const componentShape = mounted.get('elementRegistry').get('node-application-component-1');
     const modelNameBeforeExport = mounted.getModel().name;
     await mounted.saveSVG({ title: 'Mounted synthetic view' });
     const modelNameAfterExport = mounted.getModel().name;
@@ -111,7 +112,9 @@ try {
       hasTitle: parsed.querySelector('title')?.textContent === 'Synthetic report view',
       hasDescription: parsed.querySelector('desc')?.textContent === 'Synthetic application component and service',
       liveTextElementCount: document.querySelectorAll('#diagram text').length,
-      liveViewLabel: document.querySelector('#diagram')?.textContent.includes('Component label') === true,
+      exportedShapeHasLabel: componentShape?.businessObject?.label?.includes('Component label') === true,
+      exportedTextHasLabel: host.textContent.includes('Component label'),
+      exportedTextCount: host.querySelectorAll('text').length,
       hasComponentName: parsed.documentElement.textContent.includes('Application Component'),
       hasServiceName: parsed.documentElement.textContent.includes('Application Service'),
       hasViewLabel: parsed.documentElement.textContent.includes('Component label'),
@@ -133,9 +136,11 @@ try {
   assert.equal(result.hasDescription, true);
   stage = 'check live SVG text nodes';
   assert.ok(result.liveTextElementCount > 0, 'example should render SVG text nodes');
-  stage = 'check live example label';
-  assert.equal(result.liveViewLabel, true);
-  stage = 'check custom view label';
+  stage = 'check selected view node label';
+  assert.equal(result.exportedShapeHasLabel, true);
+  stage = 'check exported custom label text';
+  assert.ok(result.exportedTextCount > 0, 'SVG should include text nodes');
+  assert.equal(result.exportedTextHasLabel, true);
   assert.equal(result.hasViewLabel, true);
   assert.ok(result.textElementCount > 0, 'SVG should render labels as text');
   stage = 'check rendered paths';
