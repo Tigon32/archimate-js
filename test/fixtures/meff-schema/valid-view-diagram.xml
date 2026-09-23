@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Classification: SYNTHETIC
+  Provenance: Hand-authored for Tigon32/archimate-js from public MEFF 3.1 schema docs.
+  Contains no private project or customer architecture data.
+-->
+<model
+  xmlns="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:archimate="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  identifier="model-synthetic-view">
+  <name xml:lang="en">Synthetic View Import Fixture</name>
+  <elements>
+    <element identifier="component-one" xsi:type="archimate:ApplicationComponent">
+      <name xml:lang="en">Component One</name>
+    </element>
+    <element identifier="service-two" xsi:type="archimate:ApplicationService">
+      <name xml:lang="en">Service Two</name>
+    </element>
+  </elements>
+  <relationships>
+    <relationship identifier="serving-one-two" xsi:type="archimate:Serving"
+      source="component-one" target="service-two">
+      <name xml:lang="en">Serves</name>
+    </relationship>
+  </relationships>
+  <views>
+    <diagrams>
+      <view identifier="view-synthetic-one" xsi:type="archimate:Diagram">
+        <name xml:lang="en">Synthetic Application View</name>
+        <node identifier="node-component-one" xsi:type="archimate:Element"
+          elementRef="component-one" x="20" y="40" w="140" h="70">
+          <node identifier="node-service-nested" xsi:type="archimate:Element"
+            elementRef="service-two" x="10" y="120" w="130" h="70" />
+        </node>
+        <node identifier="node-service-two" xsi:type="archimate:Element"
+          elementRef="service-two" x="300" y="40" w="140" h="70" />
+        <connection identifier="connection-serving-one-two"
+          xsi:type="archimate:Relationship" relationshipRef="serving-one-two"
+          source="node-component-one" target="node-service-two" />
+      </view>
+    </diagrams>
+  </views>
+</model>
