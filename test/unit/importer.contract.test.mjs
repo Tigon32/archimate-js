@@ -142,4 +142,58 @@ describe('synthetic ArchiMate XML import contract', () => {
     });
     expect(roundTripWarnings).toEqual([]);
   });
+
+  it('imports schema-valid MEFF Model identifiers, types, localized names, and endpoints deterministically', async () => {
+    const xml = await readFile(
+      new URL('../fixtures/meff-schema/valid-model.xml', import.meta.url),
+      'utf8'
+    );
+    const moddle = new ArchimateModdle({ archimate: ArchimateDescriptors });
+    const first = await moddle.fromXML(xml);
+    const second = await moddle.fromXML(xml);
+    const model = first.rootElement;
+    const [source, target] = model.elementsNode.baseElements;
+    const [relationship] = model.relationshipsNode.relationships;
+
+    expect(model.id).toBe('model-synthetic-meff');
+    expect(model.name).toBe('Synthetic MEFF Schema Check');
+    expect(source).toMatchObject({
+      id: 'component-source',
+      type: 'archimate:ApplicationComponent',
+      conceptType: 'archimate:ApplicationComponent',
+      name: 'Source component',
+      localizedNames: [{ language: 'en', value: 'Source component' }]
+    });
+    expect(target).toMatchObject({
+      id: 'service-target',
+      type: 'archimate:ApplicationService',
+      name: 'Target service'
+    });
+    expect(relationship).toMatchObject({
+      id: 'serving-link',
+      type: 'archimate:Serving',
+      sourceRefId: 'component-source',
+      targetRefId: 'service-target',
+      name: 'Synthetic serving relation'
+    });
+    expect(relationship.source).toBe(source);
+    expect(relationship.target).toBe(target);
+    expect(first.elementsById['component-source']).toBe(source);
+    expect(first.elementsById['serving-link']).toBe(relationship);
+    expect(model.elementsById).toBe(first.elementsById);
+    expect(first.diagnostics).toEqual([]);
+
+    const project = ({ rootElement, diagnostics }) => ({
+      model: {
+        id: rootElement.id,
+        name: rootElement.name,
+        elements: rootElement.elementsNode.baseElements.map(({ id, type, name, localizedNames }) =>
+          ({ id, type, name, localizedNames })),
+        relationships: rootElement.relationshipsNode.relationships.map(({ id, type, source, target }) =>
+          ({ id, type, source: source.id, target: target.id }))
+      },
+      diagnostics
+    });
+    expect(project(first)).toEqual(project(second));
+  });
 });

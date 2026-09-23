@@ -15,19 +15,21 @@ exchange schemas. The published model schema uses the
 references, not copied artifacts; schema/example redistribution terms have not
 been verified, so they are not bundled here.
 
-The repository's candidate fixture is hand-authored and is **not** proven
-schema-valid. The Model XSD requires a root `identifier` and relationship
-endpoints expressed as ID references; this candidate instead uses `id`, and
-its element records are not reconstructed by the importer. Its model ID/name
-round-trip test is therefore only a parser-level probe, not MEFF support
-evidence. The public import path now emits stable, content-free warnings for recognized
-unsupported Model elements, relationships, model metadata/organizations, views,
-diagram records, and foreign-namespace extensions. These bounded structural
-checks are not schema validation and may not recognize every legal extension.
-See the [diagnostics code table](diagnostics.md#current-meff-import-warnings),
-[Model schema synopsis](../research/okf/opengroup-meff-model-schema.md), and
-synthetic fixture test for current behavior. There is no MEFF XML exporter yet;
-export omission diagnostics belong with the exporter work in #59.
+The repository now contains a synthetic MEFF 3.1 Model fixture validated by the
+pinned CI schema check. The importer recognizes the official Model namespace and
+schema `identifier` attributes. It maps them to internal `id` fields, retains
+exact `xsi:type` QNames for Model elements and relationships, preserves names
+(including language tags) and documentation, and resolves relationship
+`source`/`target` IDREFs to the same canonical element objects exposed through
+the model ID indexes. This is a bounded Model-core subset. Unknown Model
+element/relationship fields and unresolved IDREFs use fixed content-free
+diagnostics. The importer does not perform XSD validation or ArchiMate semantic
+relationship validation; the schema CI and semantic validator are separate
+checks. Views, diagrams, properties, organizations, and extensions remain
+separate or unsupported work. See the
+[MEFF Model schema synopsis](../research/okf/opengroup-meff-model-schema.md)
+and #55 tests for the exact exercised subset. There is no MEFF XML exporter yet;
+export omission diagnostics belong with #59.
 
 The Open Group announced ArchiMate 4 in April 2026 and lists it as the latest
 specification on its [licensed-downloads page](https://www.opengroup.org/archimate-licensed-downloads).
@@ -47,7 +49,7 @@ Make ArchiMate Model Exchange File Format import/export behavior measurable and 
 
 ## Current fixture evidence
 
-The Open Group describes MEFF as tool-to-tool exchange rather than persistent model storage and publishes separate Model, View, and Diagram schemas. The generated 3.1 Model documentation requires `model/@identifier` and one or more names; relationship endpoints are required ID references. The existing `minimal-application-view.xml` is an implementation-focused synthetic fixture, not a verified MEFF sample. `meff-core-candidate.xml` is an independently authored parser probe, not an XSD-valid fixture. Its local `id`/name round-trip result cannot be counted as MEFF model-identity support. The importer tests observe element loss, unresolved relationship endpoints, and stable warnings across recognized unsupported categories. No export omission can yet be measured because the package does not implement MEFF XML export. None of this establishes schema validity, certification, or cross-tool portability.
+The Open Group describes MEFF as tool-to-tool exchange rather than persistent model storage and publishes separate Model, View, and Diagram schemas. The generated 3.1 Model documentation requires `model/@identifier` and one or more names; relationship endpoints are required ID references. `meff-schema/valid-model.xml` passes the pinned Model XSD validation job and its import contract preserves model and record identifiers, exact concrete type QNames, localized names, and linked relationship endpoints. Repeated import produces the same supported-field projection and diagnostics. The implementation candidate in `synthetic/meff-core-candidate.xml` remains a parser probe, not a schema-valid fixture. No export omission can yet be measured because the package does not implement MEFF XML export. These results do not establish semantic validity, certification, or cross-tool portability.
 
 Source: [`opengroup-archimate-meff`](../research/sources.yaml), The Open Group's public [MEFF overview and FAQ](https://www.opengroup.org/open-group-archimate-model-exchange-file-format). The official standard is referenced there via its publications catalog; official schemas and examples are not copied into this repository.
 
@@ -55,9 +57,9 @@ Source: [`opengroup-archimate-meff`](../research/sources.yaml), The Open Group's
 
 | Dimension | Import expectation | Export expectation | Evidence status |
 |---|---|---|---|
-| Model identity | Preserve schema `identifier` and names. | Emit stable schema IDs and names. | Candidate only probes local `id`/name parser behavior; MEFF identity unverified. |
-| Elements | Preserve IDs, type, name, documentation where supported. | Emit supported concept fields deterministically. | Candidate element records are not reconstructed; stable unsupported warning is tested. |
-| Relationships | Preserve IDs, type, source, target, and specialization fields where supported. | Emit relationships using the shared validation matrix. | Candidate records remain generic with unresolved endpoints; stable unsupported warning is tested. |
+| Model identity | Preserve schema `identifier` and localized names. | Emit stable schema IDs and names. | Imported from the schema-valid Model fixture; repeated-import projection is tested. |
+| Elements | Preserve IDs, concrete `xsi:type`, localized name, and documentation. | Emit supported concept fields deterministically. | Core ID/type/name mapping and canonical ID index are tested; unsupported fields receive fixed warnings. |
+| Relationships | Preserve IDs, concrete `xsi:type`, localized name, and resolved source/target ID references. | Emit relationships using the shared validation matrix. | Core ID/type mapping and identity-linked endpoints are tested; no semantic relationship validation is implied. |
 | Views | Preserve view IDs, names, child nodes, connections, and bounds where supported. | Emit selected supported view data deterministically. | A separate implementation fixture parses, but MEFF view exchange is unverified. |
 | Styling | Preserve style fields where supported; warn for unsupported fields. | Emit only supported styling fields. | Planned. |
 | Properties | Preserve supported properties and warn on unsupported fields. | Emit supported properties deterministically. | Planned. |
@@ -96,10 +98,4 @@ Each exchange-format finding should use this shape:
 
 ## Current disposition
 
-P08 remains open. The repository records the exchange-schema version and
-artifact provenance boundary and reports current candidate gaps with stable
-warnings. The candidate is not XSD-valid, so its local `id`/name round-trip is
-not evidence of MEFF identity support. The project still lacks an authorized
-schema-validation oracle, faithful model/view/diagram import, export omission
-reporting, and supported-subset semantic round-trip coverage. Do not close P08
-or claim interoperability until those gates have evidence.
+P08 remains open. Model-core import is now exercised against the synthetic fixture that passes the pinned MEFF 3.1 Model XSD job. View/Diagram import, export omission reporting, and supported-subset export round-trip remain open. XSD validation and identifier/reference mapping do not establish ArchiMate semantic validity, certification, or cross-tool interoperability.
