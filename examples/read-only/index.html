@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>archimate-js read-only embed</title>
+    <style>
+      body { font: 16px/1.5 system-ui, sans-serif; margin: 2rem auto; max-width: 72rem; padding: 0 1rem; }
+      #diagram { border: 1px solid #9aa4b2; height: 34rem; max-width: 100%; overflow: hidden; pointer-events: none; }
+      #status { min-height: 1.5em; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Read-only ArchiMate view</h1>
+      <p>This local example loads the repository's documented synthetic fixture. The rendered diagram is intentionally non-interactive.</p>
+      <p id="status" role="status" aria-live="polite">Loading synthetic example…</p>
+      <div id="diagram" aria-label="Synthetic ArchiMate diagram"></div>
+    </main>
+
+    <!-- Generated locally from the package entrypoint by `npm run compile`. -->
+    <script src="../../.ci-build/archimate-js.js"></script>
+    <script type="module" src="./viewer.js"></script>
+  </body>
+</html>
