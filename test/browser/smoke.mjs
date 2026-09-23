@@ -122,19 +122,26 @@ try {
     };
   });
 
-  stage = 'check stable SVG and structure';
+  stage = 'check repeated SVG stability';
   assert.equal(result.same, true);
+  stage = 'check accessible SVG metadata';
   assert.equal(result.hasTitle, true);
   assert.equal(result.hasDescription, true);
+  stage = 'check representative labels';
   assert.equal(result.hasExpectedText, true);
+  stage = 'check rendered paths';
   assert.ok(result.pathCount > 0, 'SVG should contain relationship or shape paths');
+  stage = 'check rendered bendpoints';
   assert.match(result.pathData, /260/);
   assert.match(result.pathData, /310/);
   assert.match(result.pathData, /360/);
+  stage = 'check nested view structure';
   assert.ok(result.nestedGroups > 0, 'SVG should preserve nested view structure');
+  stage = 'check model markup safety';
   assert.equal(result.hasScriptMarkup, false);
   assert.equal(result.liveModelScriptCount, 0);
   assert.equal(result.payloadCodeRan, false);
+  stage = 'check export model immutability';
   assert.equal(result.modelUnchanged, true);
   console.log('browser render smoke test passed');
 } catch {
