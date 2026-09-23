@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 
 import {
   ConsoleLogger,
@@ -47,3 +48,31 @@ assert.ok(!flattened.includes('Private Architecture Model'));
 assert.ok(!flattened.includes('Private Application'));
 
 console.log('logger redaction test passed');
+
+const baseViewerSource = await readFile(new URL('../../lib/BaseViewer.js', import.meta.url), 'utf8');
+const importerSource = await readFile(new URL('../../lib/import/Importer.js', import.meta.url), 'utf8');
+
+const unsafeBaseViewerPatterns = [
+  /logger\.log\(xml\)/,
+  /logger\.log\(parseResult\)/,
+  /logger\.log\(model\)/,
+  /logger\.log\(viewOrId\)/,
+  /logger\.log\(view\)/,
+  /console\.error\('error in saveXML life-cycle listener', e\)/
+];
+
+for (const pattern of unsafeBaseViewerPatterns) {
+  assert.equal(pattern.test(baseViewerSource), false, 'BaseViewer must not log raw import internals');
+}
+
+const unsafeImporterPatterns = [
+  /logger\.log\(\{ model, viewId \}\)/,
+  /logger\.log\(viewElement\)/,
+  /logger\.log\(connectionElement\)/,
+  /console\.error\(e\)/,
+  /console\.error\('failed to import \{element\}'/
+];
+
+for (const pattern of unsafeImporterPatterns) {
+  assert.equal(pattern.test(importerSource), false, 'Importer must not bypass logger redaction');
+}
