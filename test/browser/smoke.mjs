@@ -203,9 +203,11 @@ try {
   assert.ok(result.liveTextElementCount > 0, 'example should render SVG text nodes');
   stage = 'check selected view node label';
   assert.equal(result.exportedShapeHasLabel, true);
-  stage = 'check exported custom label text';
+  stage = 'check mounted SVG text nodes';
   assert.ok(result.exportedTextCount > 0, 'SVG should include text nodes');
+  stage = 'check mounted SVG custom label';
   assert.equal(result.exportedTextHasLabel, true);
+  stage = 'check canonical SVG custom label';
   assert.equal(result.hasViewLabel, true);
   assert.ok(result.textElementCount > 0, 'SVG should render labels as text');
   stage = 'check fixture element names';
