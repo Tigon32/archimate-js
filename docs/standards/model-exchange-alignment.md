@@ -20,10 +20,14 @@ schema-valid. The Model XSD requires a root `identifier` and relationship
 endpoints expressed as ID references; this candidate instead uses `id`, and
 its element records are not reconstructed by the importer. Its model ID/name
 round-trip test is therefore only a parser-level probe, not MEFF support
-evidence. The public import path now emits stable
-`MEFF_ELEMENTS_UNSUPPORTED` and `MEFF_RELATIONSHIPS_UNSUPPORTED` warnings for
-these lower-case exchange records. See the [Model schema synopsis](../research/okf/opengroup-meff-model-schema.md)
-for source links and the fixture test for the exact current behavior.
+evidence. The public import path now emits stable, content-free warnings for recognized
+unsupported Model elements, relationships, model metadata/organizations, views,
+diagram records, and foreign-namespace extensions. These bounded structural
+checks are not schema validation and may not recognize every legal extension.
+See the [diagnostics code table](diagnostics.md#current-meff-import-warnings),
+[Model schema synopsis](../research/okf/opengroup-meff-model-schema.md), and
+synthetic fixture test for current behavior. There is no MEFF XML exporter yet;
+export omission diagnostics belong with the exporter work in #59.
 
 The Open Group announced ArchiMate 4 in April 2026 and lists it as the latest
 specification on its [licensed-downloads page](https://www.opengroup.org/archimate-licensed-downloads).
@@ -43,7 +47,7 @@ Make ArchiMate Model Exchange File Format import/export behavior measurable and 
 
 ## Current fixture evidence
 
-The Open Group describes MEFF as tool-to-tool exchange rather than persistent model storage and publishes separate Model, View, and Diagram schemas. The generated 3.1 Model documentation requires `model/@identifier` and one or more names; relationship endpoints are required ID references. The existing `minimal-application-view.xml` is an implementation-focused synthetic fixture, not a verified MEFF sample. `meff-core-candidate.xml` is an independently authored parser probe, not an XSD-valid fixture. Its local `id`/name round-trip result cannot be counted as MEFF model-identity support. The importer test observes element loss, unresolved relationship endpoints, and stable warnings. None of this establishes schema validity, certification, or cross-tool portability.
+The Open Group describes MEFF as tool-to-tool exchange rather than persistent model storage and publishes separate Model, View, and Diagram schemas. The generated 3.1 Model documentation requires `model/@identifier` and one or more names; relationship endpoints are required ID references. The existing `minimal-application-view.xml` is an implementation-focused synthetic fixture, not a verified MEFF sample. `meff-core-candidate.xml` is an independently authored parser probe, not an XSD-valid fixture. Its local `id`/name round-trip result cannot be counted as MEFF model-identity support. The importer tests observe element loss, unresolved relationship endpoints, and stable warnings across recognized unsupported categories. No export omission can yet be measured because the package does not implement MEFF XML export. None of this establishes schema validity, certification, or cross-tool portability.
 
 Source: [`opengroup-archimate-meff`](../research/sources.yaml), The Open Group's public [MEFF overview and FAQ](https://www.opengroup.org/open-group-archimate-model-exchange-file-format). The official standard is referenced there via its publications catalog; official schemas and examples are not copied into this repository.
 
@@ -57,7 +61,7 @@ Source: [`opengroup-archimate-meff`](../research/sources.yaml), The Open Group's
 | Views | Preserve view IDs, names, child nodes, connections, and bounds where supported. | Emit selected supported view data deterministically. | A separate implementation fixture parses, but MEFF view exchange is unverified. |
 | Styling | Preserve style fields where supported; warn for unsupported fields. | Emit only supported styling fields. | Planned. |
 | Properties | Preserve supported properties and warn on unsupported fields. | Emit supported properties deterministically. | Planned. |
-| Diagnostics | Report unsupported or lossy fields. | Report unsupported export omissions. | Stable import warnings tested for candidate elements and relationships; export omission reporting remains planned. |
+| Diagnostics | Report unsupported or lossy fields. | Report unsupported export omissions. | Stable import warnings cover recognized model, view, diagram, and extension categories; export omission reporting awaits a MEFF exporter. |
 
 ## Deterministic evidence record
 
