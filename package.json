@@ -13,7 +13,7 @@
     "modeling"
   ],
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "all": "run-s test compile",
@@ -22,14 +22,15 @@
     "compile:browser": "node test/smoke/compile.mjs",
     "prepack": "npm run compile:validator",
     "lint": "eslint .",
-    "test": "run-s test:package test:security test:fixtures test:typecheck test:validator-build test:unit",
+    "test": "run-s test:package test:security test:supply-chain test:fixtures test:typecheck test:validator-build test:unit",
     "test:package": "node test/smoke/package.test.mjs",
     "test:security": "node test/security/logger.test.mjs",
     "test:fixtures": "node test/security/scan-fixtures.mjs",
     "test:typecheck": "tsc --noEmit",
     "test:validator-build": "node test/smoke/compile-validator.mjs",
     "test:browser": "node test/browser/smoke.mjs",
-    "test:unit": "vitest run --coverage.enabled --coverage.reporter=text"
+    "test:unit": "vitest run --coverage.enabled --coverage.reporter=text",
+    "test:supply-chain": "node test/security/supply-chain.test.mjs"
   },
   "repository": {
     "type": "git",
@@ -37,6 +38,7 @@
   },
   "files": [
     "index.js",
+    "THIRD_PARTY_NOTICES.md",
     "assets",
     "dist",
     "lib",
@@ -53,18 +55,18 @@
     }
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^2.1.9",
+    "@vitest/coverage-v8": "5.0.1",
     "eslint": "^7.32.0",
     "eslint-plugin-bpmn-io": "^0.12.0",
     "eslint-plugin-import": "^2.25.2",
     "file-loader": "^6.2.0",
     "jsdom": "^30.1.1",
     "npm-run-all": "^4.1.5",
-    "puppeteer": "^10.4.0",
     "raw-loader": "^4.0.2",
     "typescript": "^7.0.2",
-    "vitest": "^2.1.9",
-    "webpack": "^5.61.0"
+    "vitest": "5.0.1",
+    "webpack": "^5.61.0",
+    "puppeteer-core": "25.12.0"
   },
   "dependencies": {
     "archimate-font": "file:./archimate-font",
@@ -76,7 +78,7 @@
     "ids": "^1.0.0",
     "inherits": "^2.0.4",
     "inherits-browser": "^0.1.0",
-    "mathjs": "^13.2.0",
+    "mathjs": "15.2.0",
     "min-dash": "^3.8.0",
     "min-dom": "^3.1.3",
     "moddle": "^5.0.2",

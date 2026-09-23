@@ -2,7 +2,7 @@
 
 A browser-based ArchiMate® diagramming library built on the [diagram-js](https://github.com/bpmn-io/diagram-js) engine from [bpmn.io](https://bpmn.io/).
 
-ArchiMate® is a registered trademark of [The Open Group](https://www.opengroup.org/archimate-forum/archimate-overview).
+ArchiMate® is a registered trademark of [The Open Group](https://www.opengroup.org/archimate-forum/archimate-overview).\n\nSee [third-party notices](THIRD_PARTY_NOTICES.md) for bundled font licenses, project provenance, and attribution.
 
 ## What is implemented today
 
@@ -32,7 +32,7 @@ The package exposes an initial TypeScript validator at `archimate-js/validator`.
 
 ## Run and test locally
 
-Use Node.js 22 or later. From the repository root, install dependencies and build the browser bundle:
+Use Node.js 22.12 or later. From the repository root, install dependencies and build the browser bundle:
 
 ```sh
 npm install
@@ -55,7 +55,7 @@ npm run compile
 npm run test:browser
 ```
 
-The browser smoke test starts its own loopback server and checks the synthetic example in Chrome/Chromium. It uses `CHROME_BIN` when set; otherwise it tries Puppeteer's bundled browser. To use an installed system browser, set `CHROME_BIN` to its executable path, for example `CHROME_BIN=/usr/bin/chromium npm run test:browser`.
+The browser smoke test starts its own loopback server and checks the synthetic example in Chrome/Chromium. Install Chrome or Chromium separately and set `CHROME_BIN` to its executable path, for example `CHROME_BIN=/usr/bin/chromium npm run test:browser`. The browser is not downloaded during npm installation.\n\n`--ignore-scripts` skips dependency install-time scripts; compile and test commands do not require those scripts.
 
 ## Development checks
 

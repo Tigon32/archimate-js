@@ -3,7 +3,7 @@ import { createReadStream } from 'node:fs';
 import { createServer } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const routes = new Map([
@@ -31,7 +31,7 @@ let browser;
 let stage = 'launch browser';
 try {
   browser = await puppeteer.launch({
-    executablePath: process.env.CHROME_BIN || puppeteer.executablePath(),
+    executablePath: process.env.CHROME_BIN,
     headless: true,
     args: [ '--no-sandbox', '--disable-setuid-sandbox' ]
   });

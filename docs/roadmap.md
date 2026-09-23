@@ -82,8 +82,8 @@ Exit criteria:
 
 ## Phase 5: Release readiness
 
-- Add third-party notices and asset provenance.
-- Add SBOM/release provenance plan.
+- [x] Add third-party notices and asset provenance.
+- [x] Add SBOM/release provenance plan.
 - Publish prerelease only after CI, tests, and package smoke tests pass.
 
 ## Current known gaps
