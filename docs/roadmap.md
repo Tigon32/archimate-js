@@ -84,13 +84,14 @@ Exit criteria:
 
 - [x] Add third-party notices and asset provenance.
 - [x] Add SBOM/release provenance plan.
-- Publish prerelease only after CI, tests, and package smoke tests pass.
+- [x] Document stable public exports, deep-import policy, SemVer channels, and release-note template.
+- [x] Test the actual `npm pack` archive through a consumer fixture with registry access disabled.
+- [x] Add a read-only release gate for lint, full tests, compile, and browser rendering; it does not publish or use secrets.
+- [x] Keep stable operational releases blocked until importer/exporter/render and Archi comparison evidence is recorded.
+- Publish a prerelease only after CI, tests, and package smoke tests pass.
 
 ## Current known gaps
 
-- `npm run all` references a missing `test` script.
-- No committed lockfile.
-- CI is not established.
-- Import can fail partially without a strong acceptance signal.
-- Development logging can expose complete model payloads.
-- Exchange-format scope and supported ArchiMate version are not formally declared.
+- No committed npm lockfile; installs are not yet suitable for `npm ci` reproducibility.
+- Import/export can still be partial, and cross-tool exchange/render interoperability evidence is not established; stable operational releases remain blocked.
+- The validator implements a conservative subset, not full XSD or ArchiMate conformance; see the standards profiles.

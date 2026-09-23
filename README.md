@@ -2,7 +2,9 @@
 
 A browser-based ArchiMate® diagramming library built on the [diagram-js](https://github.com/bpmn-io/diagram-js) engine from [bpmn.io](https://bpmn.io/).
 
-ArchiMate® is a registered trademark of [The Open Group](https://www.opengroup.org/archimate-forum/archimate-overview).\n\nSee [third-party notices](THIRD_PARTY_NOTICES.md) for bundled font licenses, project provenance, and attribution.
+ArchiMate® is a registered trademark of [The Open Group](https://www.opengroup.org/archimate-forum/archimate-overview).
+
+See [third-party notices](THIRD_PARTY_NOTICES.md) for bundled font licenses, project provenance, and attribution.
 
 ## What is implemented today
 
@@ -17,6 +19,8 @@ The package entry point exports the default `Viewer` class and the named `mountV
 | Read-only embedding | A locally served HTML example mounts the public Viewer API and loads a repository-owned synthetic fixture. | The example disables pointer input for presentation only; that is not an authorization or security boundary. |
 
 The source also contains a `Modeler` implementation with editor modules for palette-based creation, connecting, label editing, moving/resizing, copy/paste, alignment, and snapping. It is **not exported from the package root today**, so treat that implementation as internal rather than a stable public API.
+
+Supported imports, deep-import policy, version channels, and release criteria are documented in the [release policy](docs/releases.md).
 
 See the [read-only HTML example guide](docs/rendering/read-only-html-embed.md) for consumer integration notes.
 
@@ -55,7 +59,9 @@ npm run compile
 npm run test:browser
 ```
 
-The browser smoke test starts its own loopback server and checks the synthetic example in Chrome/Chromium. Install Chrome or Chromium separately and set `CHROME_BIN` to its executable path, for example `CHROME_BIN=/usr/bin/chromium npm run test:browser`. The browser is not downloaded during npm installation.\n\n`--ignore-scripts` skips dependency install-time scripts; compile and test commands do not require those scripts.
+The browser smoke test starts its own loopback server and checks the synthetic example in Chrome/Chromium. Install Chrome or Chromium separately and set `CHROME_BIN` to its executable path, for example `CHROME_BIN=/usr/bin/chromium npm run test:browser`. The browser is not downloaded during npm installation.
+
+`--ignore-scripts` skips dependency install-time scripts; compile and test commands do not require those scripts.
 
 ## Development checks
 
