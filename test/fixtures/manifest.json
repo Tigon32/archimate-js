@@ -1,5 +1,15 @@
 [
   {
+    "id": "synthetic-read-only-showcase",
+    "path": "test/fixtures/synthetic/read-only-showcase.xml",
+    "classification": "SYNTHETIC",
+    "purpose": "Presentation-quality read-only example with business, application, and technology elements and relationships.",
+    "provenance": "Hand-authored for this public repository using generic ArchiMate terms and non-domain-specific names.",
+    "contains_private_data": false,
+    "expected_coverage": ["business actor and process", "application service and component", "technology node", "assignment, realization, and serving relationships", "multi-element diagram rendering"],
+    "review_after": "2026-12-23"
+  },
+  {
     "id": "synthetic-minimal-application-view",
     "path": "test/fixtures/synthetic/minimal-application-view.xml",
     "classification": "SYNTHETIC",
