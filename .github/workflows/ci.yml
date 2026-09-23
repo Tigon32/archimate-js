@@ -37,3 +37,29 @@ jobs:
 
       - name: Compile public entry point
         run: npm run compile
+
+  browser-smoke:
+    name: Browser render smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts
+
+      - name: Compile public entry point
+        run: npm run compile
+
+      - name: Verify with the runner's Chrome
+        run: |
+          export CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          test -n "$CHROME_BIN"
+          npm run test:browser

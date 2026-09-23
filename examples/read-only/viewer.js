@@ -10,9 +10,9 @@ function showFailure() {
 
 async function renderExample() {
   try {
-    const Viewer = window.ArchimateJS && window.ArchimateJS.default;
-    if (typeof Viewer !== 'function') {
-      throw new Error('Viewer unavailable');
+    const api = window.ArchimateJS;
+    if (!api || typeof api.mountViewer !== 'function') {
+      throw new Error('Viewer API unavailable');
     }
 
     const fixtureUrl = new URL(FIXTURE_PATH, import.meta.url);
@@ -71,12 +71,13 @@ async function renderExample() {
     }
     const xml = new TextDecoder('utf-8', { fatal: true }).decode(fixtureBytes);
 
-    const viewer = new Viewer({
+    await api.mountViewer({
+      xml,
+      viewId: 'view-synthetic-minimal',
       container,
       width: '100%',
       height: '100%'
     });
-    await viewer.importXML(xml);
     status.textContent = 'Loaded the public synthetic example.';
   } catch {
     // Keep parser, network, and model details out of the page and browser console.

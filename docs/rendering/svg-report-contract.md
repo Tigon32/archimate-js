@@ -14,7 +14,7 @@ model XML + view id
 
 ## API contract
 
-The eventual API should expose a headless path with this shape:
+The public API exposes a no-visible-UI browser render path with this shape:
 
 ```js
 const svg = await renderViewToSvg({
@@ -24,6 +24,10 @@ const svg = await renderViewToSvg({
   diagnostics: true
 });
 ```
+
+This helper uses the browser DOM for SVG geometry and is not a Node/server-side
+renderer. Derive Markdown image assets from this canonical SVG. HTML embeds use
+the same renderer through `mountViewer` and `viewer.saveSVG()`.
 
 ## Determinism requirements
 
