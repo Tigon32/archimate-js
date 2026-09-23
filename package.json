@@ -19,7 +19,9 @@
     "all": "run-s test compile",
     "compile": "node test/smoke/compile.mjs",
     "lint": "eslint .",
-    "test": "node test/smoke/package.test.mjs"
+    "test": "run-s test:package test:security",
+    "test:package": "node test/smoke/package.test.mjs",
+    "test:security": "node test/security/logging.test.mjs"
   },
   "repository": {
     "type": "git",
