@@ -63,6 +63,7 @@ jobs:
           export CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
           test -n "$CHROME_BIN"
           npm run test:browser
+          npm run test:cli:browser
 
       - name: Retain synthetic browser diagnostics on failure
         if: failure()

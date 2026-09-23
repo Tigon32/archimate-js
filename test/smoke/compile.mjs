@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { mkdir, copyFile } from 'node:fs/promises';
 import webpack from 'webpack';
 
 const repositoryRoot = path.resolve(
@@ -67,5 +68,11 @@ if (stats.hasWarnings()) {
 }
 
 assert.equal(stats.hasErrors(), false, 'webpack compile must not have errors');
+
+await mkdir(path.join(repositoryRoot, 'dist/browser'), { recursive: true });
+await copyFile(
+  path.join(repositoryRoot, '.ci-build/archimate-js.js'),
+  path.join(repositoryRoot, 'dist/browser/archimate-js.js')
+);
 
 console.log('webpack compile smoke test passed');

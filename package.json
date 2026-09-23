@@ -16,20 +16,25 @@
   "engines": {
     "node": ">=22.12.0"
   },
+  "bin": {
+    "archimate-js": "bin/archimate-js.mjs"
+  },
   "scripts": {
     "all": "run-s test compile",
     "compile": "run-s compile:validator compile:browser",
     "compile:validator": "node test/smoke/compile-validator.mjs",
     "compile:browser": "node test/smoke/compile.mjs",
-    "prepack": "npm run compile:validator",
-    "lint": "eslint --no-eslintrc --config .eslintrc.release.json lib/BaseViewer.js lib/import/Importer.js lib/import/XmlPreflight.js test/release/check.mjs test/security/supply-chain.test.mjs test/smoke/packed-consumer.test.mjs test/unit/import-diagnostics.test.mjs test/unit/svg-export.test.mjs",
-    "test": "run-s test:package test:security test:supply-chain test:fixtures test:typecheck test:validator-build test:packed-consumer test:unit",
+    "prepack": "npm run compile",
+    "lint": "eslint --no-eslintrc --config .eslintrc.release.json bin/archimate-js.mjs bin/cli-io.mjs lib/BaseViewer.js lib/import/Importer.js lib/import/XmlPreflight.js test/cli/cli.test.mjs test/release/check.mjs test/security/supply-chain.test.mjs test/smoke/packed-consumer.test.mjs test/unit/import-diagnostics.test.mjs test/unit/svg-export.test.mjs",
+    "test": "run-s test:package test:security test:supply-chain test:fixtures test:typecheck test:validator-build test:cli test:packed-consumer test:unit",
     "test:package": "node test/smoke/package.test.mjs",
     "test:security": "node test/security/logger.test.mjs",
     "test:fixtures": "node test/security/scan-fixtures.mjs",
     "test:typecheck": "tsc --noEmit",
     "test:validator-build": "node test/smoke/compile-validator.mjs",
     "test:browser": "node test/browser/smoke.mjs",
+    "test:cli": "node test/cli/cli.test.mjs validate",
+    "test:cli:browser": "node test/cli/cli.test.mjs render",
     "test:unit": "vitest run --coverage.enabled --coverage.reporter=text",
     "test:supply-chain": "node test/security/supply-chain.test.mjs",
     "test:packed-consumer": "node test/smoke/packed-consumer.test.mjs",
@@ -40,6 +45,11 @@
     "url": "https://github.com/Tigon32/archimate-js"
   },
   "files": [
+    "archimate-font/package.json",
+    "archimate-font/LICENSE",
+    "archimate-font/lib/css/archimate-font.css",
+    "archimate-font/lib/font",
+    "bin",
     "index.js",
     "THIRD_PARTY_NOTICES.md",
     "assets",
@@ -65,7 +75,6 @@
     "file-loader": "^6.2.0",
     "jsdom": "^30.1.1",
     "npm-run-all": "^4.1.5",
-    "playwright-core": "1.63.0",
     "raw-loader": "^4.0.2",
     "typescript": "^7.0.2",
     "vitest": "5.0.1",
@@ -87,6 +96,7 @@
     "moddle": "^5.0.2",
     "moddle-xml": "^9.0.5",
     "object-refs": "^0.3.0",
+    "playwright-core": "1.63.0",
     "saxes": "^6.0.0",
     "tiny-svg": "^2.2.2"
   }
