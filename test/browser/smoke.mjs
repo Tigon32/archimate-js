@@ -110,6 +110,7 @@ try {
       same: first === second,
       hasTitle: parsed.querySelector('title')?.textContent === 'Synthetic report view',
       hasDescription: parsed.querySelector('desc')?.textContent === 'Synthetic application component and service',
+      liveViewLabel: document.querySelector('#diagram')?.textContent.includes('Component label') === true,
       hasComponentName: parsed.documentElement.textContent.includes('Application Component'),
       hasServiceName: parsed.documentElement.textContent.includes('Application Service'),
       hasViewLabel: parsed.documentElement.textContent.includes('Component label'),
@@ -129,6 +130,8 @@ try {
   stage = 'check accessible SVG metadata';
   assert.equal(result.hasTitle, true);
   assert.equal(result.hasDescription, true);
+  stage = 'check live example label';
+  assert.equal(result.liveViewLabel, true);
   stage = 'check custom view label';
   assert.equal(result.hasViewLabel, true);
   assert.ok(result.textElementCount > 0, 'SVG should render labels as text');
