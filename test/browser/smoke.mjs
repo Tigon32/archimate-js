@@ -136,8 +136,8 @@ try {
     const modelBeforeExport = mounted.getModel();
     const modelSnapshotBeforeExport = JSON.stringify({
       name: modelBeforeExport.name,
-      elementCount: modelBeforeExport.elements.length,
-      relationshipCount: modelBeforeExport.relationships.length,
+      elementCount: modelBeforeExport.elementsNode.baseElements.length,
+      relationshipCount: modelBeforeExport.relationshipsNode.relationships.length,
       viewCount: modelBeforeExport.views.diagrams.viewsList.length,
       viewName: modelBeforeExport.views.diagrams.viewsList[0].name
     });
@@ -152,8 +152,8 @@ try {
     const modelAfterExport = mounted.getModel();
     const modelSnapshotAfterExport = JSON.stringify({
       name: modelAfterExport.name,
-      elementCount: modelAfterExport.elements.length,
-      relationshipCount: modelAfterExport.relationships.length,
+      elementCount: modelAfterExport.elementsNode.baseElements.length,
+      relationshipCount: modelAfterExport.relationshipsNode.relationships.length,
       viewCount: modelAfterExport.views.diagrams.viewsList.length,
       viewName: modelAfterExport.views.diagrams.viewsList[0].name
     });
