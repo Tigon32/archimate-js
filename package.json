@@ -19,9 +19,10 @@
     "all": "run-s test compile",
     "compile": "node test/smoke/compile.mjs",
     "lint": "eslint .",
-    "test": "run-s test:package test:security test:unit",
+    "test": "run-s test:package test:security test:fixtures test:unit",
     "test:package": "node test/smoke/package.test.mjs",
     "test:security": "node test/security/logger.test.mjs",
+    "test:fixtures": "node test/security/scan-fixtures.mjs",
     "test:unit": "vitest run"
   },
   "repository": {
