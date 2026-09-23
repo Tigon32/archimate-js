@@ -189,6 +189,27 @@ describe('safe importer diagnostics', () => {
     expect(JSON.stringify(diagnostics)).not.toMatch(/PrivateCustomerSystem|PrivateSecretType/);
   });
 
+  it('reports unsupported Model Exchange categories in stable, content-free order', async () => {
+    const xml = await readFile(
+      path.join(path.dirname(fileURLToPath(import.meta.url)), '../fixtures/synthetic/meff-unsupported-categories.xml'),
+      'utf8'
+    );
+    const first = preflightImportXml(xml).warnings;
+    const second = preflightImportXml(xml).warnings;
+
+    expect(first).toEqual(second);
+    expect(first.map(({ code }) => code)).toEqual([
+      'MEFF_DIAGRAMS_UNSUPPORTED',
+      'MEFF_ELEMENTS_UNSUPPORTED',
+      'MEFF_EXTENSIONS_UNSUPPORTED',
+      'MEFF_MODEL_METADATA_UNSUPPORTED',
+      'MEFF_RELATIONSHIPS_UNSUPPORTED',
+      'MEFF_VIEWS_UNSUPPORTED'
+    ]);
+    expect(first.every(({ severity, stage }) => severity === 'warning' && stage === 'parse')).toBe(true);
+    expect(JSON.stringify(first)).not.toMatch(/private-|Private|private-value|private-key/);
+  });
+
   it('reports Model Exchange records the current importer does not reconstruct', async () => {
     const xml = await readFile(
       path.join(path.dirname(fileURLToPath(import.meta.url)), '../fixtures/synthetic/meff-core-candidate.xml'),
