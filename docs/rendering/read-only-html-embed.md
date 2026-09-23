@@ -1,7 +1,7 @@
 # Read-only HTML embed example
 
 The repository example renders only the hand-authored, provenance-documented
-synthetic fixture at `test/fixtures/synthetic/minimal-application-view.xml`.
+synthetic fixture at `test/fixtures/synthetic/read-only-showcase.xml`.
 It uses the package's public API from `index.js`, compiled to a local
 UMD bundle by the existing compile smoke script. The demo does not use CDN
 assets, remote services, inline model markup, `eval`, or model-derived HTML.
