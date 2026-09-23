@@ -190,11 +190,11 @@ try {
     const parsed = new DOMParser().parseFromString(svg, 'image/svg+xml');
     const path = parsed.querySelector('.djs-connection .djs-visual path');
     return {
-      markerEnd: path?.getAttribute('marker-end'),
+      markerStyle: path?.getAttribute('style'),
       markerShape: parsed.querySelector('defs marker path')?.getAttribute('d')
     };
   });
-  assert.match(directedAssociation.markerEnd || '', /^url\(#archimate-export-id-\d+\)$/);
+  assert.match(directedAssociation.markerStyle || '', /marker-end:\s*url\(#archimate-export-id-\d+\)/);
   assert.equal(directedAssociation.markerShape, 'M 1 5 L 11 10');
 
   stage = 'assert malformed input returns content-free diagnostic';
