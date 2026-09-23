@@ -1,0 +1,20 @@
+[
+  {
+    "id": "synthetic-minimal-application-view",
+    "path": "test/fixtures/synthetic/minimal-application-view.xml",
+    "classification": "SYNTHETIC",
+    "purpose": "Minimal import/render fixture for one application component view and one serving relationship.",
+    "provenance": "Hand-authored for this public repository using generic ArchiMate terms and non-domain-specific names.",
+    "contains_private_data": false,
+    "expected_coverage": [
+      "model metadata",
+      "application component",
+      "application service",
+      "serving relationship",
+      "single diagram view",
+      "node bounds",
+      "connection waypoints"
+    ],
+    "review_after": "2026-12-23"
+  }
+]
