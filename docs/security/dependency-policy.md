@@ -13,7 +13,7 @@ For dependency changes:
 
 ## Workflow boundary
 
-CI uses workflow-level `contents: read` permissions. Pull-request workflows do not access repository secrets, write repository contents, publish packages, or run on `pull_request_target`. Workflow actions are pinned to reviewed commit SHAs. Changes to permissions, action pins, triggers, or secret access require explicit review.
+CI uses workflow-level `contents: read` permissions. Pull-request workflows do not access repository secrets, write repository contents, publish packages, or run on `pull_request_target`. Workflow actions are pinned to reviewed commit SHAs, and jobs use an explicit GitHub-hosted runner image version. Changes to permissions, action pins, runner images, triggers, or secret access require explicit review.
 
 Do not add a privileged workflow that checks out or executes code from an untrusted pull request. Keep release credentials out of public pull-request jobs; any future release job must use a separate protected trigger and narrowly scoped environment credentials.
 

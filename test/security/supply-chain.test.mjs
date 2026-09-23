@@ -17,13 +17,30 @@ assert.match(dependabot, /package-ecosystem: npm/);
 assert.match(dependabot, /package-ecosystem: github-actions/);
 assert.equal((dependabot.match(/directory: \/archimate-font/g) || []).length, 1);
 assert.match(dependabot, /update-types:[\s\S]*- minor[\s\S]*- patch/);
+
+for (const contents of [ workflow, releaseWorkflow ]) {
+  const actionReferences = [ ...contents.matchAll(/^\s*uses:\s*(\S+)/gm) ].map((match) => match[1]);
+
+  assert.ok(actionReferences.length > 0);
+
+  for (const reference of actionReferences) {
+    assert.match(reference, /^[^@\s]+@[0-9a-f]{40}$/);
+  }
+}
+
 assert.match(workflow, /^permissions:\n[ ]{2}contents: read$/m);
-assert.match(workflow, /actions\/checkout@[0-9a-f]{40}/);
-assert.match(workflow, /actions\/setup-node@[0-9a-f]{40}/);
+assert.match(workflow, /runs-on: ubuntu-24\.04/);
+assert.doesNotMatch(workflow, /runs-on: ubuntu-latest/);
+for (const action of [ 'checkout', 'setup-node', 'upload-artifact' ]) {
+  assert.match(workflow, new RegExp(`actions/${action}@[0-9a-f]{40}`));
+}
 assert.doesNotMatch(workflow, /pull_request_target|secrets\./i);
 assert.match(releaseWorkflow, /^permissions:\n[ ]{2}contents: read$/m);
-assert.match(releaseWorkflow, /actions\/checkout@[0-9a-f]{40}/);
-assert.match(releaseWorkflow, /actions\/setup-node@[0-9a-f]{40}/);
+assert.match(releaseWorkflow, /runs-on: ubuntu-24\.04/);
+assert.doesNotMatch(releaseWorkflow, /runs-on: ubuntu-latest/);
+for (const action of [ 'checkout', 'setup-node' ]) {
+  assert.match(releaseWorkflow, new RegExp(`actions/${action}@[0-9a-f]{40}`));
+}
 assert.match(releaseWorkflow, /npm run release:check/);
 assert.doesNotMatch(releaseWorkflow, /secrets\.|npm publish|id-token:\s*write/i);
 assert.match(policy, /npm audit/);
