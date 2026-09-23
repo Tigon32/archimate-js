@@ -28,6 +28,7 @@ const server = createServer((request, response) => {
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 
 let browser;
+let stage = 'launch browser';
 try {
   browser = await puppeteer.launch({
     executablePath: process.env.CHROME_BIN || puppeteer.executablePath(),
@@ -45,10 +46,16 @@ try {
     }
   });
 
+  stage = 'load read-only example';
   await page.goto(origin + '/examples/read-only/', { waitUntil: 'networkidle0' });
-  await page.waitForFunction(() => document.querySelector('#status')?.textContent ===
-    'Loaded the public synthetic example.');
+  await page.waitForFunction(() => {
+    const status = document.querySelector('#status')?.textContent;
+    return status && !status.startsWith('Loading');
+  }, { timeout: 10000 });
+  const status = await page.$eval('#status', (element) => element.textContent);
+  assert.equal(status, 'Loaded the public synthetic example.');
 
+  stage = 'render selected view to SVG';
   const result = await page.evaluate(async () => {
     const api = window.ArchimateJS;
     const host = document.createElement('div');
@@ -96,6 +103,7 @@ try {
     };
   });
 
+  stage = 'check stable SVG and structure';
   assert.equal(result.same, true);
   assert.equal(result.hasTitle, true);
   assert.equal(result.hasDescription, true);
@@ -111,7 +119,7 @@ try {
   assert.equal(result.modelUnchanged, true);
   console.log('browser render smoke test passed');
 } catch {
-  throw new Error('Browser render smoke test failed.');
+  throw new Error(`Browser render smoke test failed during: ${stage}.`);
 } finally {
   if (browser) {
     await browser.close();
