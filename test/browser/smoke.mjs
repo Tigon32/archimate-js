@@ -194,7 +194,7 @@ try {
       markerShape: parsed.querySelector('defs marker path')?.getAttribute('d')
     };
   });
-  assert.match(directedAssociation.markerStyle || '', /marker-end:\s*url\(#archimate-export-id-\d+\)/);
+  assert.match(directedAssociation.markerStyle || '', /marker-end:\s*url\(['"]?#archimate-export-id-\d+/);
   assert.equal(directedAssociation.markerShape, 'M 1 5 L 11 10');
 
   stage = 'assert malformed input returns content-free diagnostic';
