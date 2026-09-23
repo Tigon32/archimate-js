@@ -22,7 +22,7 @@
     <archimate:Diagrams>
       <archimate:View id="view-synthetic-minimal" name="Synthetic Minimal View">
         <archimate:Node id="node-application-component-1" elementRef="application-component-1" x="100" y="100" w="160" h="80">
-          <archimate:label>Component label</archimate:label>
+          <archimate:label>Component label &lt;script&gt;window.__syntheticModelCodeRan = true&lt;/script&gt;</archimate:label>
           <archimate:Node id="node-application-service-nested" elementRef="application-service-1" x="20" y="20" w="120" h="60" />
         </archimate:Node>
         <archimate:Node id="node-application-service-1" elementRef="application-service-1" x="360" y="100" w="160" h="80" />

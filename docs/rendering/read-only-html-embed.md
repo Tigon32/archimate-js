@@ -2,7 +2,7 @@
 
 The repository example renders only the hand-authored, provenance-documented
 synthetic fixture at `test/fixtures/synthetic/minimal-application-view.xml`.
-It uses the package's public default export from `index.js`, compiled to a local
+It uses the package's public API from `index.js`, compiled to a local
 UMD bundle by the existing compile smoke script. The demo does not use CDN
 assets, remote services, inline model markup, `eval`, or model-derived HTML.
 
@@ -33,16 +33,38 @@ authorization or content security policy.
 ## Use from a consuming application
 
 Import the public package entrypoint in the consumer's normal bundler and mount
-the default `Viewer` export into an application-owned container:
+the read-only `Viewer` through `mountViewer`. Select a view by ID or unique name:
 
 ```js
-import Viewer from 'archimate-js';
+import { mountViewer } from 'archimate-js';
 
-const viewer = new Viewer({ container, width: '100%', height: 520 });
-await viewer.importXML(xml);
+const viewer = await mountViewer({
+  xml,
+  viewId: 'view-id-from-model', // or viewName: 'Unique view name'
+  container,
+  width: '100%',
+  height: 520
+});
+// Keep the instance for the component lifetime, then call viewer.destroy().
 ```
 
 Fetch and validate model input according to the consuming application's trust
 boundary. Do not interpolate model fields into HTML. Treat import failures as
 generic user-facing errors and keep XML, model objects, and parser diagnostics
 out of logs unless a separately reviewed redaction policy permits them.
+
+`mountViewer` exposes a non-editing report viewer with a narrow sizing API. It
+does not expose the modeler's editing tools; applications that need editing
+must use a separately reviewed modeler integration. The demo's CSS setting
+disables pointer input for presentation only and is not access control.
+The helper rejects XML strings longer than 5 Mi UTF-16 code units before it
+creates a viewer; applications handling untrusted input should apply their own
+transport byte limits before decoding the model.
+
+For static report images, `renderViewToSvg({ xml, viewId, title, description })`
+returns the canonical accessible SVG string without mounting a visible UI. It
+uses browser SVG geometry, so it requires a browser DOM and is not a Node/server
+renderer. Derive Markdown image assets from this returned SVG; do not render a
+separate diagram for Markdown and HTML. Repeated renders of the same synthetic
+input in the same browser environment are checked for byte stability. Font
+availability can still affect browser layout across different environments.

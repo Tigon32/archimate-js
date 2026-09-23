@@ -28,6 +28,7 @@
     "test:fixtures": "node test/security/scan-fixtures.mjs",
     "test:typecheck": "tsc --noEmit",
     "test:validator-build": "node test/smoke/compile-validator.mjs",
+    "test:browser": "node test/browser/smoke.mjs",
     "test:unit": "vitest run --coverage.enabled --coverage.reporter=text"
   },
   "repository": {
