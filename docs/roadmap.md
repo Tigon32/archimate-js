@@ -33,7 +33,7 @@ Exit criteria:
 
 - Remove full XML/model diagnostic logging.
 - Replace missing `test` script with a real minimal test suite.
-- Re-enable reproducible installs with a committed lockfile.
+- [x] Re-enable reproducible installs with a committed lockfile; `npm ci --ignore-scripts` passes.
 - Add CI with least-privilege permissions.
 - Add package smoke test and synthetic fixture.
 
@@ -92,6 +92,5 @@ Exit criteria:
 
 ## Current known gaps
 
-- No committed npm lockfile; installs are not yet suitable for `npm ci` reproducibility.
 - Import/export can still be partial, and cross-tool exchange/render interoperability evidence is not established; stable operational releases remain blocked.
 - The validator implements a conservative subset, not full XSD or ArchiMate conformance; see the standards profiles.

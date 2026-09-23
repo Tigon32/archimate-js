@@ -1,29 +1,40 @@
-# BDD and browser harness recommendation
+# BDD and browser harness
 
-## Recommendation
+The browser smoke journeys use Playwright Core with the repository's documented
+synthetic model only. The job launches the Chrome/Chromium executable supplied
+by the runner, so it does not download a browser during dependency installation.
+The browser job runs separately from the Node test matrix because launching a
+real browser adds runtime and runner requirements.
 
-Use Playwright for browser/component journeys once deterministic public fixtures and SVG output exist.
+## Run locally
 
-## Why Playwright
+Install dependencies, build the public browser entry point, then set
+`CHROME_BIN` to an installed Chrome or Chromium executable:
 
-| Criterion | Playwright fit |
-|---|---|
-| Node.js 24/22 support | Maintained and compatible with current Node lines |
-| Browser coverage | Chromium-first now; Firefox/WebKit later if needed |
-| Report journeys | Strong page, locator, and screenshot tooling |
-| CI cost | Can start headless and run only on synthetic fixtures |
-| BDD integration | Can execute steps behind Gherkin feature files without coupling scenarios to implementation details |
+```sh
+npm install --ignore-scripts
+npm run compile
+CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" npm run test:browser
+```
 
-## Frugal sequencing
+The test serves only an explicit set of local repository routes and aborts
+off-origin requests. It checks the read-only HTML embed, deterministic SVG
+rendering for the same synthetic view ID, that a Markdown image path refers to
+the exact SVG artifact, and that malformed XML returns a static diagnostic
+without echoing a synthetic marker to diagnostics or the browser console.
 
-1. Keep current smoke tests as the fast gate.
-2. Add Vitest for pure import/validation/render seams.
-3. Add Playwright only when one deterministic synthetic fixture and SVG export seam exist.
-4. Add screenshot/image-diff checks after fonts and SVG serialization are stable.
+Playwright trace and screenshot files are created only when the smoke test
+fails. CI uploads those synthetic-only failure artifacts for seven days; a
+successful run leaves no browser artifacts behind. The synthetic fixture and
+failure page must never contain private models or architecture details.
 
-## First browser scenario
+## Scope
 
-Load a minimal HTML harness that imports the library, renders the synthetic fixture's selected view, exports SVG, and asserts that HTML and Markdown-image paths reference the same SVG artifact identity.
+The journey setup is BDD-shaped but does not add Cucumber: the assertions use
+scenario names and externally visible behavior, while Cucumber would add
+another runner without improving the current small suite. Cross-browser and
+pixel-diff checks remain deferred until they add useful coverage beyond stable
+SVG structure and labels.
 
 ## Related issues
 
