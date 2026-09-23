@@ -1,5 +1,15 @@
 [
   {
+    "id": "synthetic-directed-association",
+    "path": "test/fixtures/synthetic/directed-association.xml",
+    "classification": "SYNTHETIC",
+    "purpose": "Reproduce imported directed Association rendering and SVG export behavior.",
+    "provenance": "Hand-authored from the public #51 issue reproduction; contains generic names and no real architecture data.",
+    "contains_private_data": false,
+    "expected_coverage": ["isDirected true import", "target half-arrowhead", "browser SVG export"],
+    "review_after": "2026-12-23"
+  },
+  {
     "id": "synthetic-read-only-showcase",
     "path": "test/fixtures/synthetic/read-only-showcase.xml",
     "classification": "SYNTHETIC",

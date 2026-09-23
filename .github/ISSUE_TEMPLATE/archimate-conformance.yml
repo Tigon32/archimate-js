@@ -1,0 +1,67 @@
+name: ArchiMate conformance or exchange-format report
+description: Report a suspected standards behavior or Model Exchange interoperability gap with a public reproduction.
+title: "Conformance: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search [existing issues](https://github.com/Tigon32/archimate-js/issues) first. Use only `PUBLIC` or `SYNTHETIC` reproductions. **Do not include private models, customer data, screenshots, names, hosts, credentials, or confidential architecture details.**
+  - type: dropdown
+    id: category
+    attributes:
+      label: Report category
+      options:
+        - Suspected ArchiMate language or notation defect
+        - Model Exchange File Format import, export, or serialization gap
+        - Documented unsupported behavior / implementation boundary
+        - Consumer-specific modeling or presentation preference
+    validations:
+      required: true
+  - type: input
+    id: normative_reference
+    attributes:
+      label: Authoritative reference
+      description: Link the relevant Open Group specification, exchange schema, or conformance artifact. Other products are interoperability references only.
+      placeholder: https://...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: State what the cited standard or artifact requires.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Describe what archimate-js did, including whether the behavior is already documented as unsupported.
+    validations:
+      required: true
+  - type: input
+    id: version_runtime
+    attributes:
+      label: Package version and runtime
+      description: Include archimate-js version and relevant runtime/browser/OS versions.
+      placeholder: archimate-js 0.0.4; Node.js 24; Chromium ...
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal PUBLIC or SYNTHETIC reproduction
+      description: Include the smallest XML snippet or steps needed to reproduce. Confirm it contains no private or customer data.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Data and scope checks
+      options:
+        - label: This report contains only public or synthetic data; it contains no private architecture material.
+          required: true
+        - label: I searched existing issues for duplicates.
+          required: true
+        - label: I am reporting a standards/interoperability behavior rather than only a consumer-specific preference.
+          required: true

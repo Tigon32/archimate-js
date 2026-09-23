@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Classification: SYNTHETIC; contains no real architecture data. -->
+<archimate:Model xmlns:archimate="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  id="model-synthetic-directed-association" name="Directed Association Reproduction">
+  <archimate:Elements>
+    <archimate:BaseElement id="component-a" xsi:type="archimate:ApplicationComponent" name="Component A" />
+    <archimate:BaseElement id="component-b" xsi:type="archimate:ApplicationComponent" name="Component B" />
+  </archimate:Elements>
+  <archimate:Relationships>
+    <archimate:Relationship id="association-a-b" xsi:type="archimate:AssociationRelationship"
+      source="component-a" target="component-b" name="Directed Association" isDirected="true" />
+  </archimate:Relationships>
+  <archimate:Views>
+    <archimate:Diagrams>
+      <archimate:View id="view-directed-association" name="Directed Association">
+        <archimate:Node id="node-a" elementRef="component-a" x="40" y="80" w="180" h="80" />
+        <archimate:Node id="node-b" elementRef="component-b" x="360" y="80" w="180" h="80" />
+        <archimate:Connection id="connection-a-b" relationshipRef="association-a-b" source="node-a" target="node-b">
+          <archimate:Waypoints>
+            <archimate:Waypoint x="220" y="120" />
+            <archimate:Waypoint x="360" y="120" />
+          </archimate:Waypoints>
+        </archimate:Connection>
+      </archimate:View>
+    </archimate:Diagrams>
+  </archimate:Views>
+</archimate:Model>

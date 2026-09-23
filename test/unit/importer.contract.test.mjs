@@ -75,6 +75,34 @@ describe('synthetic ArchiMate XML import contract', () => {
       .toContain('Component label');
   });
 
+  it('preserves the directed Association reference when creating an imported diagram connection', async () => {
+    const xml = await readFile(
+      new URL('../fixtures/synthetic/directed-association.xml', import.meta.url),
+      'utf8'
+    );
+    const moddle = new ArchimateModdle({ archimate: ArchimateDescriptors });
+    const { rootElement: model } = await moddle.fromXML(xml);
+    const view = model.views.diagrams.viewsList[0];
+    const semanticConnection = view.viewElements.find((element) => element.$type === 'archimate:Connection');
+    const factory = new ElementFactory({ create: () => ({}) }, moddle, (message) => message);
+    factory.baseCreate = (type, attrs) => ({ factoryType: type, ...attrs });
+
+    const connection = factory.createConnection({
+      type: semanticConnection.relationshipRef.type,
+      businessObject: semanticConnection,
+      source: {},
+      target: {},
+      waypoints: []
+    });
+
+    expect(semanticConnection.relationshipRef.isDirected).toBe(true);
+    expect(connection).toMatchObject({
+      type: 'Association',
+      typeOption: true,
+      businessObject: { relationshipRef: { isDirected: true } }
+    });
+  });
+
   it('round-trips supported model identity and name while exposing current content loss', async () => {
     const xml = await readFile(
       new URL('../fixtures/synthetic/meff-core-candidate.xml', import.meta.url),

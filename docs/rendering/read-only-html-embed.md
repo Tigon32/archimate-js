@@ -68,3 +68,16 @@ renderer. Derive Markdown image assets from this returned SVG; do not render a
 separate diagram for Markdown and HTML. Repeated renders of the same synthetic
 input in the same browser environment are checked for byte stability. Font
 availability can still affect browser layout across different environments.
+
+## Reporting suspected standards gaps
+
+When imported content appears to violate ArchiMate notation or exchange behavior,
+search the [existing project issues](https://github.com/Tigon32/archimate-js/issues)
+and report a minimal `PUBLIC` or `SYNTHETIC` reproduction using the
+[conformance issue template](../../.github/ISSUE_TEMPLATE/archimate-conformance.yml).
+Include the authoritative Open Group reference, expected and actual behavior,
+package version, and runtime. Never upload private models, customer data,
+screenshots, names, hosts, or credentials. Documented unsupported behavior is a
+known limitation unless new evidence changes the boundary; presentation
+preferences belong in feature requests. The Open Group is normative, while
+other tools can provide interoperability comparisons.

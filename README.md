@@ -74,6 +74,12 @@ The repository is testing its XML handling against synthetic inputs, but it does
 
 Until those gaps are closed and tested with schema-valid, safe fixtures, treat import/export as incomplete for interchange workflows. See [the exchange-format alignment notes](docs/standards/model-exchange-alignment.md) and [fixture provenance rules](test/fixtures/README.md).
 
+### Report a suspected conformance or exchange-format gap
+
+If a behavior appears inconsistent with The Open Group ArchiMate specification or its published exchange/conformance artifacts, [search existing issues](https://github.com/Tigon32/archimate-js/issues) and report a reproducible case with the [ArchiMate conformance issue template](.github/ISSUE_TEMPLATE/archimate-conformance.yml). Cite the authoritative source and include expected versus actual behavior, the package version and runtime, and a minimal `PUBLIC` or `SYNTHETIC` example. Do not attach private models, screenshots, customer data, names, hosts, or credentials.
+
+Use this route for suspected language/notation defects and MEFF import/export or serialization gaps. An already documented unsupported feature is a limitation report unless new evidence shows behavior beyond that boundary. Consumer-specific modeling or presentation preferences are feature requests, not standards defects. The Open Group materials are normative; other tools are interoperability references only. See the [consumer reporting guidance](docs/rendering/read-only-html-embed.md#reporting-suspected-standards-gaps).
+
 ## Model quality tools
 
 The package exposes a TypeScript validator at `archimate-js/validator`. It checks bounded XML input, a conservative model structure subset, references, and relationship vocabulary, then optionally runs caller-supplied organization quality rules. Its ArchiMate 3.2 relationship service returns `allowed`, `disallowed`, or `unsupported`; only explicitly reviewed rows are decided. It reports deterministic review suggestions and does not mutate the source. This is not XSD validation, a complete ArchiMate semantic matrix, a conformance claim, or an automatic repair workflow. See [the validator profile](docs/standards/validator-profile.md) and [relationship matrix](docs/standards/relationship-validation-matrix.md).
@@ -130,4 +136,3 @@ The browser smoke test starts its own loopback server and checks the synthetic e
 ## Development checks
 
 Pull requests and pushes to `main` run CI on Node.js 22 and 24, plus a hosted Chrome browser smoke test. The checks cover package entry loading, security/logging guards, fixture safety and provenance, unit contracts, and compilation of the public entry point.
-

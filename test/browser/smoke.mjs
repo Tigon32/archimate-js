@@ -17,6 +17,9 @@ const routes = new Map([
   ['/.ci-build/archimate-js.js', [ '.ci-build/archimate-js.js', 'text/javascript; charset=utf-8' ]],
   ['/test/fixtures/synthetic/read-only-showcase.xml', [
     'test/fixtures/synthetic/read-only-showcase.xml', 'application/xml; charset=utf-8'
+  ]],
+  ['/test/fixtures/synthetic/directed-association.xml', [
+    'test/fixtures/synthetic/directed-association.xml', 'application/xml; charset=utf-8'
   ]]
 ]);
 
@@ -175,6 +178,25 @@ try {
   }
   assert.equal(report.missingViewDiagnostic?.code, 'VIEW_NOT_FOUND');
   assert.equal(report.missingViewDiagnostic?.message, 'The requested ArchiMate view was not found.');
+
+  stage = 'import and export a directed Association';
+  const directedAssociation = await page.evaluate(async () => {
+    const xml = await (await fetch('/test/fixtures/synthetic/directed-association.xml')).text();
+    const svg = await window.ArchimateJS.renderViewToSvg({
+      xml,
+      viewId: 'view-directed-association',
+      title: 'Synthetic directed Association'
+    });
+    const parsed = new DOMParser().parseFromString(svg, 'image/svg+xml');
+    const path = parsed.querySelector('.djs-connection .djs-visual path');
+    return {
+      markerStyle: path?.getAttribute('style'),
+      markerShape: parsed.querySelector('defs marker path')?.getAttribute('d')
+    };
+  });
+  assert.match(directedAssociation.markerStyle || '', /marker-end:\s*url\(/);
+  assert.match(directedAssociation.markerStyle || '', /archimate-export-id-\d+/);
+  assert.equal(directedAssociation.markerShape, 'M 1 5 L 11 10');
 
   stage = 'assert malformed input returns content-free diagnostic';
   assert.equal(report.malformedDiagnostic?.code, 'MODEL_IMPORT_FAILED');
