@@ -49,7 +49,7 @@ the rendering path and visible business, application, and technology elements;
 it is not a screenshot of a customer model or evidence of full MEFF
 interoperability.
 
-The [CI runs for this branch](https://github.com/Tigon32/archimate-js/actions/workflows/ci.yml?query=branch%3Acodex%2Freadme-visual-overview)
+The [CI runs on `main`](https://github.com/Tigon32/archimate-js/actions/workflows/ci.yml?query=branch%3Amain)
 generate and validate the screenshot. Open the latest successful run and download
 `read-only-showcase-screenshot` from its **Artifacts** section to inspect the PNG.
 
@@ -130,3 +130,4 @@ The browser smoke test starts its own loopback server and checks the synthetic e
 ## Development checks
 
 Pull requests and pushes to `main` run CI on Node.js 22 and 24, plus a hosted Chrome browser smoke test. The checks cover package entry loading, security/logging guards, fixture safety and provenance, unit contracts, and compilation of the public entry point.
+
