@@ -93,3 +93,21 @@ describe('MEFF View and Diagram import', () => {
     expect(JSON.stringify(parsed.diagnostics)).not.toContain('missing-component');
   });
 });
+
+  it('emits stable diagnostics for unsupported diagram node types', async () => {
+    const xml = await readFile(fixturePath, 'utf8');
+    const changed = xml.replace('xsi:type="archimate:Element"', 'xsi:type="archimate:Container"');
+    const parsed = parseMeffViews(changed, {
+      elementsById: new Map([
+        ['component-one', { id: 'component-one', type: 'archimate:ApplicationComponent' }],
+        ['service-two', { id: 'service-two', type: 'archimate:ApplicationService' }]
+      ]),
+      relationshipsById: new Map([['serving-one-two', { id: 'serving-one-two', type: 'archimate:Serving' }]])
+    });
+
+    expect(parsed.diagnostics.map((diagnostic) => diagnostic.code)).toEqual([
+      'IMPORT_REFERENCE_UNRESOLVED',
+      'MEFF_DIAGRAMS_UNSUPPORTED'
+    ]);
+    expect(JSON.stringify(parsed.diagnostics)).not.toContain('node-component-one');
+  });
