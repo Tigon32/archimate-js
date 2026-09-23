@@ -77,6 +77,35 @@ describe('safe importer diagnostics', () => {
     loggerWarnSpy.mockRestore();
   });
 
+  it('passes each nested view node to its actual parent shape', async () => {
+    const root = {};
+    const parentShape = { id: 'parent-shape' };
+    const importer = {
+      addRoot: vi.fn(() => root),
+      addElement: vi.fn((node) => node.id === 'parent' ? parentShape : { id: 'child-shape' }),
+      addConnection: vi.fn()
+    };
+    const viewer = {
+      get(name) {
+        if (name === 'ArchimateImporter') return importer;
+        if (name === 'eventBus') return { fire: vi.fn() };
+        if (name === 'translate') return (message) => message;
+        throw new Error('unexpected service');
+      }
+    };
+    const parent = { $type: 'archimate:DiagramObject', id: 'parent', nodes: [] };
+    parent.nodes.push({ $type: 'archimate:DiagramObject', id: 'child', nodes: [] });
+
+    const model = modelFor([]);
+    const view = model.views.diagrams.viewsList[0] = { id: 'secret-view', viewElements: [parent] };
+
+    await displayGraphicalView(viewer, model, view);
+
+    expect(importer.addElement.mock.calls.map(([node, shape]) => [node.id, shape])).toEqual([
+      ['parent', root], ['child', parentShape]
+    ]);
+  });
+
   it('records view depth and cycle limits without including identifiers', async () => {
     const deepRoot = { $type: 'archimate:DiagramObject', id: 'private-id', nodes: [] };
     let cursor = deepRoot;
