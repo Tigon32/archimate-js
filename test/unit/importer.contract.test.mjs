@@ -196,5 +196,26 @@ describe('synthetic ArchiMate XML import contract', () => {
       diagnostics
     });
     expect(project(first)).toEqual(project(second));
-  });
+
+    const unsupportedXml = xml.replace(
+      '<name xml:lang="en">Source component</name>',
+      '<privateField>private-value</privateField><name xml:lang="en">Source component</name>'
+    );
+    const unsupportedFirst = await moddle.fromXML(unsupportedXml);
+    const unsupportedSecond = await moddle.fromXML(unsupportedXml);
+    expect(unsupportedFirst.diagnostics).toEqual(unsupportedSecond.diagnostics);
+    expect(unsupportedFirst.diagnostics.map(({ code }) => code)).toEqual([
+      'MEFF_MODEL_FIELDS_UNSUPPORTED'
+    ]);
+    expect(JSON.stringify(unsupportedFirst.diagnostics)).not.toContain('private-value');
+
+    const unresolvedXml = xml.replace('source="component-source"', 'source="missing-reference"');
+    const unresolved = await moddle.fromXML(unresolvedXml);
+    expect(unresolved.diagnostics).toEqual([{
+      code: 'IMPORT_REFERENCE_UNRESOLVED',
+      severity: 'warning',
+      stage: 'parse',
+      message: 'One or more model references could not be resolved.'
+    }]);
+
 });
