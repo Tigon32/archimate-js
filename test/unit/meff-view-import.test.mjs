@@ -92,7 +92,6 @@ describe('MEFF View and Diagram import', () => {
     ]);
     expect(JSON.stringify(parsed.diagnostics)).not.toContain('missing-component');
   });
-});
 
   it('emits stable diagnostics for unsupported diagram node types', async () => {
     const xml = await readFile(fixturePath, 'utf8');
@@ -111,3 +110,5 @@ describe('MEFF View and Diagram import', () => {
     ]);
     expect(JSON.stringify(parsed.diagnostics)).not.toContain('node-component-one');
   });
+
+});
