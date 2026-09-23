@@ -131,8 +131,9 @@ try {
   stage = 'check accessible SVG metadata';
   assert.equal(result.hasTitle, true);
   assert.equal(result.hasDescription, true);
-  stage = 'check live example label';
+  stage = 'check live SVG text nodes';
   assert.ok(result.liveTextElementCount > 0, 'example should render SVG text nodes');
+  stage = 'check live example label';
   assert.equal(result.liveViewLabel, true);
   stage = 'check custom view label';
   assert.equal(result.hasViewLabel, true);
