@@ -6,6 +6,7 @@
     "name": "Vincent Boulet"
   },
   "license": "MIT",
+  "archimateLanguageVersion": "3.2",
   "keywords": [
     "archimate",
     "architecture",

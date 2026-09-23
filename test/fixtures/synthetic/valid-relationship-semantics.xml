@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model identifier="synthetic-valid-semantics" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <name>Synthetic Valid Relationship Semantics</name>
+  <elements>
+    <element identifier="synthetic-function" xsi:type="archimate:ApplicationFunction" />
+    <element identifier="synthetic-data" xsi:type="archimate:DataObject" />
+  </elements>
+  <relationships>
+    <relationship identifier="synthetic-access" source="synthetic-function" target="synthetic-data" xsi:type="archimate:AccessRelationship" />
+  </relationships>
+</model>

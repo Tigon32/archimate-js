@@ -105,3 +105,21 @@ sources:
     constraints:
       - Must verify semantic fidelity and exchange-format support before relying on behavior.
     review_after: 2026-12-23
+
+  - id: opengroup-archimate-3.2-reference-cards
+    title: ArchiMate 3.2 Specification Reference Cards
+    publisher: The Open Group
+    url: https://www.opengroup.org/sites/default/files/docs/downloads/n221p.pdf
+    version: N221, ArchiMate 3.2
+    retrieved_at: 2026-09-23
+    license_or_terms: Copyright The Open Group; public download, redistribution not assumed
+    redistribution: Link and summarize only; do not bundle or reproduce the cards or specification tables.
+    source_revision: N221
+    confidence: high
+    claims:
+      - Public orientation source for ArchiMate 3.2 relationship and application-layer definitions.
+      - Supports independently authored, narrow relationship interpretations when used with explicit scope limits.
+    constraints:
+      - Does not establish that this repository implements the complete relationship matrix.
+      - Implementations must not reproduce protected tables or claim conformance from this source alone.
+    review_after: 2026-12-23
