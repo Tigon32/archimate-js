@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Classification: SYNTHETIC
+  Provenance: Negative counterpart to valid-model.xml; the model identifier is
+  deliberately omitted to exercise the Model XSD required-attribute check.
+-->
+<model
+  xmlns="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:archimate="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <name xml:lang="en">Invalid synthetic MEFF model</name>
+</model>
