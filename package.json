@@ -12,13 +12,18 @@
     "modeler",
     "modeling"
   ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "all": "run-s lint test",
-    "lint": "eslint ."
+    "all": "run-s test compile",
+    "compile": "node test/smoke/compile.mjs",
+    "lint": "eslint .",
+    "test": "node test/smoke/package.test.mjs"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/archimodel/archimate-js"
+    "url": "https://github.com/Tigon32/archimate-js"
   },
   "files": [
     "index.js",
