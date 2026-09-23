@@ -1,0 +1,23 @@
+{
+  "extends": "plugin:bpmn-io/es6",
+  "env": {
+    "browser": true,
+    "node": true,
+    "es6": true
+  },
+  "rules": {
+    "indent": "off",
+    "no-trailing-spaces": "off",
+    "object-curly-spacing": "off",
+    "spaced-comment": "off",
+    "lines-around-comment": "off",
+    "semi": "off",
+    "quotes": "off",
+    "space-in-parens": "off",
+    "no-multi-spaces": "off",
+    "space-before-function-paren": "off",
+    "keyword-spacing": "off",
+    "space-before-blocks": "off",
+    "no-irregular-whitespace": "off"
+  }
+}
