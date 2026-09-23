@@ -50,10 +50,14 @@ for compatible additions, and major for incompatible changes once stable.
 The read-only GitHub Actions workflow `Release gate` runs on a manual dispatch
 or a `v*` tag. It does not publish packages, request credentials, or use
 repository secrets. A tag must match `package.json` exactly (`v` plus the
-package version); a mismatch fails the gate. It runs lint, the full test suite,
+package version); a mismatch fails the gate. It runs the maintained lint profile
+for the importer, release scripts, and related tests, the full test suite,
 compile checks, the browser render smoke test, and the packed-package consumer
-test. The suite includes SVG stability/render assertions, third-party notice
-and package-content checks, synthetic-fixture scans, and safe logger tests.
+test. The lint profile uses the repository's correctness rules while leaving
+legacy formatting untouched; repository-wide formatting cleanup remains
+separate. The suite includes SVG stability/render assertions, third-party
+notice and package-content checks, synthetic-fixture scans, and safe logger
+tests.
 
 The gate is release evidence, not a release declaration. Do not label a version
 an operational release until the workflow passes for its tag and the release
