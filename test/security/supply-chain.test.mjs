@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const [dependabot, workflow, policy, notices, readme, packageJson, archimateFontLicense, fontAwesomeLicense] = await Promise.all([
+const [dependabot, workflow, releaseWorkflow, policy, notices, readme, packageJson, archimateFontLicense, fontAwesomeLicense] = await Promise.all([
   readFile(new URL('../../.github/dependabot.yml', import.meta.url), 'utf8'),
   readFile(new URL('../../.github/workflows/ci.yml', import.meta.url), 'utf8'),
+  readFile(new URL('../../.github/workflows/release-gate.yml', import.meta.url), 'utf8'),
   readFile(new URL('../../docs/security/dependency-policy.md', import.meta.url), 'utf8'),
   readFile(new URL('../../THIRD_PARTY_NOTICES.md', import.meta.url), 'utf8'),
   readFile(new URL('../../README.md', import.meta.url), 'utf8'),
@@ -20,6 +21,11 @@ assert.match(workflow, /^permissions:\n  contents: read$/m);
 assert.match(workflow, /actions\/checkout@[0-9a-f]{40}/);
 assert.match(workflow, /actions\/setup-node@[0-9a-f]{40}/);
 assert.doesNotMatch(workflow, /pull_request_target|secrets\./i);
+assert.match(releaseWorkflow, /^permissions:\n  contents: read$/m);
+assert.match(releaseWorkflow, /actions\/checkout@[0-9a-f]{40}/);
+assert.match(releaseWorkflow, /actions\/setup-node@[0-9a-f]{40}/);
+assert.match(releaseWorkflow, /npm run release:check/);
+assert.doesNotMatch(releaseWorkflow, /secrets\.|npm publish|id-token:\s*write/i);
 assert.match(policy, /npm audit/);
 assert.match(policy, /No dependency update is auto-merged/);
 assert.match(policy, /SPDX SBOM/);

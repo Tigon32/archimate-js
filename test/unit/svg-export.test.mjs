@@ -14,6 +14,16 @@ describe('SVG export serialization', () => {
       description: 'Synthetic architecture view'
     };
 
+    const snapshot = [
+      '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ',
+      'role="img" aria-labelledby="archimate-svg-title archimate-svg-description" ',
+      'width="640" height="480" viewBox="0 2 640 480">',
+      '<title id="archimate-svg-title">Sample view</title>',
+      '<desc id="archimate-svg-description">Synthetic architecture view</desc>',
+      '<defs><marker id="arrow"/></defs><g id="view"><rect width="10" height="10"/></g></svg>'
+    ].join('');
+
+    expect(createSvg(input)).toBe(snapshot);
     expect(createSvg(input)).toBe(createSvg(input));
     expect(createSvg(input)).toContain('viewBox="0 2 640 480"');
     expect(createSvg(input)).toContain('aria-labelledby="archimate-svg-title archimate-svg-description"');
