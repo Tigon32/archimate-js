@@ -41,13 +41,12 @@ Model Exchange File Format (MEFF) 3.1 schema resources.
 
 ## Verification evidence
 
-- [MEFF XSD validation workflow run 35933395264](https://github.com/Tigon32/archimate-js/actions/runs/35933395264):
+- [MEFF XSD validation workflow run 35933526410](https://github.com/Tigon32/archimate-js/actions/runs/35933526410):
   schema download and checksum verification succeeded; the positive Model fixture
   validated, and the negative fixture failed for the expected missing identifier.
-- [Main CI workflow run 35933395245](https://github.com/Tigon32/archimate-js/actions/runs/35933395245):
+- [Main CI workflow run 35933526444](https://github.com/Tigon32/archimate-js/actions/runs/35933526444):
   Node.js 22, Node.js 24, and browser smoke jobs passed.
-- Those runs were on commit `1f83e29725576ac5d51c8487ee53f8456878f1c4`. CI will run
-  again on documentation changes.
+- Both runs were triggered for PR head `f19857ff1b278d6b8a585d5cb3fff1e5c71b61fb`.
 
 These results establish schema validity for the positive fixture under the MEFF 3.1
 Model XSD only. They make no claim of full MEFF conformance.
