@@ -31,6 +31,8 @@
 }
 
 .am-app .am-ui-panel,
+.am-app .am-ui-dialog,
+.am-app .am-ui-inspector,
 .am-app .am-ui-status {
   color: var(--am-ui-text);
   background: var(--am-ui-surface-raised);
@@ -91,7 +93,33 @@
 }
 
 .am-app .am-ui-button:focus-visible,
-.am-app .am-ui-field:focus-visible {
+.am-app .am-ui-field:focus-visible,
+.am-app .djs-palette .entry:focus-visible,
+.am-app .djs-palette .djs-palette-toggle:focus-visible {
   outline: var(--am-ui-border-focus-width) solid var(--am-ui-focus);
   outline-offset: 2px;
+}
+
+/* diagram-js owns the palette DOM; its presentation belongs to the app shell. */
+.am-app .djs-palette {
+  --palette-background-color: var(--am-ui-surface-raised);
+  --palette-border-color: var(--am-ui-border);
+  --palette-separator-color: var(--am-ui-border);
+  --palette-entry-color: var(--am-ui-text);
+  --palette-entry-hover-color: var(--am-ui-action);
+  --palette-entry-selected-color: var(--am-ui-action);
+  --palette-toggle-hover-background-color: var(--am-ui-disabled-surface);
+  color: var(--am-ui-text);
+  font-family: var(--am-ui-font-family);
+}
+
+.am-app .djs-palette .entry:hover,
+.am-app .djs-palette .djs-palette-toggle:hover {
+  background-color: var(--am-ui-disabled-surface);
+}
+
+.am-app .djs-palette .entry[aria-disabled="true"] {
+  color: var(--am-ui-disabled-text);
+  background-color: var(--am-ui-disabled-surface);
+  cursor: not-allowed;
 }

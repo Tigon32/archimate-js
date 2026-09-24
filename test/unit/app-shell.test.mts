@@ -7,6 +7,8 @@ import { readFileSync } from 'node:fs';
 
 const css = readFileSync('assets/design-tokens/app.generated.css', 'utf8');
 const controls = readFileSync('assets/design-tokens/app-shell.css', 'utf8');
+const legacy = readFileSync('assets/archimate-js.css', 'utf8');
+const paletteIcons = readFileSync('assets/palette-icons.css', 'utf8');
 const hex = (theme: 'light' | 'dark', name: keyof typeof app.theme.light) =>
   app.theme[theme][name].$value.hex;
 
@@ -61,6 +63,26 @@ it('keeps light and dark variables inside the app root, separate from SVG notati
   expect(shape.getAttribute('fill')).toBe('#B0D0D9');
   appRoot.remove();
   style.remove();
+});
+
+it('keeps the legacy palette and dialog styles local and scoped', () => {
+  expect(legacy).toContain('@import url("./design-tokens/app-shell.css")');
+  expect(legacy + paletteIcons).not.toMatch(/https?:\/\/|Quicksand/);
+  expect(legacy).toContain('.am-app .djs-palette');
+  expect(controls).toContain('.am-app .djs-palette .entry:focus-visible');
+  expect(controls).toContain('.am-app .am-ui-dialog');
+  expect(controls).toContain('.am-app .am-ui-inspector');
+  for (const stylesheet of [legacy, paletteIcons]) {
+    const withoutComments = stylesheet.replace(/\/\*[\s\S]*?\*\//g, '');
+    const rules = withoutComments.split('}').slice(0, -1);
+    for (const rule of rules) {
+      const selector = rule.split('{')[0].trim();
+      if (selector.startsWith('@import') || selector.startsWith('@font-face')) continue;
+      expect(selector.split(',').every((part: string) => part.trim().startsWith('.am-app '))).toBe(true);
+    }
+  }
+  expect(readFileSync('assets/font-awesome-5/29f589f173dcc69ef6c805b711894998.woff2').byteLength)
+    .toBeGreaterThan(1000);
 });
 
 it('meets text and interactive contrast targets for both themes', () => {

@@ -1,4 +1,4 @@
-# App shell style layer: first slice of issue #95
+# App shell style layer
 
 `assets/design-tokens/app.tokens.json` holds application-control tokens as
 DTCG 2025.10 `color`, `dimension`, `fontFamily`, and `number` leaves. Run
@@ -10,10 +10,13 @@ or modify `.am-diagram`. The source kit in `assets/archimate-4-kit/` stays intac
 
 The public `archimate-js/app-shell.css` stylesheet consumes those values for
 reusable `.am-ui-toolbar`, `.am-ui-panel`, `.am-ui-status`, `.am-ui-button`, and
-`.am-ui-field` classes. Add `.am-app` to the host element containing controls;
+`.am-ui-field` classes, plus `.am-ui-dialog` and `.am-ui-inspector` surfaces.
+Add `.am-app` to the host element containing controls and the canvas;
 the stylesheet has no page-wide element resets. The read-only example applies
-the link/button style and status states. The package contains IBM Plex Regular
-and SemiBold under OFL; these are the app control fonts and use no remote URL.
+the link/button style and status states. The palette supplied by diagram-js
+inherits the same tokens when rendered under that root. The package contains
+IBM Plex Regular and SemiBold under OFL; these are the app control fonts and
+use no remote URL.
 
 | Component | States and authoring contract |
 | --- | --- |
@@ -21,6 +24,8 @@ and SemiBold under OFL; these are the app control fonts and use no remote URL.
 | Field | Default and `:focus-visible`; `:disabled` and `aria-invalid="true"` indicate disabled and invalid states. Include a visible text error with an invalid field. |
 | Status | `role="status"` for nonurgent updates, `data-state="success"`, `"warning"`, or `"error"` for border state. Announce urgent errors appropriately in the consuming application. |
 | Panel/toolbar | Container styles and spacing; controls keep their own keyboard behavior and labels. |
+| Palette | diagram-js entries and toggle inherit application colors; hover, selected, disabled, and `:focus-visible` states use the same app tokens. Palette keyboard activation belongs to #96. |
+| Dialog/inspector | `.am-ui-dialog` and `.am-ui-inspector` share the panel surface; fields, buttons, and status text use the documented states above when those controls are created under #96. |
 
 Light and dark text, muted text, primary action, hover, and disabled text
 combinations are checked against a 4.5:1 contrast threshold; visible borders
@@ -30,13 +35,16 @@ thresholds follow [WCAG 2.2 Contrast (Minimum)](https://www.w3.org/TR/WCAG22/#co
 [Focus Visible](https://www.w3.org/TR/WCAG22/#focus-visible). The checks cover
 the named color pairs, not every possible host background or focus overlap.
 
-Remaining #95 work: integrate this layer into the editor toolbar, palette,
-dialogs, inspector, and status UI as those features are built after #94/#96;
-remove the page-wide resets and remote Typekit/Quicksand imports from the
-separate legacy `assets/archimate-js.css` when that stylesheet is migrated;
-then test all interactive states in the finished editor. The read-only
-example's native browser `.js` module is retained for Node 22/static-server
-compatibility after two status-state assignments; migrate it to TypeScript
-when the example has a TypeScript build step. The existing browser smoke `.mjs`
-runner is covered by its narrow source-policy exception until its typed runner
-is available.
+The legacy `assets/archimate-js.css` now imports the scoped app shell and uses
+only local font assets. Its application selectors are scoped beneath `.am-app`;
+integrators importing that legacy stylesheet must wrap their controls and
+canvas with that class. The separately supplied diagram-js and ArchiMate font
+styles remain vendor-owned inputs to a CSS-capable bundler. Neither the app
+theme nor the scoped legacy rules change ArchiMate notation colors or an
+explicit model-authored fill. #96 will add functional editor dialogs,
+inspector, palette keyboard actions, and their interaction checks when those
+controls exist. The read-only example's native browser `.js` module is retained
+for Node 22/static-server compatibility. The browser smoke `.mjs` runner is
+covered by its narrow source-policy exception until its typed runner exists.
+Expanded Default/Light/Dark and high-contrast theme policy, including its
+cross-component WCAG 2.2 AA validation, is tracked by #136.
