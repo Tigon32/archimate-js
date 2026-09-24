@@ -38,6 +38,7 @@
     "test/cli",
     "test/smoke/package.test.mts",
     "test/smoke/packed-consumer.test.mts",
+    "test/release/evidence.test.mts",
     "test/unit/cli-export.test.mts",
     "test/fixtures",
     "test-results"

@@ -91,6 +91,22 @@ committed lockfile through `npm ci --ignore-scripts`. It does not publish the
 package. The packed-consumer check may use the configured npm registry to
 resolve the archive's declared runtime dependencies.
 
+After all checks pass, the gate packs the compiled npm artifact and installs that
+exact tarball in an isolated production consumer with lifecycle scripts disabled.
+It generates an SPDX JSON SBOM from the committed lockfile's production graph.
+This is the package's resolved dependency inventory, not a file-level inventory
+of the tarball: npm's tree-based SBOM currently rejects this package's local
+`file:./archimate-font` dependency when the tarball is installed outside the
+repository. The
+`release-evidence` workflow artifact contains the tarball, `sbom.spdx.json`,
+`manifest.json`, and `SHA256SUMS`. The manifest records the source SHA, workflow
+run, Node/npm versions, package and lockfile hashes, and successful check names.
+Download and verify the artifact locally with `sha256sum -c SHA256SUMS`; compare
+the source SHA and workflow run in the manifest with the release tag. This
+checksum file detects corruption after download; it is not a signed attestation
+or proof of a trusted build. The workflow grants read-only repository access
+and does not publish an npm package.
+
 ## Local release checks
 
 Use Node.js 22.12 or newer. Install dependencies with lifecycle scripts

@@ -23,4 +23,4 @@ Do not add a privileged workflow that checks out or executes code from an untrus
 
 ## Release provenance
 
-Before the first release, commit and review the npm lockfile, install from it with `npm ci`, and produce an SPDX SBOM with `npm sbom --sbom-format=spdx > dist/sbom.spdx.json`. Retain that file with the release workflow artifacts. Record the source commit and build workflow run with the published package. Do not claim provenance or publish an operational release until the SBOM and build evidence are available.
+Before the first release, commit and review the npm lockfile and install from it with `npm ci`. The read-only release gate installs the packed tarball in an isolated consumer, then generates an SPDX SBOM from the committed lockfile's production dependency graph. It retains the SBOM alongside the tarball, SHA-256 checksums, source commit, and workflow run in a downloadable artifact. This is a dependency inventory, not a file-level inventory of the tarball. This evidence is unsigned; attestation and publication remain separate work. Do not claim provenance or publish an operational release until the SBOM and build evidence are available.
