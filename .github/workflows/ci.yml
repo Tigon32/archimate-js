@@ -70,6 +70,18 @@ jobs:
       - name: Compile public entry point
         run: npm run compile
 
+      - name: Assert synthetic Node performance smoke baseline
+        run: node test/performance/benchmark.mts --smoke --assert --output=performance-baseline-node-${{ matrix.node-version }}.json
+
+      - name: Retain synthetic Node performance baseline
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: performance-baseline-node-${{ matrix.node-version }}
+          path: performance-baseline-node-${{ matrix.node-version }}.json
+          if-no-files-found: error
+          retention-days: 30
+
   browser-smoke:
     name: Playwright report browser smoke
     runs-on: ubuntu-24.04
