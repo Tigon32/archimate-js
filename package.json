@@ -30,6 +30,7 @@
     "compile:browser": "node test/smoke/compile.mjs",
     "prepare": "node scripts/install-git-hooks.mjs",
     "hooks:install": "node scripts/install-git-hooks.mjs",
+    "verify:wip": "run-s check:source-policy lint test:typecheck test:validator-build",
     "verify:local": "run-s check:source-policy lint test compile",
     "prepack": "npm run compile",
     "lint": "eslint --no-eslintrc --config .eslintrc.release.json lib/BaseViewer.js lib/import/Importer.js lib/import/XmlPreflight.js lib/util/SvgExportUtil.mjs test/release/check.mjs test/unit/import-diagnostics.test.mjs",

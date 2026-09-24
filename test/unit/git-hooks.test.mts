@@ -13,7 +13,7 @@ describe('local verification gate', () => {
     const hookPath = path.join(repositoryRoot, '.githooks/pre-push');
     const hook = readFileSync(hookPath, 'utf8');
 
-    expect(hook).toContain('npm run verify:local');
+    expect(hook).toContain('npm run verify:wip');
 
     if (process.platform !== 'win32') {
       expect(statSync(hookPath).mode & 0o111).not.toBe(0);
@@ -46,6 +46,7 @@ describe('local verification gate', () => {
 
     expect(packageJson.scripts.prepare).toBe('node scripts/install-git-hooks.mjs');
     expect(packageJson.scripts['hooks:install']).toBe('node scripts/install-git-hooks.mjs');
+    expect(packageJson.scripts['verify:wip']).toBe('run-s check:source-policy lint test:typecheck test:validator-build');
     expect(packageJson.scripts['verify:local']).toBe('run-s check:source-policy lint test compile');
   });
 });

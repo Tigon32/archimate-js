@@ -25,9 +25,11 @@ npm run verify:local
 npm pack --dry-run
 ```
 
-`npm run verify:local` runs the source policy, lint, tests, and compile steps serially and stops at the first failure. The versioned `.githooks/pre-push` hook invokes the same command before every push. If hooks were intentionally cleared, restore them with `npm run hooks:install`.
+`npm run verify:wip` is the fast durability gate used by the versioned `.githooks/pre-push` hook. It runs source policy, lint, type checks, and the validator build so WIP can be pushed frequently without waiting for the complete suite. `npm run verify:local` is the full qualification gate: source policy, lint, the complete test suite, and compile, serially and fail-fast. If hooks were intentionally cleared, restore them with `npm run hooks:install`.
 
-Do not use `git push --no-verify` to make agent-generated work appear qualified. Local hooks are a cheap, bypassable development boundary; GitHub Actions remains the independent merge/security boundary. Keep iterative PRs in Draft while working locally, and mark them ready for review only after the local gate passes so the expensive PR workflows run at the review boundary.
+Create a Draft PR early and push the WIP branch after each coherent checkpoint, before a risky refactor or long-running operation, and before handoff. Prefer additive checkpoint commits and squash at merge rather than keeping substantial recoverable work only in one agent workspace. Draft pushes are collaboration and recovery snapshots; they are not evidence that the change is ready to merge.
+
+Do not use `git push --no-verify` to make agent-generated work appear qualified. Before changing a Draft PR to Ready for review, run `npm run verify:local`. GitHub Actions remains the independent merge/security boundary and the expensive PR workflows activate at the review-ready transition.
 
 ## Priority order
 

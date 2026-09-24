@@ -4,5 +4,5 @@ set -eu
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
-printf '%s\n' 'archimate-js: running deterministic local pre-push gate (npm run verify:local)'
-npm run verify:local
+printf '%s\n' 'archimate-js: running fast WIP pre-push gate (npm run verify:wip)'
+npm run verify:wip
