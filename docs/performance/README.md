@@ -72,8 +72,11 @@ are outside the timer. The runner asserts SVG shape, connection, and text
 counts, equal counts across repeats, no page errors, and no off-origin requests.
 Its output contains only a SHA-256 digest of the synthetic fixture, three
 timings, their median, structural counts, and runtime metadata; it does not
-embed XML or page content. Compare runs only with the same fixture hash,
-schema, Chromium major version, and comparable runner environment.
+embed XML or page content. This benchmark uses the read-only example's shared
+MEFF source and serves both the ArchiMateJS and model DTO browser bundles. Its
+fixture hash therefore changes when the example's shared model changes. Compare
+runs only with the same fixture hash, schema, Chromium major version, and
+comparable runner environment.
 
 Timings are observational: CI host contention, cold asset loading, browser
 version, and the small sample count add noise. This is one small view with an

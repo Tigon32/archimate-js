@@ -1,7 +1,9 @@
 # Read-only HTML embed example
 
 The repository example renders only the hand-authored, provenance-documented
-synthetic fixture at `test/fixtures/synthetic/read-only-showcase.xml`.
+synthetic MEFF fixture at
+`test/fixtures/synthetic/read-only-showcase-outline-meff.xml`. The diagram and
+outline both use this one model source.
 It uses the package's public API from `index.js`, compiled to a local
 UMD bundle by the existing compile smoke script. The demo does not use CDN
 assets, remote services, inline model markup, `eval`, or model-derived HTML.
@@ -17,9 +19,11 @@ python3 -m http.server 8000
 
 Then open `http://localhost:8000/examples/read-only/`. Serve from the repository
 root so the example can retrieve the checked-in fixture by its same-origin path.
-The viewer bundle is generated at `.ci-build/archimate-js.js`; it is build output
-and is not committed. Do not open `index.html` as a `file:` URL because browsers
-block its local fixture fetch.
+The viewer bundle is generated at `.ci-build/archimate-js.js`, the model DTO
+browser API at `.ci-build/model-dto.js`, and the migrated viewer module as local
+JavaScript alongside the page. These are build outputs and are not
+committed. Do not open `index.html` as a `file:` URL because browsers block its
+local fixture fetch.
 
 The example links the scoped local app shell stylesheet for its navigation link
 and loading/success/error status. It uses the bundled IBM Plex font without a
@@ -35,6 +39,18 @@ and incrementally cancels reads that exceed the byte cap. It shows a generic
 failure message without logging or rendering parser errors or model contents.
 This is a demonstration boundary, not a substitute for application-level
 authorization or content security policy.
+
+The selected view is also rendered as a text outline. It uses nested HTML lists
+and native disclosure controls for groups; browser and assistive-technology list
+navigation remain available without a custom ARIA tree widget. Names and
+relationship descriptions are inserted as text. Documentation is omitted by
+the DTO outline defaults. The browser example uses one supported SYNTHETIC MEFF
+model for both the diagram renderer and DTO outline, so their concept IDs, names,
+relationships, and view references cannot drift independently. A focused test
+passes the same fetched XML to both browser APIs and verifies that both can load
+the selected view. The DTO importer still supports a MEFF subset; unsupported
+formats show a generic outline-unavailable status. Broader legacy model
+projection remains tracked under issue #104.
 
 ## Use from a consuming application
 

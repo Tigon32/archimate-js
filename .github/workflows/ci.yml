@@ -113,6 +113,7 @@ jobs:
         run: |
           export CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
           test -n "$CHROME_BIN"
+          npm run compile:model-dto:browser
           node test/performance/browser-benchmark.mts --output=test-results/performance-baseline-browser.json
 
       - name: Retain synthetic browser performance baseline

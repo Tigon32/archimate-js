@@ -24,6 +24,9 @@ const routes = new Map([
   ['/test/fixtures/synthetic/read-only-showcase.xml', [
     'test/fixtures/synthetic/read-only-showcase.xml', 'application/xml; charset=utf-8'
   ]],
+  ['/test/fixtures/synthetic/read-only-showcase-outline-meff.xml', [
+    'test/fixtures/synthetic/read-only-showcase-outline-meff.xml', 'application/xml; charset=utf-8'
+  ]],
   ['/test/fixtures/synthetic/directed-association.xml', [
     'test/fixtures/synthetic/directed-association.xml', 'application/xml; charset=utf-8'
   ]],

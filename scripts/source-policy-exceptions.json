@@ -35,7 +35,7 @@
     },
     {
       "path": "test/browser/smoke.mjs",
-      "reason": "Issue #204 changes only the reviewed relationship direction in an existing browser journey. This legacy runner exceeds the module/function limits and a strict TypeScript migration requires splitting several independent journeys; the bounded semantic change uses its existing temporary exception.",
+      "reason": "Issues #204 and #203 make bounded browser-journey changes: #204 reviews relationship direction, and #203 adds one allowlisted SYNTHETIC MEFF fixture route for the shared read-only example source. This legacy runner exceeds the module/function limits and a strict TypeScript migration requires splitting several independent journeys; the bounded changes use this temporary exception.",
       "removalCondition": "Migrate the browser smoke suite to typed, smaller tests with the browser/Node TypeScript test runner and #97.",
       "allowLegacySize": true
     },

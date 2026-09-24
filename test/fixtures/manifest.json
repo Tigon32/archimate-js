@@ -311,5 +311,21 @@
     ],
     "review_after": "2026-12-23",
     "content_sha256": "e9f7455ab7226803d185e2b8ae6e29893ef0519d02d09e913041dba232bfb086"
+  },
+  {
+    "id": "synthetic-read-only-showcase-outline-meff",
+    "path": "test/fixtures/synthetic/read-only-showcase-outline-meff.xml",
+    "classification": "SYNTHETIC",
+    "purpose": "Shared MEFF model source for the read-only HTML example's diagram and accessible outline.",
+    "provenance": "Hand-authored for this public repository using generic labels and relationships aligned with its older synthetic parser fixture; both browser APIs consume this file as the example's single source. Contains no third-party or private architecture data.",
+    "contains_private_data": false,
+    "expected_coverage": [
+      "supported MEFF DTO import",
+      "view-scoped accessible outline nodes",
+      "relationship names and endpoints",
+      "textContent rendering of escaped hostile-looking labels"
+    ],
+    "review_after": "2026-12-23",
+    "content_sha256": "08796564f14f4ae94faedef404130798d09cefe2148991b459e4febafae898b6"
   }
 ]

@@ -40,6 +40,7 @@
     "test/browser/export-api.mts",
     "test/browser/theme-contrast.mts",
     "test/performance/browser-benchmark.mts",
+    "test/browser/accessible-outline.mts",
     "test/smoke/package.test.mts",
     "test/smoke/packed-consumer.test.mts",
     "test/release/evidence.test.mts",

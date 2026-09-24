@@ -3,6 +3,7 @@ node_modules/
 dist/
 coverage/
 test-results/
+/examples/read-only/viewer.js
 .idea
 *.iml
 .DS_Store
