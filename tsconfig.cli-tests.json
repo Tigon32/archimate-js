@@ -22,6 +22,8 @@
     "test/browser/export-api.mts",
     "scripts/check-secrets.mts",
     "test/security/check-secrets.test.mts",
+    "scripts/check-tracked-paths.mts",
+    "test/security/check-tracked-paths.test.mts",
     "test/security/supply-chain.test.mts"
   ],
   "exclude": ["node_modules", "dist", "coverage", "test-results"]
