@@ -125,6 +125,25 @@ tarball from a completed tag run with:
 gh attestation verify path/to/archimate-js-*.tgz -R Tigon32/archimate-js
 ```
 
+For a consumer check, download and unpack the `release-evidence` artifact from
+the completed tag run. Get the tag, its full 40-character source commit SHA,
+and the Actions run ID from GitHub, then run:
+
+```sh
+node scripts/verify-release-evidence.mts path/to/release-evidence v0.0.4 FULL_SOURCE_SHA RUN_ID
+```
+
+Replace the example tag and placeholders with the reviewed run's values. The
+command checks the tarball, SBOM, and manifest against `SHA256SUMS`; checks the
+manifest's package version, source SHA, and run URL against those expected
+values; then uses `gh attestation verify` to require this repository's release
+workflow, tag ref, and source commit. It requires GitHub CLI access to fetch
+the attestation and fails if that verification is unavailable. The expected
+values must come from the trusted release record, not the downloaded manifest.
+The attestation covers the tarball only; the downloaded SBOM and manifest are
+checksum-checked for consistency but are not independently authenticated by
+that tarball attestation.
+
 The attestation workflow is wired but issuance remains unverified until a
 reviewed tag run produces an attestation and the downloaded tarball passes this
 command. An attestation binds a digest to a workflow identity; it does not
