@@ -31,6 +31,8 @@ Create a Draft PR early and push the WIP branch after each coherent checkpoint, 
 
 Do not use `git push --no-verify` to make agent-generated work appear qualified. Before changing a Draft PR to Ready for review, run `npm run verify:local`. GitHub Actions remains the independent merge/security boundary and the expensive PR workflows activate at the review-ready transition.
 
+For unattended queue draining, repository maintainers should enable GitHub **Settings → General → Pull Requests → Allow auto-merge**. Once the exact current `HEAD` passes the full local gate, mark the Draft PR Ready and enable auto-merge on that PR. Remote required checks then decide whether it merges; a failed check leaves the PR open for repair rather than requiring a manual merge after success.
+
 ## Priority order
 
 1. Remove sensitive logging and silent partial-import behavior.
