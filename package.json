@@ -50,7 +50,7 @@
     "test:cli:browser:run": "node test/cli/cli.test.mts browser",
     "test:unit": "vitest run --coverage.enabled --coverage.reporter=text",
     "test:supply-chain": "node test/security/supply-chain.test.mts",
-    "test:release-evidence": "node test/release/evidence.test.mts",
+    "test:release-evidence": "node test/release/evidence.test.mts && node test/release/consumer-verification.test.mts",
     "test:automated-analysis": "node test/security/automated-analysis.test.mts",
     "test:packed-consumer": "node test/smoke/packed-consumer.test.mts",
     "release:check": "node test/release/check.mjs",
