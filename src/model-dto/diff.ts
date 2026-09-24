@@ -108,11 +108,9 @@ function flattenNodes(nodes: ViewNodeDto[], viewId: string, parentId?: string): 
 }
 
 function viewsForConcept(model: ModelDto, id: string, entity: ModelDiffEntity): string[] {
-  return model.views.filter((view) =>
-    flattenNodes(view.nodes, view.id).some((node) =>
-      node.conceptRef === id || entity === 'element' && node.elementId === id) ||
-    entity === 'relationship' && view.connections.some((edge) =>
-      edge.relationshipId === id)).map((view) => view.id);
+  return model.views.filter((view) => entity === 'element'
+    ? flattenNodes(view.nodes, view.id).some((node) => node.elementId === id)
+    : view.connections.some((edge) => edge.relationshipId === id)).map((view) => view.id);
 }
 
 function impactedViews(

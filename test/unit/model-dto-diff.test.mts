@@ -37,6 +37,7 @@ it('reports stable semantic and presentation changes across repeated appearances
   after.elements[1].name = 'Renamed Service';
   after.views[0].nodes[1].x = 30;
   after.views[0].connections[0].waypoints[1].y = 70;
+  const afterOriginal = JSON.stringify(after);
   const result = diffModelDto(before, after);
   expect(result.impactedViewIds).toEqual(['view']);
   expect(result.changes.map(({ area, entity, id, changedFields }) =>
@@ -46,11 +47,31 @@ it('reports stable semantic and presentation changes across repeated appearances
     ['semantic', 'element', 'service', ['name']]
   ]);
   expect(JSON.stringify(before)).toBe(original);
+  expect(JSON.stringify(after)).toBe(afterOriginal);
   expect(result).toEqual(diffModelDto(before, after));
   const reordered = structuredClone(after);
   reordered.elements.reverse();
   reordered.views[0].nodes.reverse();
   expect(diffModelDto(before, reordered)).toEqual(result);
+});
+
+it('aggregates impacted views for semantic IDs in sorted order', () => {
+  const before = fixture();
+  before.views.unshift({ id: 'a-view', name: 'Second view', nodes: [{
+    id: 'another-instance', kind: 'element', elementId: 'service',
+    x: 0, y: 0, width: 100, height: 40, nodes: []
+  }], connections: [] });
+  const after = structuredClone(before);
+  after.elements[1].name = 'Updated';
+  after.relationships[0].type = 'archimate:Flow';
+  const afterOriginal = JSON.stringify(after);
+  const result = diffModelDto(before, after);
+  expect(result.impactedViewIds).toEqual(['a-view', 'view']);
+  expect(result.changes.filter((change) => change.area === 'semantic').map((change) =>
+    [change.entity, change.id])).toEqual([
+    ['element', 'service'], ['relationship', 'serving']
+  ]);
+  expect(JSON.stringify(after)).toBe(afterOriginal);
 });
 
 it('ignores collection order but detects additions and removals by ID', () => {
