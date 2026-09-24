@@ -37,13 +37,17 @@ interface BrowserDtoApi {
   }): OutlineData;
 }
 
+interface BrowserViewerApi {
+  mountViewer(options: { xml: string; viewId: string; container: HTMLElement;
+    width: string; height: string }): Promise<{ destroy(): void }>;
+}
+
 declare global {
-  interface Window { ArchimateModelDto?: BrowserDtoApi }
+  interface Window { ArchimateModelDto?: BrowserDtoApi; ArchimateJS?: BrowserViewerApi }
 }
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const fixturePath = 'test/fixtures/synthetic/read-only-showcase.xml';
-const outlineFixturePath = 'test/fixtures/synthetic/read-only-showcase-outline-meff.xml';
+const fixturePath = 'test/fixtures/synthetic/read-only-showcase-outline-meff.xml';
 const routes = new Map<string, string>([
   ['/examples/read-only/', 'examples/read-only/index.html'],
   ['/examples/read-only/viewer.js', 'examples/read-only/viewer.js'],
@@ -58,15 +62,14 @@ const routes = new Map<string, string>([
   ['/node_modules/diagram-js/assets/diagram-js.css', 'node_modules/diagram-js/assets/diagram-js.css']
 ]);
 
-const fixture = (await readFile(path.join(root, outlineFixturePath), 'utf8')).replace(
+const fixture = (await readFile(path.join(root, fixturePath), 'utf8')).replace(
   '<name xml:lang="en">Customer</name>',
   '<name xml:lang="en">&lt;img src=x onerror=alert(1)&gt;</name>');
-const legacyFixture = await readFile(path.join(root, fixturePath), 'utf8');
 const server = createServer((request, response) => {
   const pathname = new URL(request.url ?? '/', 'http://localhost').pathname;
-  if (pathname === `/${fixturePath}` || pathname === `/${outlineFixturePath}`) {
+  if (pathname === `/${fixturePath}`) {
     response.setHeader('content-type', 'application/xml; charset=utf-8');
-    response.end(pathname === `/${fixturePath}` ? legacyFixture : fixture);
+    response.end(fixture);
     return;
   }
   const file = routes.get(pathname);
@@ -93,6 +96,26 @@ try {
   await page.locator('#status[data-state="success"]').waitFor();
   await page.locator('#outline-status').getByText('Loaded the supported synthetic MEFF view outline.').waitFor();
 
+  const companionRendersAsDiagram = await page.evaluate(async () => {
+    const api = window.ArchimateJS;
+    if (!api) return false;
+    const xml = await (await fetch('/test/fixtures/synthetic/read-only-showcase-outline-meff.xml')).text();
+    const host = document.createElement('div');
+    document.body.append(host);
+    try {
+      const viewer = await api.mountViewer({ xml, viewId: 'view-synthetic-showcase',
+        container: host, width: '800px', height: '500px' });
+      viewer.destroy();
+      return true;
+    } catch {
+      return false;
+    } finally {
+      host.remove();
+    }
+  });
+  assert.equal(companionRendersAsDiagram, true,
+    'the shared MEFF source should be mountable by both browser APIs');
+
   const list = page.locator('#outline-content > ul');
   assert.equal(await list.count(), 1, 'the selected view should render as a semantic list');
   assert.equal(await list.locator(':scope > li').count(), 5, 'the outline should include every view node');
@@ -102,6 +125,28 @@ try {
   assert.equal(await page.locator('#outline-content img').count(), 0,
     'model-derived text must not create HTML elements');
   assert.ok((await page.locator('#outline-content').textContent())?.includes('<img src=x onerror=alert(1)>'));
+
+  const failureIsolation = await page.evaluate(async () => {
+    // @ts-expect-error The browser test server exposes the emitted module URL.
+    const renderer = await import('/examples/read-only/viewer.js');
+    const existingApi = window.ArchimateJS;
+    if (!existingApi) throw new Error('Viewer browser API is unavailable.');
+    window.ArchimateJS = { mountViewer: async () => { throw new Error('synthetic render failure'); } };
+    try {
+      await renderer.renderExample();
+      return {
+        diagramError: document.querySelector('#status')?.getAttribute('data-state') === 'error',
+        outlineReady: document.querySelector('#outline-status')?.textContent ===
+          'Loaded the supported synthetic MEFF view outline.',
+        outlinedNodes: document.querySelectorAll('#outline-content > ul > li').length
+      };
+    } finally {
+      window.ArchimateJS = existingApi;
+    }
+  });
+  assert.equal(failureIsolation.diagramError, true, 'diagram failure should keep its own error status');
+  assert.equal(failureIsolation.outlineReady, true, 'diagram failure should not suppress the outline');
+  assert.equal(failureIsolation.outlinedNodes, 5, 'the outline should use the shared fetched model');
 
   const nested = await page.evaluate(async () => {
     const api = window.ArchimateModelDto;

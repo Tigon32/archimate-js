@@ -1,7 +1,9 @@
 # Read-only HTML embed example
 
 The repository example renders only the hand-authored, provenance-documented
-synthetic fixture at `test/fixtures/synthetic/read-only-showcase.xml`.
+synthetic MEFF fixture at
+`test/fixtures/synthetic/read-only-showcase-outline-meff.xml`. The diagram and
+outline both use this one model source.
 It uses the package's public API from `index.js`, compiled to a local
 UMD bundle by the existing compile smoke script. The demo does not use CDN
 assets, remote services, inline model markup, `eval`, or model-derived HTML.
@@ -42,12 +44,13 @@ The selected view is also rendered as a text outline. It uses nested HTML lists
 and native disclosure controls for groups; browser and assistive-technology list
 navigation remain available without a custom ARIA tree widget. Names and
 relationship descriptions are inserted as text. Documentation is omitted by
-the DTO outline defaults. The outline currently uses the hand-authored SYNTHETIC
-MEFF companion at `test/fixtures/synthetic/read-only-showcase-outline-meff.xml`,
-which mirrors the diagram's generic labels and relationships. The diagram itself
-continues to use the legacy ArchiMate XML fixture above. Because the DTO importer
-supports a MEFF subset, unsupported model formats show a generic outline
-unavailable status; the legacy importer gap remains tracked under issue #104.
+the DTO outline defaults. The browser example uses one supported SYNTHETIC MEFF
+model for both the diagram renderer and DTO outline, so their concept IDs, names,
+relationships, and view references cannot drift independently. A focused test
+passes the same fetched XML to both browser APIs and verifies that both can load
+the selected view. The DTO importer still supports a MEFF subset; unsupported
+formats show a generic outline-unavailable status. Broader legacy model
+projection remains tracked under issue #104.
 
 ## Use from a consuming application
 

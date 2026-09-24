@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   Classification: SYNTHETIC
-  Provenance: Hand-authored MEFF 3.1 companion for the repository's
-  read-only-showcase.xml. Generic labels, identities, and relationships mirror
-  that example so its supported DTO outline can be exercised without copying
-  private or third-party architecture data. This is not an XSD conformance claim.
+  Provenance: Hand-authored MEFF 3.1 source for the read-only example's diagram
+  and accessible outline. Generic labels, identities, and relationships align
+  with the older synthetic parser fixture; this file is the shared source for
+  both browser APIs. No private or third-party architecture data is included.
+  This is not an XSD conformance claim.
 -->
 <model xmlns="http://www.opengroup.org/xsd/archimate/3.0/"
   xmlns:archimate="http://www.opengroup.org/xsd/archimate/3.0/"

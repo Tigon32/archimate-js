@@ -5,7 +5,6 @@ import { describe, expect, it } from 'vitest';
 
 const repositoryRoot = new URL('../../', import.meta.url);
 const readRepoFile = (path: string) => readFile(new URL(path, repositoryRoot), 'utf8');
-
 describe('read-only HTML embed example', () => {
   it('uses only the documented same-origin synthetic fixture and public bundle', async () => {
     const [html, script, docs, index] = await Promise.all([
@@ -19,8 +18,9 @@ describe('read-only HTML embed example', () => {
     expect(html).toContain('../../.ci-build/model-dto.js');
     expect(html).toContain('id="accessible-outline"');
     expect(html).toContain('pointer-events: none');
-    expect(script).toContain('../../test/fixtures/synthetic/read-only-showcase.xml');
     expect(script).toContain('../../test/fixtures/synthetic/read-only-showcase-outline-meff.xml');
+    expect(script).not.toContain('../../test/fixtures/synthetic/read-only-showcase.xml');
+    expect(script).toContain('await renderOutline(window.ArchimateModelDto, xml)');
     expect(script).toContain('fixtureUrl.origin !== window.location.origin');
     expect(script).toContain('MAX_FIXTURE_BYTES');
     expect(script).toContain("response.headers.get('content-length')");
@@ -39,7 +39,7 @@ describe('read-only HTML embed example', () => {
     expect(script).toContain("document.createElement('summary')");
     expect(script).toContain('Text outline unavailable for this model format.');
     expect(docs).toContain("import { mountViewer } from 'archimate-js'");
-    expect(docs).toContain('test/fixtures/synthetic/read-only-showcase.xml');
+    expect(docs).toMatch(/The diagram and\s+outline both use this one model source\./);
     expect(docs).toContain('text outline');
     expect(docs).toContain('not an authorization or security boundary');
     expect(docs).toContain('renderViewToSvg');
@@ -47,4 +47,5 @@ describe('read-only HTML embed example', () => {
     expect(index).toContain('mountViewer');
     expect(index).toContain('renderViewToSvg');
   });
+
 });

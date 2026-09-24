@@ -38,8 +38,7 @@ declare global {
 }
 
 const VIEW_ID = 'view-synthetic-showcase';
-const FIXTURE_PATH = '../../test/fixtures/synthetic/read-only-showcase.xml';
-const OUTLINE_FIXTURE_PATH = '../../test/fixtures/synthetic/read-only-showcase-outline-meff.xml';
+const FIXTURE_PATH = '../../test/fixtures/synthetic/read-only-showcase-outline-meff.xml';
 const MAX_FIXTURE_BYTES = 256 * 1024;
 
 async function readLimitedResponse(response: Response): Promise<Uint8Array> {
@@ -154,30 +153,41 @@ function showFailure(): void {
   status.textContent = 'Could not load or render the synthetic example. Check the local build and server instructions.';
 }
 
-async function renderExample(): Promise<void> {
+export async function renderExample(): Promise<void> {
+  let xml: string | undefined;
+  try {
+    xml = await loadSyntheticFixture(FIXTURE_PATH);
+  } catch {
+    showFailure();
+  }
+  if (!xml) {
+    await renderOutline(window.ArchimateModelDto);
+    return;
+  }
+
   try {
     const viewerApi = window.ArchimateJS;
     if (typeof viewerApi?.mountViewer !== 'function') throw new Error('Viewer API unavailable');
-    const xml = await loadSyntheticFixture(FIXTURE_PATH);
     await viewerApi.mountViewer({ xml, viewId: VIEW_ID, container: requireElement('#diagram'),
       width: '100%', height: '100%' });
     const status = requireElement('#status');
     status.dataset.state = 'success';
     status.textContent = 'Loaded the public synthetic service delivery example.';
-    await renderOutline(window.ArchimateModelDto);
   } catch {
     // Keep parser, network, and model details out of the page and browser console.
     showFailure();
   }
+  await renderOutline(window.ArchimateModelDto, xml);
 }
 
-async function renderOutline(modelDtoApi: ModelDtoBrowserApi | undefined): Promise<void> {
+async function renderOutline(modelDtoApi: ModelDtoBrowserApi | undefined,
+  sourceXml?: string): Promise<void> {
   const status = requireElement('#outline-status');
   try {
     if (typeof modelDtoApi?.importMeffToModelDto !== 'function' ||
         typeof modelDtoApi.createAccessibleOutline !== 'function') throw new Error('DTO API unavailable');
-    const xml = await loadSyntheticFixture(OUTLINE_FIXTURE_PATH);
-    const model = modelDtoApi.importMeffToModelDto(xml);
+    if (!sourceXml) throw new Error('No supported model input');
+    const model = modelDtoApi.importMeffToModelDto(sourceXml);
     const outline = modelDtoApi.createAccessibleOutline(model, VIEW_ID, {
       grouping: 'containment', includeRelationships: true, includeDocumentation: false
     });
