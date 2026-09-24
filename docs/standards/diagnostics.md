@@ -42,7 +42,7 @@ lexicographically, so the same input yields the same ordered list.
 |---|---|---|
 | `MEFF_ELEMENTS_UNSUPPORTED` | Legacy/parser-probe element records outside the supported MEFF Model-core path | Schema-valid Model-core element records are reconstructed; unsupported element forms remain warnings. |
 | `MEFF_RELATIONSHIPS_UNSUPPORTED` | Legacy/parser-probe relationship records outside the supported MEFF Model-core path | Schema-valid Model-core relationship records are reconstructed with endpoint references; unsupported relationship forms remain warnings. |
-| `MEFF_MODEL_METADATA_UNSUPPORTED` | Model `metadata`, `organizations`, `properties`, or `propertyDefinitions` | These model-level records are not reconstructed. |
+| `MEFF_MODEL_METADATA_UNSUPPORTED` | Unrecognized children within Model metadata, organizations, properties, or definitions | Supported Model records are reconstructed; unrecognized subfields remain warnings. |
 | `MEFF_VIEWS_UNSUPPORTED` | A View/Viewpoint structure outside the supported Diagram subset, or unreadable View data | That view data is skipped. |
 | `MEFF_DIAGRAMS_UNSUPPORTED` | A non-Element node, non-Relationship connection, or unsupported style/label/documentation/drill-down field | That record or field is skipped; supported records in the same Diagram remain importable. |
 | `MEFF_EXTENSIONS_UNSUPPORTED` | An element in a namespace outside the MEFF ArchiMate namespace | Extension content is not reconstructed. |

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Classification: SYNTHETIC. Hand-authored from the public MEFF 3.1 Model XSD;
+     no Open Group example or private model content was copied. -->
+<model xmlns="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:archimate="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  identifier="model-records" version="1.2">
+  <name xml:lang="en">Synthetic records</name>
+  <properties>
+    <property propertyDefinitionRef="pd-status"><value xml:lang="en">Draft</value></property>
+  </properties>
+  <metadata><schema>urn:synthetic:metadata</schema><schemaversion>1.1</schemaversion></metadata>
+  <elements>
+    <element identifier="app-one" xsi:type="archimate:ApplicationComponent">
+      <name xml:lang="en">Component</name>
+      <properties>
+        <property propertyDefinitionRef="pd-status">
+          <value xml:lang="en">Active</value><value xml:lang="fr">Actif</value>
+        </property>
+      </properties>
+    </element>
+    <element identifier="service-one" xsi:type="archimate:ApplicationService">
+      <name>Service</name>
+    </element>
+  </elements>
+  <relationships>
+    <relationship identifier="serving-one" xsi:type="archimate:Serving"
+      source="app-one" target="service-one">
+      <name>Serving</name>
+      <properties><property propertyDefinitionRef="pd-status"><value>Checked</value></property></properties>
+    </relationship>
+  </relationships>
+  <organizations>
+    <item identifier="folder-one">
+      <label xml:lang="en">Applications</label>
+      <item identifier="entry-one" identifierRef="app-one" />
+      <item identifier="entry-two" identifierRef="serving-one" />
+    </item>
+  </organizations>
+  <propertyDefinitions>
+    <propertyDefinition identifier="pd-status" type="string">
+      <name xml:lang="en">Status</name>
+    </propertyDefinition>
+  </propertyDefinitions>
+</model>

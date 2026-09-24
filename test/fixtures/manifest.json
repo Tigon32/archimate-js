@@ -140,6 +140,21 @@
     "review_after": "2026-12-23"
   },
   {
+    "id": "synthetic-meff-xsd-valid-model-records",
+    "path": "test/fixtures/meff-schema/valid-model-records.xml",
+    "classification": "SYNTHETIC",
+    "purpose": "Validate and import Model metadata, organization trees, property definitions, and properties under MEFF 3.1.",
+    "provenance": "Hand-authored against the public hash-pinned MEFF 3.1 Model XSD using generic names. No private model or official example copied.",
+    "contains_private_data": false,
+    "expected_coverage": [
+      "model version and metadata schema fields",
+      "model and concept property values with definition references",
+      "nested organizations and canonical concept references",
+      "MEFF 3.1 Model XSD validation"
+    ],
+    "review_after": "2026-12-23"
+  },
+  {
     "id": "synthetic-meff-xsd-invalid-model",
     "path": "test/fixtures/meff-schema/invalid-missing-model-identifier.xml",
     "classification": "SYNTHETIC",
