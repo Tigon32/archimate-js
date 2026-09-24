@@ -62,6 +62,7 @@ jobs:
           model_schema="${RUNNER_TEMP}/meff-xsd-3.1/archimate3_Model.xsd"
           diagram_schema="${RUNNER_TEMP}/meff-xsd-3.1/archimate3_Diagram.xsd"
           xmllint --noout --schema "$model_schema" test/fixtures/meff-schema/valid-model.xml
+          xmllint --noout --schema "$model_schema" test/fixtures/meff-schema/valid-model-records.xml
           xmllint --noout --schema "$diagram_schema" test/fixtures/meff-schema/valid-view-diagram.xml
           invalid_log="${RUNNER_TEMP}/meff-invalid-fixture.log"
           if xmllint --noout --schema "$model_schema" test/fixtures/meff-schema/invalid-missing-model-identifier.xml >"$invalid_log" 2>&1; then

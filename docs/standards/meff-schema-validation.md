@@ -10,7 +10,7 @@ Model Exchange File Format (MEFF) 3.1 schema resources.
 - Files are stored only in the ephemeral GitHub runner's `RUNNER_TEMP` directory.
   They are not added to the repository, package, workflow artifacts, or cache.
 - CI verifies the downloads against the SHA-256 digests recorded below.
-- `valid-model.xml` is validated against the Model XSD; `valid-view-diagram.xml`
+- `valid-model.xml` and `valid-model-records.xml` are validated against the Model XSD; `valid-view-diagram.xml`
   is validated against the Diagram XSD, which includes the View schema. The negative
   Model fixture fails because it deliberately omits the required model `identifier`.
 - The validator is `xmllint` from Ubuntu 24.04's `libxml2-utils` package.
@@ -56,4 +56,4 @@ conformance, interoperability, or tool certification.
 
 ## View and Diagram fixture
 
-`test/fixtures/meff-schema/valid-view-diagram.xml` is a synthetic full model with two elements, one relationship, a named Diagram view, nested Element nodes, and a Relationship connection. CI validates it against the Diagram XSD, which includes the View schema. This proves schema structure only; parser mapping and geometry fidelity are covered by separate tests and work items.
+`test/fixtures/meff-schema/valid-view-diagram.xml` is a synthetic full model with two elements, one relationship, a named Diagram view, nested Element nodes, and a Relationship connection. CI validates it against the Diagram XSD, which includes the View schema. `valid-model-records.xml` additionally exercises Model metadata, properties, definitions, and organization trees against the pinned Model XSD. This proves schema structure only; parser mapping and geometry fidelity are covered by separate tests and work items.

@@ -27,8 +27,10 @@ The View/Diagram importer preserves the currently declared Diagram subset:
 Diagram view identity/name, nested Element nodes, Relationship connections,
 diagram-space bounds, source/target attachments, bendpoints, supported line,
 fill, and font style fields, relationship labels, and connection line width.
+The [Model import profile](meff-model-import.md) additionally preserves version,
+metadata schema fields, property definitions and values, and organization trees.
 This is still a bounded import profile. Unsupported Model, View, Diagram, and
-extension records use fixed content-free diagnostics. The importer does not
+extension fields use fixed content-free diagnostics. The importer does not
 perform XSD validation or ArchiMate semantic relationship validation; the schema
 CI and semantic validator are separate checks. There is no MEFF XML exporter yet;
 export omission diagnostics belong with #59.
@@ -64,7 +66,7 @@ Source: [`opengroup-archimate-meff`](../research/sources.yaml), The Open Group's
 | Relationships | Preserve IDs, concrete `xsi:type`, localized name, and resolved source/target ID references. | Emit relationships using the shared validation matrix. | Core ID/type mapping and identity-linked endpoints are tested; no semantic relationship validation is implied. |
 | Views | Preserve view IDs, names, child nodes, connections, and bounds where supported. | Emit selected supported view data deterministically. | Supported Diagram view records are imported from the schema-valid View/Diagram fixture; viewpoint definitions are tracked by #77. |
 | Styling | Preserve style fields where supported; warn for unsupported fields. | Emit only supported styling fields. | Supported node and connection line/fill/font styles are imported from the schema-valid View/Diagram fixture; local annotations and additional presentation records are tracked by #75 and #76. |
-| Properties | Preserve supported properties and warn on unsupported fields. | Emit supported properties deterministically. | Model and diagram properties remain unsupported and are tracked by #74 and #75. |
+| Properties | Preserve supported properties and warn on unsupported fields. | Emit supported properties deterministically. | Model and concept property definitions/values are imported by #74; diagram properties remain tracked by #75. |
 | Diagnostics | Report unsupported or lossy fields. | Report unsupported export omissions. | Stable import warnings cover recognized unsupported model, view, diagram, and extension categories; export omission reporting awaits a MEFF exporter in #59. |
 
 ## Deterministic evidence record
