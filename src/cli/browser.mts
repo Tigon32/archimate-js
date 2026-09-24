@@ -140,6 +140,23 @@ export async function renderBatchArtifacts(
   xml: string,
   requests: Array<RenderOptions | ExportOptions>
 ): Promise<ExportArtifacts[]> {
+  const outcomes = await renderBatchOutcomes(packageRoot, xml, requests, false);
+  return outcomes.map((outcome) => {
+    if (!outcome.artifacts) throw new Error(outcome.code);
+    return outcome.artifacts;
+  });
+}
+
+export type RenderOutcome = { artifacts: ExportArtifacts; code?: never } |
+  { artifacts?: never; code: string };
+
+/** Continue only for individual view failures; browser setup failures remain request failures. */
+export async function renderBatchOutcomes(
+  packageRoot: string,
+  xml: string,
+  requests: Array<RenderOptions | ExportOptions>,
+  continueOnError = true
+): Promise<RenderOutcome[]> {
   const bundlePath = path.join(packageRoot, 'dist/browser/archimate-js.js');
   await ensureRenderer(bundlePath);
   const executablePath = await findChrome(requests[0].chrome);
@@ -159,12 +176,18 @@ export async function renderBatchArtifacts(
     const renderer = await context.newPage();
     await renderer.addScriptTag({ path: bundlePath });
     const capture = await context.newPage();
-    const results: ExportArtifacts[] = [];
+    const results: RenderOutcome[] = [];
     for (const options of requests) {
-      if (options.command === 'render') {
-        results.push({ svg: await renderSvg(renderer, xml, options) });
-      } else {
-        results.push(await captureExport(renderer, capture, xml, options));
+      try {
+        const artifacts = options.command === 'render'
+          ? { svg: await renderSvg(renderer, xml, options) }
+          : await captureExport(renderer, capture, xml, options);
+        results.push({ artifacts });
+      } catch (error) {
+        const code = error instanceof Error && RENDER_CODES.has(error.message)
+          ? error.message : 'VIEW_RENDER_FAILED';
+        if (!continueOnError) throw new Error(code);
+        results.push({ code });
       }
     }
     return results;

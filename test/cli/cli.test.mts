@@ -100,6 +100,7 @@ async function runBrowserScenarios(directory: string): Promise<void> {
   await invalidLayoutTest(directory);
   await missingViewTest(directory);
   await batchBrowserTests(directory);
+  await partialBrowserTest(directory);
 }
 
 async function legacyRenderTest(directory: string): Promise<void> {
@@ -206,6 +207,42 @@ async function batchBrowserTests(directory: string): Promise<void> {
   const second = JSON.parse(await readFile(path.join(batchDir, 'manifest.json'), 'utf8'));
   assert.deepEqual(second.entries.map((item: { outputs: Array<{ format: string; sha256: string }> }) =>
     item.outputs.find((output) => output.format === 'svg')?.sha256), svgHashes);
+  const continued = runCli(cli, [...batchArgs, '--continue-on-error'], 0);
+  assert.equal(continued.json.valid, true);
+  const complete = JSON.parse(await readFile(path.join(batchDir, 'manifest.json'), 'utf8'));
+  assert.equal(complete.overallStatus, 'success');
+  assert.ok(complete.entries.every((entry: { status: string }) => entry.status === 'success'));
+}
+
+async function partialBrowserTest(directory: string): Promise<void> {
+  const xml = await readFile(batchFixture, 'utf8');
+  const privateId = 'view-b';
+  const modified = xml.replace('id="node-b" elementRef="application-service-1" x="25" y="25" w="160"',
+    'id="node-b" elementRef="application-service-1" x="25" y="25" w="100000"');
+  assert.notEqual(modified, xml);
+  const input = path.join(directory, 'partial-synthetic.xml');
+  await writeFile(input, modified);
+  const output = path.join(directory, 'partial');
+  const args = ['export', input, '--all-views', '--format', 'svg', '--output-dir', output];
+  const failFast = runCli(cli, args, 1);
+  assert.deepEqual(codes(failFast), ['EXPORT_DIMENSIONS_EXCEEDED']);
+  await assert.rejects(readdir(output));
+  const result = runCli(cli, [...args, '--continue-on-error'], 1);
+  assert.deepEqual(codes(result), ['BATCH_PARTIAL_FAILURE']);
+  assert.equal(result.output.includes(privateId), false);
+  assert.equal(result.output.includes(directory), false);
+  const manifest = JSON.parse(await readFile(path.join(output, 'manifest.json'), 'utf8'));
+  assert.equal(manifest.schemaVersion, 2);
+  assert.equal(manifest.policy, 'continue-on-error');
+  assert.equal(manifest.overallStatus, 'partial_failure');
+  assert.deepEqual(manifest.entries.map((entry: { status: string }) => entry.status),
+    ['success', 'failed', 'success']);
+  assert.deepEqual(manifest.entries[1].diagnostics, [{ code: 'EXPORT_DIMENSIONS_EXCEEDED' }]);
+  assert.deepEqual(manifest.entries[1].outputs, []);
+  for (const entry of [manifest.entries[0], manifest.entries[2]]) {
+    assert.equal(createHash('sha256').update(await readFile(path.join(output, entry.outputs[0].path)))
+      .digest('hex'), entry.outputs[0].sha256);
+  }
 }
 
 async function assertLegacyRender(directory: string): Promise<void> {

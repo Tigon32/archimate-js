@@ -4,10 +4,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { parseArguments } from './arguments.mjs';
-import { renderArtifacts, renderBatchArtifacts } from './browser.mjs';
-import { prepareBatch } from './batch.mjs';
+import { renderArtifacts, renderBatchArtifacts, renderBatchOutcomes } from './browser.mjs';
+import { failedBatchEntry, partialManifest, prepareBatch, preparePartialView } from './batch.mjs';
 import { diagnostic, safeErrorCode } from './diagnostics.mjs';
-import { readBoundedXml, writeArtifacts, writeAtomic, writeBatchArtifacts } from './io.mjs';
+import { readBoundedXml, writeArtifacts, writeAtomic, writeBatchArtifacts, writePartialBatchArtifacts } from './io.mjs';
 import { listBatchViews } from './views.mjs';
 import type { CliOptions, CliResult, ExportOptions, RenderOptions } from './types.mjs';
 
@@ -26,6 +26,7 @@ function usage(): void {
     [--fit <none|contain|cover>] [--padding <0..1024>]
     [--pdf-page-size <A3|A4|A5|Legal|Letter>] [--pdf-orientation <portrait|landscape>]
     [--pdf-title <text>] [--pdf-footer <text>] [--chrome <path>]
+    [--continue-on-error (requires --all-views)]
 
 Commands emit structured JSON. Rendering requires an existing Chrome or Chromium installation.
 `);
@@ -40,14 +41,26 @@ async function renderCommand(xml: string, options: RenderOptions): Promise<void>
   await writeAtomic(options.output, artifacts.svg!);
 }
 
-async function exportCommand(xml: string, options: ExportOptions): Promise<void> {
+async function exportCommand(xml: string, options: ExportOptions): Promise<boolean> {
   if (options.allViews) {
     const views = listBatchViews(xml);
     const requests = views.map((view) => ({ ...options, viewId: view.id, viewName: undefined }));
+    if (options.continueOnError) {
+      const outcomes = await renderBatchOutcomes(packageRoot, xml, requests);
+      const prepared = outcomes.map((outcome, index) => outcome.artifacts
+        ? preparePartialView(views[index], outcome.artifacts, options.formats) : undefined);
+      const entries = outcomes.map((outcome, index) => prepared[index]?.entry ??
+        failedBatchEntry(views[index], outcome.code!));
+      const groups = prepared.map((item) => ({ files: item?.files ?? [] }));
+      const failed = await writePartialBatchArtifacts(options.outputDirectory, groups, options.input,
+        (indexes) => partialManifest(entries.map((entry, index) => indexes.has(index)
+          ? failedBatchEntry(views[index], 'OUTPUT_WRITE_FAILED') : entry)));
+      return entries.every((entry) => entry.status === 'success') && !failed.size;
+    }
     const artifacts = await renderBatchArtifacts(packageRoot, xml, requests);
     const batch = prepareBatch(views, artifacts, options.formats);
     await writeBatchArtifacts(options.outputDirectory, batch.files, batch.manifest, options.input);
-    return;
+    return true;
   }
   const artifacts = await renderArtifacts(packageRoot, xml, options);
   try {
@@ -58,6 +71,7 @@ async function exportCommand(xml: string, options: ExportOptions): Promise<void>
     }
     throw error;
   }
+  return true;
 }
 
 async function execute(options: Exclude<CliOptions, { command: 'help' }>, xml: string): Promise<number> {
@@ -88,7 +102,10 @@ async function execute(options: Exclude<CliOptions, { command: 'help' }>, xml: s
   }
   try {
     if (options.command === 'render') await renderCommand(xml, options);
-    else await exportCommand(xml, options);
+    else if (!await exportCommand(xml, options)) {
+      emit(failure(options.command, 'BATCH_PARTIAL_FAILURE'));
+      return 1;
+    }
     emit({
       command: options.command, valid: true, diagnostics: validation.diagnostics,
       suggestions: validation.suggestions,
