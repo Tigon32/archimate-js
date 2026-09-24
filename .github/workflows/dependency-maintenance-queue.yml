@@ -1,0 +1,40 @@
+name: Dependency maintenance queue
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+      - Automated security analysis
+    types:
+      - completed
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: dependency-maintenance-queue
+  cancel-in-progress: true
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  reconcile:
+    name: Reconcile serialized dependency queue
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout trusted controller
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Select one dependency-maintenance item
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/dependency-maintenance-queue.mjs
