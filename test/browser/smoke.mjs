@@ -72,6 +72,10 @@ try {
   });
   page.on('console', (message) => consoleMessages.push(message.text()));
 
+  stage = 'load synthetic read-only example';
+  await page.goto(origin + '/examples/read-only/', { waitUntil: 'networkidle' });
+  await page.locator('#status').waitFor({ state: 'visible' });
+
   stage = 'check DTO import eligibility in the browser';
   const eligibility = await page.evaluate(async () => {
     await new Promise((resolve, reject) => {
@@ -95,9 +99,6 @@ try {
   });
   assert.deepEqual(eligibility, { supported: true, unsupported: true });
 
-  stage = 'load synthetic read-only example';
-  await page.goto(origin + '/examples/read-only/', { waitUntil: 'networkidle' });
-  await page.locator('#status').waitFor({ state: 'visible' });
   await page.waitForFunction(() => {
     const status = document.querySelector('#status')?.textContent;
     return status && !status.startsWith('Loading');
