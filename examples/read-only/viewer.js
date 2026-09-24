@@ -5,6 +5,7 @@ const status = document.querySelector('#status');
 const container = document.querySelector('#diagram');
 
 function showFailure() {
+  status.dataset.state = 'error';
   status.textContent = 'Could not load or render the synthetic example. Check the local build and server instructions.';
 }
 
@@ -78,6 +79,7 @@ async function renderExample() {
       width: '100%',
       height: '100%'
     });
+    status.dataset.state = 'success';
     status.textContent = 'Loaded the public synthetic service delivery example.';
   } catch {
     // Keep parser, network, and model details out of the page and browser console.

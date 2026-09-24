@@ -74,7 +74,8 @@
     "./model-dto": {
       "types": "./dist/model-dto/index.d.ts",
       "import": "./dist/model-dto/index.js"
-    }
+    },
+    "./app-shell.css": "./assets/design-tokens/app-shell.css"
   },
   "devDependencies": {
     "@babel/parser": "7.29.9",

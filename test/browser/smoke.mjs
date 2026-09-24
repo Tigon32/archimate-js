@@ -13,6 +13,10 @@ const routes = new Map([
   ['/examples/read-only/', [ 'examples/read-only/index.html', 'text/html; charset=utf-8' ]],
   ['/examples/read-only/viewer.js', [ 'examples/read-only/viewer.js', 'text/javascript; charset=utf-8' ]],
   ['/examples/read-only/diagram.css', [ 'examples/read-only/diagram.css', 'text/css; charset=utf-8' ]],
+  ['/assets/design-tokens/app-shell.css', [ 'assets/design-tokens/app-shell.css', 'text/css; charset=utf-8' ]],
+  ['/assets/design-tokens/app.generated.css', [ 'assets/design-tokens/app.generated.css', 'text/css; charset=utf-8' ]],
+  ['/assets/ibm-plex-font/IBMPlexSans-Regular.ttf', [ 'assets/ibm-plex-font/IBMPlexSans-Regular.ttf', 'font/ttf' ]],
+  ['/assets/ibm-plex-font/IBMPlexSans-SemiBold.ttf', [ 'assets/ibm-plex-font/IBMPlexSans-SemiBold.ttf', 'font/ttf' ]],
   ['/node_modules/diagram-js/assets/diagram-js.css', [ 'node_modules/diagram-js/assets/diagram-js.css', 'text/css; charset=utf-8' ]],
   ['/.ci-build/archimate-js.js', [ '.ci-build/archimate-js.js', 'text/javascript; charset=utf-8' ]],
   ['/test/fixtures/synthetic/read-only-showcase.xml', [
@@ -69,6 +73,7 @@ try {
     return status && !status.startsWith('Loading');
   }, null, { timeout: 10000 });
   assert.equal(await page.locator('#status').textContent(), 'Loaded the public synthetic service delivery example.');
+  assert.equal(await page.locator('#status').getAttribute('data-state'), 'success');
   assert.ok(await page.locator('#diagram svg text').count() >= 5, 'HTML embed should render the multi-layer synthetic view');
   const embeddedDiagramText = await page.locator('#diagram svg.am-diagram').textContent();
   assert.ok(embeddedDiagramText.includes('Assigns request'),
@@ -97,6 +102,14 @@ try {
   assert.ok(visualState.connections >= 4, 'all ArchiMate relationships should be drawn');
   assert.ok(visualState.connectionStrokes.every((stroke) => stroke !== 'rgb(255, 0, 255)'),
     'relationships should not fall back to browser magenta');
+  const beforeTheme = await page.locator('#diagram .djs-shape .djs-visual rect').evaluateAll((items) =>
+    items.map((item) => getComputedStyle(item).fill));
+  await page.locator('.am-app').evaluate((app) => app.setAttribute('data-theme', 'dark'));
+  assert.equal(await page.locator('.am-app').evaluate((app) =>
+    getComputedStyle(app).getPropertyValue('--am-ui-surface').trim()), '#1e1f22');
+  assert.deepEqual(await page.locator('#diagram .djs-shape .djs-visual rect').evaluateAll((items) =>
+    items.map((item) => getComputedStyle(item).fill)), beforeTheme,
+  'dark UI theme must not recolor diagram shapes');
   await mkdir(resultsDirectory, { recursive: true });
   await page.screenshot({ path: path.join(resultsDirectory, 'read-only-showcase.png'), fullPage: true });
 

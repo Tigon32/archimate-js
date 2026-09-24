@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>archimate-js read-only embed</title>
+    <link rel="stylesheet" href="../../assets/design-tokens/app-shell.css">
     <link rel="stylesheet" href="./diagram.css">
     <style>
       body { font: 16px/1.5 system-ui, sans-serif; margin: 2rem auto; max-width: 72rem; padding: 0 1rem; }
@@ -13,10 +14,11 @@
     </style>
   </head>
   <body>
-    <main>
+    <main class="am-app">
       <h1>Read-only ArchiMate view</h1>
       <p>This local example loads a hand-authored synthetic ArchiMate model across business, application, and technology layers. The rendered diagram is intentionally non-interactive.</p>
-      <p id="status" role="status" aria-live="polite">Loading synthetic example…</p>
+      <nav class="am-ui-toolbar" aria-label="Diagram navigation"><a class="am-ui-button" href="#diagram">Go to diagram</a></nav>
+      <p id="status" class="am-ui-status" role="status" aria-live="polite">Loading synthetic example…</p>
       <div class="diagram-frame"><div id="diagram" aria-label="Synthetic service delivery ArchiMate diagram"></div></div>
     </main>
 
