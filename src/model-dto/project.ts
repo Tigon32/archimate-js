@@ -117,18 +117,35 @@ function present(value: unknown): boolean {
       Object.keys(value).length > 0);
 }
 
+function localizedLoss(data: Record<string, unknown>, field: string): boolean {
+  const values = optionalList(data[field]);
+  return values.length > 1 || values.some((value) => {
+    const language = record(value).language;
+    return language !== undefined && language !== null && language !== '';
+  });
+}
+
 function unsupportedItem(value: unknown, depth = 0, diagram = true): boolean {
   if (depth > 64) return invalid();
   const data = record(value);
   const supported = supportedNode(value) || supportedConnection(value);
   return diagram && !supported || present(data.properties) || present(data.meffProperties) ||
-    present(data.meffDocumentation) || present(data.viewRefs) ||
+    present(data.meffDocumentation) || present(data.viewRefs) || present(data.viewRef) ||
+    present(data.resolvedViewRefs) || present(data.meffLabel) ||
+    (diagram ? present(data.documentation) :
+      present(data.propertiesNode) || present(data.propertyDefinitions) ||
+      present(data.specialization) || present(data.children)) ||
+    (diagram ? localizedLoss(data, 'localizedLabels') :
+      localizedLoss(data, 'localizedNames') ||
+      ['accessType', 'influenceStrength', 'isDirected', 'modifier'].some((key) => present(data[key]))) ||
     present(optionalRecord(data.style)?.font) ||
     optionalList(data.nodes).some((child) => unsupportedItem(child, depth + 1));
 }
 
 function hasUnsupported(model: Record<string, unknown>, rawViews: unknown[]): boolean {
-  if (model.metadata || optionalList(model.propertyDefinitions).length ||
+  if (model.metadata || present(model.documentation) || present(model.version) ||
+      localizedLoss(model, 'localizedNames') ||
+      optionalList(model.propertyDefinitions).length ||
       optionalList(model.organizations).length || present(model.properties) ||
       present(optionalRecord(optionalRecord(model.views)?.viewpoints)?.viewpointsList)) return true;
   const elements = optionalList(optionalRecord(model.elementsNode)?.baseElements);
@@ -136,7 +153,9 @@ function hasUnsupported(model: Record<string, unknown>, rawViews: unknown[]): bo
   if ([...elements, ...relationships].some((item) => unsupportedItem(item, 0, false))) return true;
   return rawViews.some((value) => {
     const data = record(value);
-    if (data.viewpointRef || present(data.meffProperties) || present(data.meffDocumentation)) return true;
+    if (data.viewpoint || data.viewpointRef || localizedLoss(data, 'localizedNames') ||
+        present(data.documentation) || present(data.properties) ||
+        present(data.meffProperties) || present(data.meffDocumentation)) return true;
     return optionalList(data.viewElements).some((item) => unsupportedItem(item));
   });
 }

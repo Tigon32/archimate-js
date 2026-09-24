@@ -138,6 +138,34 @@
     "review_after": "2026-12-23"
   },
   {
+    "id": "synthetic-meff-dto-export-model",
+    "path": "test/fixtures/synthetic/dto-export-model.xml",
+    "classification": "SYNTHETIC",
+    "purpose": "Exercise semantic DTO to MEFF export and import round trips without omitted records.",
+    "provenance": "Hand-authored using generic names from public MEFF 3.1 Model schema descriptions; contains no private data or copied examples.",
+    "contains_private_data": false,
+    "expected_coverage": [
+      "element and relationship identities",
+      "semantic source and target references",
+      "DTO export and reimport"
+    ],
+    "review_after": "2026-12-23"
+  },
+  {
+    "id": "synthetic-meff-dto-export-view",
+    "path": "test/fixtures/synthetic/dto-export-view.xml",
+    "classification": "SYNTHETIC",
+    "purpose": "Exercise semantic diagram DTO to MEFF export and import round trips without omitted presentation records.",
+    "provenance": "Hand-authored using generic names from public MEFF 3.1 Diagram schema descriptions; contains no private data or copied examples.",
+    "contains_private_data": false,
+    "expected_coverage": [
+      "nested element node geometry and authored stroke",
+      "relationship connection attachment and bendpoint",
+      "DTO export and reimport"
+    ],
+    "review_after": "2026-12-23"
+  },
+  {
     "id": "synthetic-meff-xsd-valid-model",
     "path": "test/fixtures/meff-schema/valid-model.xml",
     "classification": "SYNTHETIC",

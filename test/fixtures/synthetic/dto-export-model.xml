@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Classification: SYNTHETIC
+  Provenance: Hand-authored for Tigon32/archimate-js from public MEFF 3.1 schema docs.
+  Exercises semantic DTO exchange without a diagram.
+-->
+<model xmlns="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:archimate="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  identifier="model-dto-semantic">
+  <name>Synthetic Semantic Model</name>
+  <elements>
+    <element identifier="component" xsi:type="archimate:ApplicationComponent">
+      <name>Component</name>
+    </element>
+    <element identifier="service" xsi:type="archimate:ApplicationService">
+      <name>Service</name>
+    </element>
+  </elements>
+  <relationships>
+    <relationship identifier="serving" xsi:type="archimate:Serving"
+      source="component" target="service"><name>Serves</name></relationship>
+  </relationships>
+</model>

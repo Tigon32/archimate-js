@@ -38,12 +38,13 @@ try {
   const consumerEntry = path.join(consumer, 'consumer-entry.mjs');
   await writeFile(consumerEntry, `
     import Viewer, { mountViewer, renderViewToSvg } from 'archimate-js';
-    import { importMeffToModelDto } from 'archimate-js/model-dto';
+    import { importMeffToModelDto, exportModelDtoToMeff } from 'archimate-js/model-dto';
     export default {
       viewer: typeof Viewer,
       mountViewer: typeof mountViewer,
       renderViewToSvg: typeof renderViewToSvg,
-      dtoImport: typeof importMeffToModelDto
+      dtoImport: typeof importMeffToModelDto,
+      dtoExport: typeof exportModelDtoToMeff
     };
   `);
   const require = createRequire(path.join(root, 'package.json'));
@@ -68,7 +69,7 @@ try {
   global.document = dom.window.document;
   const rootApi = require(bundlePath).default;
   assert.deepEqual(rootApi, { viewer: 'function', mountViewer: 'function',
-    renderViewToSvg: 'function', dtoImport: 'function' });
+    renderViewToSvg: 'function', dtoImport: 'function', dtoExport: 'function' });
 
   const consumerScript = String.raw`
     import assert from 'node:assert/strict';
@@ -87,6 +88,7 @@ try {
     assert.equal(model.id, 'synthetic-model');
     assert.equal(dto.parseModelDto(dto.serializeModelDto(model)).id, model.id);
     assert.equal(typeof dto.validateModelDto, 'function');
+    assert.equal(dto.importMeffToModelDto(dto.exportModelDtoToMeff(model)).id, model.id);
 
     await assert.rejects(
       import('archimate-js/lib/Viewer'),

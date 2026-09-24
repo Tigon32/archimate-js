@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Classification: SYNTHETIC
+  Provenance: Hand-authored for Tigon32/archimate-js from public MEFF 3.1 schema docs.
+  Exercises only the declared lossless model DTO exchange subset.
+-->
+<model xmlns="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:archimate="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  identifier="model-dto-export">
+  <name>Synthetic DTO Exchange Model</name>
+  <elements>
+    <element identifier="component-one" xsi:type="archimate:ApplicationComponent">
+      <name>Component One</name><documentation>Synthetic element.</documentation>
+    </element>
+    <element identifier="service-two" xsi:type="archimate:ApplicationService">
+      <name>Service Two</name>
+    </element>
+  </elements>
+  <relationships>
+    <relationship identifier="serving-one-two" xsi:type="archimate:Serving"
+      source="component-one" target="service-two"><name>Serves</name></relationship>
+  </relationships>
+  <views><diagrams>
+    <view identifier="view-dto-export" xsi:type="archimate:Diagram">
+      <name>Synthetic Application View</name>
+      <node identifier="node-component" xsi:type="archimate:Element"
+        elementRef="component-one" x="20" y="40" w="140" h="70">
+        <style lineWidth="7"><lineColor r="20" g="40" b="60" a="50"/></style>
+        <node identifier="node-service-nested" xsi:type="archimate:Element"
+          elementRef="service-two" x="10" y="120" w="130" h="70"/>
+      </node>
+      <node identifier="node-service" xsi:type="archimate:Element"
+        elementRef="service-two" x="300" y="40" w="140" h="70"/>
+      <connection identifier="serving-connection" xsi:type="archimate:Relationship"
+        relationshipRef="serving-one-two" source="node-component" target="node-service">
+        <sourceAttachment x="160" y="75"/>
+        <bendpoint x="220" y="80"/>
+        <targetAttachment x="300" y="75"/>
+      </connection>
+    </view>
+  </diagrams></views>
+</model>
