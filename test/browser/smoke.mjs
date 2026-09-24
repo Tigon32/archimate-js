@@ -106,7 +106,13 @@ try {
     editableModel.views.push({ id: 'view-two', nodes: [], connections: [] });
     const editor = new api.DiagramAdapter(editableModel);
     let selectionEvents = 0;
-    editor.subscribe((event) => { if (event.type === 'selection') selectionEvents++; });
+    const publicEvents = [];
+    editor.subscribe((event) => {
+      if (event.type === 'selection') {
+        selectionEvents++;
+        publicEvents.push(JSON.stringify(event));
+      }
+    });
     const detach = editor.attach('view-dto-export', port);
     const registry = viewer.get('elementRegistry');
     const nestedParent = registry.get('node-service-nested')?.parent?.id;
@@ -153,6 +159,9 @@ try {
       styled: lineWidth === 7,
       selection: selectedIds.includes('node-component'),
       selectionEvents: selectionEventCount === 2,
+      eventPayloadsArePlain: publicEvents.length === 2 &&
+        publicEvents.every((event) => !/businessObject|\$parent|\$type/.test(event)),
+      serializedStateIsPlain: !editor.serialize().includes('businessObject'),
       detached: clearedOnDetach,
       switchedViewCleared: clearedOnSwitch,
       coordinatesRestored,
@@ -162,7 +171,8 @@ try {
   assert.deepEqual(eligibility, {
     supported: true, unsupported: true, canvasIds: true, nested: true, nestedGeometry: true,
     geometry: true, label: true, renderedStyle: true, endpoints: true, styled: true,
-    selection: true, selectionEvents: true, detached: true, switchedViewCleared: true,
+    selection: true, selectionEvents: true, eventPayloadsArePlain: true,
+    serializedStateIsPlain: true, detached: true, switchedViewCleared: true,
     coordinatesRestored: true, sourceUnchanged: true
   });
 
