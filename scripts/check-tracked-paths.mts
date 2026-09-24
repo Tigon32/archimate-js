@@ -12,7 +12,7 @@ const FORBIDDEN_COMPONENTS = new Set([
   'transcripts', 'dumps'
 ]);
 const MODEL_OR_MEDIA = /\.(?:archimate\d*|xml|png|jpe?g|webp|gif|bmp|tiff?|pdf|zip)$/i;
-const SENSITIVE_DUMP = /(?:^|[-_.])(?:session|prompt|transcript|customer-export)(?:[-_.][^.]+)*\.(?:log|txt|jsonl?|har|zip|md)$/i;
+const SENSITIVE_DUMP = /(?:^|[-_.])(?:session|prompt|transcript|customer-export)(?:[-_.][^-_.]+)*\.(?:log|txt|jsonl?|har|zip|md)$/i;
 
 export function readTrackedPaths(root: string): string[] {
   const output = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'buffer' });
