@@ -99,7 +99,8 @@ try {
       canvas: viewer.get('canvas'),
       elementFactory: viewer.get('elementFactory'),
       eventBus: viewer.get('eventBus'),
-      selection: viewer.get('selection')
+      selection: viewer.get('selection'),
+      modeling: viewer.get('modeling')
     });
     const editableModel = structuredClone(supportedEntry.model);
     const originalSnapshot = JSON.stringify(supportedEntry.model);
@@ -108,10 +109,8 @@ try {
     let selectionEvents = 0;
     const publicEvents = [];
     editor.subscribe((event) => {
-      if (event.type === 'selection') {
-        selectionEvents++;
-        publicEvents.push(JSON.stringify(event));
-      }
+      if (event.type === 'selection') selectionEvents++;
+      publicEvents.push(JSON.stringify(event));
     });
     const detach = editor.attach('view-dto-export', port);
     const registry = viewer.get('elementRegistry');
@@ -127,6 +126,27 @@ try {
     const visualShape = container.querySelector('[data-element-id="node-component"] .am-shape');
     viewer.get('selection').select([registry.get('node-component')]);
     const selectedIds = editor.project('view-dto-export').selectedIds;
+    const beforeGestures = editor.serialize();
+    const modeling = viewer.get('modeling');
+    modeling.moveElements([registry.get('node-component')], { x: 12, y: -5 });
+    modeling.resizeShape(registry.get('node-service'), { x: 210, y: 30, width: 150, height: 80 });
+    modeling.updateLabel(registry.get('node-component'), 'Updated component');
+    const edited = editor.serialize();
+    const changedNode = editor.project('view-dto-export').nodes.find((node) => node.id === 'node-component');
+    const changedCanvas = registry.get('node-component');
+    const changedServiceWidth = registry.get('node-service')?.width;
+    let unsupportedUnchanged = false;
+    try {
+      modeling.moveElements([changedCanvas], { x: 1, y: 1 }, registry.get('node-service'));
+    } catch (error) {
+      unsupportedUnchanged = error.code === 'MODEL_DTO_INVALID' && editor.serialize() === edited &&
+        registry.get('node-component') === changedCanvas;
+    }
+    const undoRestored = editor.undo() && editor.undo() && editor.undo() && editor.serialize() === beforeGestures &&
+      registry.get('node-component')?.x === sourceNode.x;
+    const redoRestored = editor.redo() && editor.redo() && editor.redo() && editor.serialize() === edited &&
+      registry.get('node-component')?.name === 'Updated component';
+    editor.undo(); editor.undo(); editor.undo();
     const untouched = JSON.stringify(supportedEntry.model) === originalSnapshot;
     detach();
     const clearedOnDetach = registry.get('node-component') === undefined;
@@ -159,7 +179,14 @@ try {
       styled: lineWidth === 7,
       selection: selectedIds.includes('node-component'),
       selectionEvents: selectionEventCount === 2,
-      eventPayloadsArePlain: publicEvents.length === 2 &&
+      gesturesUpdatedDto: changedNode?.x === sourceNode.x + 12 && changedNode?.y === sourceNode.y - 5 &&
+        changedNode?.label === 'Updated component',
+      gesturesUpdatedCanvas: changedCanvas?.x === sourceNode.x + 12 && changedCanvas?.y === sourceNode.y - 5 &&
+        changedCanvas?.name === 'Updated component' && changedServiceWidth === 150,
+      unsupportedUnchanged,
+      undoRestored,
+      redoRestored,
+      eventPayloadsArePlain: publicEvents.length >= 5 &&
         publicEvents.every((event) => !/businessObject|\$parent|\$type/.test(event)),
       serializedStateIsPlain: !editor.serialize().includes('businessObject'),
       detached: clearedOnDetach,
@@ -171,7 +198,8 @@ try {
   assert.deepEqual(eligibility, {
     supported: true, unsupported: true, canvasIds: true, nested: true, nestedGeometry: true,
     geometry: true, label: true, renderedStyle: true, endpoints: true, styled: true,
-    selection: true, selectionEvents: true, eventPayloadsArePlain: true,
+    selection: true, selectionEvents: true, gesturesUpdatedDto: true, gesturesUpdatedCanvas: true,
+    unsupportedUnchanged: true, undoRestored: true, redoRestored: true, eventPayloadsArePlain: true,
     serializedStateIsPlain: true, detached: true, switchedViewCleared: true,
     coordinatesRestored: true, sourceUnchanged: true
   });

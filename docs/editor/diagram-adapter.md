@@ -27,13 +27,32 @@ if (result.eligible) {
 ```
 
 `DiagramJsCanvasPort` adapts a Viewer or Modeler canvas, element factory,
-event bus, and selection service. It draws one active view from plain
-projection values, maps selection back to view IDs, and clears canvas elements
-and listeners on detach. Node projections include semantic type/name and
+event bus, selection service, and (for editing) modeling service. Pass the
+modeling service from `instance.get('modeling')` to route native
+`moveElements`, `resizeShape`, and `updateLabel` operations into the adapter
+before diagram-js's command stack runs:
+
+```ts
+const port = new DiagramJsCanvasPort({
+  canvas: modeler.get('canvas'),
+  elementFactory: modeler.get('elementFactory'),
+  eventBus: modeler.get('eventBus'),
+  selection: modeler.get('selection'),
+  modeling: modeler.get('modeling')
+});
+const detach = editor.attach(activeViewId, port);
+```
+
+It draws one active view from plain projection values, maps selection back to
+view IDs, and clears canvas elements and listeners and restores modeling methods
+on detach. Each supported move, resize, or label gesture becomes one DTO
+command; undo and redo rerender the same active view from DTO history. A move
+is supported for one node within its current parent. Multi-node moves,
+reparenting, and attachment gestures are rejected before diagram-js can mutate
+state. Node projections include semantic type/name and
 style; connection projections include relationship type/name, style, and
 endpoints. Renderer-only facades and canvas elements remain private to the
-port. Native gesture-to-command translation is added by the follow-on editing
-issues. The headless `CanvasPort` contract already supports ID-only commands.
+port. The headless `CanvasPort` contract also supports ID-only commands.
 
 The adapter's move, resize, connect, reconnect, delete, and presentation label
 commands use a snapshot-backed undo/redo stack. A node move carries its nested
@@ -47,8 +66,8 @@ fields or variants that cannot survive a MEFF round trip. Callers must handle
 `MEFF_DTO_EXPORT_INVALID` and preserve the original model for unsupported
 inputs; a rejected export emits no partial XML.
 
-The existing `Modeler`/`BaseViewer` entry point still uses moddle objects and
-the original diagram-js editing services. Routing its native gestures through
-DTO commands and moving its live save path to the adapter remain before issue
-#94 is complete. Unsupported imports stay on the original viewer path so the
-legacy save path cannot silently drop their model fields.
+The existing `Modeler`/`BaseViewer` entry point still uses moddle objects for
+its legacy save path. Routing supported geometry and presentation-label edits
+through DTO commands does not yet move that save path to the adapter.
+Unsupported imports stay on the original viewer path so the legacy save path
+cannot silently drop their model fields.

@@ -1,5 +1,6 @@
 import type { CanvasPort, CanvasProjection, EditorCommand } from './editor.js';
 import type { StyleDto } from './types.js';
+import { invalid } from './validate.js';
 
 interface CanvasElement {
   id?: string;
@@ -32,12 +33,21 @@ interface DiagramJsSelection {
   select(elements: unknown[]): void;
 }
 
+interface DiagramJsModeling {
+  moveElements(shapes: unknown[], delta: { x: number; y: number }, target?: unknown,
+    hints?: { attach?: boolean }): unknown;
+  resizeShape(shape: unknown, bounds: { x: number; y: number; width: number; height: number },
+    minBounds?: unknown, hints?: unknown): unknown;
+  updateLabel(element: unknown, label: string, bounds?: unknown, hints?: unknown): unknown;
+}
+
 /** Minimal service surface accepted from a live Viewer or Modeler instance. */
 export interface DiagramJsCanvasServices {
   canvas: DiagramJsCanvas;
   elementFactory: DiagramJsElementFactory;
   eventBus: DiagramJsEventBus;
   selection: DiagramJsSelection;
+  modeling?: DiagramJsModeling;
 }
 
 type ProjectionNode = CanvasProjection['nodes'][number];
@@ -74,9 +84,13 @@ function isElement(value: unknown): value is CanvasElement {
 export class DiagramJsCanvasPort implements CanvasPort {
   private readonly shapes = new Map<string, unknown>();
   private readonly connections = new Map<string, unknown>();
+  private readonly currentNodes = new Map<string, ProjectionNode>();
+  private readonly currentConnections = new Map<string, ProjectionConnection>();
   private readonly selectionHandlers = new Set<(ids: string[]) => void>();
   private rendering = false;
   private listening = false;
+  private readonly restoreModeling: Array<() => void> = [];
+  private viewId = '';
   private readonly onSelectionChanged = (event: unknown): void => {
     if (this.rendering) return;
     const selected = event && typeof event === 'object' &&
@@ -92,8 +106,11 @@ export class DiagramJsCanvasPort implements CanvasPort {
   render(projection: CanvasProjection): void {
     this.rendering = true;
     try {
-      this.clear();
+      this.clearCanvas();
+      this.viewId = projection.viewId;
       const nodes = new Map(projection.nodes.map((node) => [node.id, node]));
+      for (const node of projection.nodes) this.currentNodes.set(node.id, node);
+      for (const connection of projection.connections) this.currentConnections.set(connection.id, connection);
       for (const node of projection.nodes) this.renderNode(node, nodes);
       for (const connection of projection.connections) this.renderConnection(connection);
       const selected = projection.selectedIds.map((id) => this.shapes.get(id) || this.connections.get(id))
@@ -105,9 +122,39 @@ export class DiagramJsCanvasPort implements CanvasPort {
   }
 
   onCommand(handler: (command: EditorCommand) => void): () => void {
-    // Gesture translation is intentionally enabled by the command-integration issue.
-    void handler;
-    return () => {};
+    const modeling = this.services.modeling;
+    if (!modeling) return () => {};
+
+    const moveElements = modeling.moveElements;
+    const resizeShape = modeling.resizeShape;
+    const updateLabel = modeling.updateLabel;
+    const restore: Array<() => void> = [];
+    const install = (key: 'moveElements' | 'resizeShape' | 'updateLabel', original: (...args: never[]) => unknown,
+      replacement: (...args: never[]) => unknown): void => {
+      const service = modeling as unknown as Record<string, (...args: never[]) => unknown>;
+      service[key] = replacement;
+      restore.push(() => { if (service[key] === replacement) service[key] = original; });
+    };
+
+    install('moveElements', moveElements as (...args: never[]) => unknown,
+      ((shapes: unknown[], delta: { x: number; y: number }, target?: unknown,
+        hints?: { attach?: boolean }): undefined => {
+        return this.routeMove(shapes, delta, target, hints, handler);
+      }) as (...args: never[]) => unknown);
+    install('resizeShape', resizeShape as (...args: never[]) => unknown,
+      ((shape: unknown, bounds: { x: number; y: number; width: number; height: number }): undefined => {
+        return this.routeResize(shape, bounds, handler);
+      }) as (...args: never[]) => unknown);
+    install('updateLabel', updateLabel as (...args: never[]) => unknown,
+      ((element: unknown, label: string): undefined => {
+        return this.routeLabel(element, label, handler);
+      }) as (...args: never[]) => unknown);
+    this.restoreModeling.push(...restore);
+    return () => {
+      for (const restoreMethod of restore.reverse()) restoreMethod();
+      this.restoreModeling.splice(0, this.restoreModeling.length,
+        ...this.restoreModeling.filter((restoreMethod) => !restore.includes(restoreMethod)));
+    };
   }
 
   onSelection(handler: (ids: string[]) => void): () => void {
@@ -126,6 +173,11 @@ export class DiagramJsCanvasPort implements CanvasPort {
   }
 
   clear(): void {
+    for (const restore of this.restoreModeling.splice(0).reverse()) restore();
+    this.clearCanvas();
+  }
+
+  private clearCanvas(): void {
     this.services.selection.select([]);
     const root = this.services.canvas.getRootElement();
     const shapes: unknown[] = [];
@@ -142,9 +194,54 @@ export class DiagramJsCanvasPort implements CanvasPort {
     for (const shape of shapes.reverse()) this.services.canvas.removeShape(shape);
     this.shapes.clear();
     this.connections.clear();
+    this.currentNodes.clear();
+    this.currentConnections.clear();
+  }
+
+  private elementId(element: unknown): string {
+    if (!isElement(element) || (!this.shapes.has(element.id!) && !this.connections.has(element.id!))) invalid();
+    return element.id!;
+  }
+
+  private nodeFor(element: unknown): ProjectionNode {
+    const id = this.elementId(element);
+    const node = this.currentNodes.get(id);
+    if (!node) invalid();
+    return node;
+  }
+
+  private routeMove(shapes: unknown[], delta: { x: number; y: number }, target: unknown,
+    hints: { attach?: boolean } | undefined, handler: (command: EditorCommand) => void): undefined {
+    if (!Array.isArray(shapes) || shapes.length !== 1 || hints?.attach === true ||
+        !Number.isFinite(delta?.x) || !Number.isFinite(delta?.y)) invalid();
+    const node = this.nodeFor(shapes[0]);
+    const expectedParent = node.parentId ? this.shapes.get(node.parentId) : undefined;
+    if (node.parentId ? target !== expectedParent : target != null && target !== this.services.canvas.getRootElement()) invalid();
+    handler({ type: 'move', viewId: this.viewId, nodeId: node.id, x: node.x + delta.x, y: node.y + delta.y });
+    return undefined;
+  }
+
+  private routeResize(shape: unknown, bounds: { x: number; y: number; width: number; height: number },
+    handler: (command: EditorCommand) => void): undefined {
+    const node = this.nodeFor(shape);
+    const parent = node.parentId ? this.currentNodes.get(node.parentId) : undefined;
+    if (!bounds || ![bounds.x, bounds.y, bounds.width, bounds.height].every(Number.isFinite)) invalid();
+    handler({ type: 'resize', viewId: this.viewId, nodeId: node.id,
+      x: bounds.x + (parent?.x ?? 0), y: bounds.y + (parent?.y ?? 0),
+      width: bounds.width, height: bounds.height });
+    return undefined;
+  }
+
+  private routeLabel(element: unknown, label: string,
+    handler: (command: EditorCommand) => void): undefined {
+    const id = this.elementId(element);
+    if (!this.currentNodes.has(id) && !this.currentConnections.has(id) || typeof label !== 'string') invalid();
+    handler({ type: 'label', viewId: this.viewId, itemId: id, label });
+    return undefined;
   }
 
   private renderNode(node: ProjectionNode, nodes: Map<string, ProjectionNode>): void {
+    this.currentNodes.set(node.id, node);
     const parent = node.parentId ? this.shapes.get(node.parentId) : undefined;
     const parentNode = node.parentId ? nodes.get(node.parentId) : undefined;
     const meffType = node.kind === 'element' ? 'Element' : node.kind === 'container' ? 'Container' : 'Label';
