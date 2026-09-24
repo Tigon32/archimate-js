@@ -1,6 +1,7 @@
 // SYNTHETIC: Hand-authored DTOs with no customer content.
 import { expect, it } from 'vitest';
-import { createAccessibleOutline, formatAccessibleOutline } from '../../src/model-dto/index.js';
+import { createAccessibleOutline, formatAccessibleOutline,
+  searchAccessibleOutline } from '../../src/model-dto/index.js';
 
 const node = (id: string, elementId: string, label?: string) => ({ id, kind: 'element' as const,
   elementId, x: 0, y: 0, width: 100, height: 40, label, nodes: [] });
@@ -106,6 +107,52 @@ it('rejects invalid DTO, missing view, and invalid options with content-free dia
       expect(error).toBeInstanceOf(TypeError);
       expect(error).toHaveProperty('code');
       expect(String(error)).not.toContain(secret);
+    }
+  }
+});
+
+it('searches only visible names and types in stable view order with containment paths', () => {
+  const outline = createAccessibleOutline(fixture(), 'selected');
+  expect(searchAccessibleOutline(outline, '  PORTAL ')).toEqual([
+    { category: 'node', kind: 'element', id: 'instance-1', name: 'Visible portal',
+      type: 'ApplicationComponent', pathIds: ['group', 'instance-1'] },
+    { category: 'node', kind: 'element', id: 'instance-2', name: 'Portal',
+      type: 'ApplicationComponent', pathIds: ['group', 'instance-2'] },
+    { category: 'node', kind: 'element', id: 'instance-3', name: 'Portal',
+      type: 'BusinessActor', pathIds: ['instance-3'] },
+    { category: 'relationship', kind: 'relationship', id: 'rel-1',
+      name: 'Flow from Visible portal to Portal', type: 'Flow', pathIds: [] }
+  ]);
+  expect(searchAccessibleOutline(outline, 'applicationcomponent').map(({ id }) => id))
+    .toEqual(['instance-1', 'instance-2']);
+  expect(searchAccessibleOutline(outline, 'flow').map(({ id }) => id)).toEqual(['rel-1', 'rel-2']);
+  expect(searchAccessibleOutline(outline, 'SECRET_')).toEqual([]);
+  expect(searchAccessibleOutline(outline, 'no match')).toEqual([]);
+  const flat = createAccessibleOutline(fixture(), 'selected', { grouping: 'flat' });
+  expect(searchAccessibleOutline(flat, 'portal')[0].pathIds).toEqual(['instance-1']);
+});
+
+it('rejects empty queries and malformed outlines without echoing input', () => {
+  const outline = createAccessibleOutline(fixture(), 'selected');
+  const malformed = { ...outline, nodes: [{ ...outline.nodes[0],
+    children: [{ ...outline.nodes[0].children[0], id: 'group' }] }] };
+  for (const run of [
+    () => searchAccessibleOutline(outline, '  '),
+    () => searchAccessibleOutline(outline, 3),
+    () => searchAccessibleOutline({ nodes: 'SECRET_BAD_SHAPE', relationships: [] }, 'x'),
+    () => searchAccessibleOutline({ ...outline, nodes: [
+      { ...outline.nodes[0], kind: new String('element') }
+    ] }, 'x'),
+    () => searchAccessibleOutline({ ...outline, relationships: [
+      { ...outline.relationships[0], kind: new String('relationship') }
+    ] }, 'x'),
+    () => searchAccessibleOutline(malformed, 'x')
+  ]) {
+    try { run(); throw new Error('Expected an error'); }
+    catch (error) {
+      expect(error).toBeInstanceOf(TypeError);
+      expect(error).toHaveProperty('code', 'ACCESSIBLE_OUTLINE_SEARCH_INVALID');
+      expect(String(error)).not.toContain('SECRET_');
     }
   }
 });
