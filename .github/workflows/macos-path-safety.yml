@@ -6,8 +6,6 @@ on:
     paths:
       - "src/cli/io.mts"
       - "test/unit/cli-export.test.mts"
-      - "package.json"
-      - "package-lock.json"
       - ".github/workflows/macos-path-safety.yml"
   schedule:
     - cron: "41 5 * * 1"
