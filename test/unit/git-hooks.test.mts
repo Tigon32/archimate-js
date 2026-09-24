@@ -1,7 +1,12 @@
+// @ts-expect-error Node types are intentionally excluded from the default test type surface.
 import { execFileSync } from 'node:child_process';
+// @ts-expect-error Node types are intentionally excluded from the default test type surface.
 import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+// @ts-expect-error Node types are intentionally excluded from the default test type surface.
 import { tmpdir } from 'node:os';
+// @ts-expect-error Node types are intentionally excluded from the default test type surface.
 import path from 'node:path';
+// @ts-expect-error Node types are intentionally excluded from the default test type surface.
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
@@ -25,7 +30,7 @@ describe('local verification gate', () => {
 
     try {
       execFileSync('git', ['init', '--quiet'], { cwd: checkout });
-      execFileSync(process.execPath, [path.join(repositoryRoot, 'scripts/install-git-hooks.mjs')], {
+      execFileSync(process.argv[0], [path.join(repositoryRoot, 'scripts/install-git-hooks.mjs')], {
         cwd: checkout,
         stdio: 'pipe'
       });
