@@ -2,6 +2,7 @@ name: Automated security analysis
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches:
       - main
@@ -18,6 +19,7 @@ permissions:
 
 jobs:
   codeql:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     name: CodeQL JavaScript and TypeScript analysis
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -38,11 +40,11 @@ jobs:
         uses: github/codeql-action/analyze@1190a975f95ce23525efb6a3fc21ea29567c1b52 # v3.38.2
         with:
           category: /language:javascript-typescript
-          upload: ${{ github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork }}
+          upload: ${{ github.event_name != 'pull_request' || (github.actor != 'dependabot[bot]' && !github.event.pull_request.head.repo.fork) }}
 
   dependency-review:
     name: Review pull request dependencies
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

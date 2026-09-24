@@ -69,7 +69,8 @@ assertExactPermissions(workflow.permissions, { contents: 'read' });
 assert.deepEqual(Object.keys(jobs).sort(), [ 'codeql', 'dependency-review' ]);
 assertExactPermissions(codeql.permissions, { contents: 'read', 'security-events': 'write' });
 assertExactPermissions(dependencyReview.permissions, { contents: 'read', 'pull-requests': 'read' });
-assert.equal(dependencyReview.if, "github.event_name == 'pull_request'");
+assert.equal(codeql.if, "github.event_name != 'pull_request' || github.event.pull_request.draft == false");
+assert.equal(dependencyReview.if, "github.event_name == 'pull_request' && github.event.pull_request.draft == false");
 assert.deepEqual(record(dependencySteps[1].with, 'dependency-review.with'), {
   'fail-on-severity': 'high',
   'fail-on-scopes': 'runtime, development',
@@ -91,7 +92,7 @@ assert.deepEqual(codeqlSteps.filter((step) => Object.hasOwn(step, 'run')), []);
 assert.deepEqual(record(codeqlSteps[0].with ?? {}, 'checkout.with'), {});
 assert.equal(
   record(codeqlSteps.at(-1)?.with, 'analyze.with').upload,
-  "${{ github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork }}"
+  "${{ github.event_name != 'pull_request' || (github.actor != 'dependabot[bot]' && !github.event.pull_request.head.repo.fork) }}"
 );
 assertPinnedActions([ ...codeqlSteps, ...dependencySteps ]);
 

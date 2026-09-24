@@ -17,17 +17,23 @@ This project aims to make `archimate-js` operational as a standards-grounded, em
 
 ## Definition of done
 
-A change is not operationally complete until its relevant checks are defined and passing. The target gate is:
+A change is not operationally complete until its relevant checks are defined and passing. Install dependencies once, which also installs the repository-owned Git hooks, then use the canonical local qualification gate:
 
 ```bash
 npm ci
-npm run lint
-npm test
-npm run build
-npm pack
+npm run verify:local
+npm pack --dry-run
 ```
 
-The current fork does not yet satisfy this gate. Closing that gap is part of the roadmap.
+`npm run verify:wip` is the fast durability gate used by the versioned `.githooks/pre-push` hook. It runs source policy, lint, type checks, and the validator build so WIP can be pushed frequently without waiting for the complete suite. `npm run verify:local` is the full qualification gate: source policy, lint, the complete test suite, and compile, serially and fail-fast. If hooks were intentionally cleared, restore them with `npm run hooks:install`.
+
+Create a Draft PR early and push the WIP branch after each coherent checkpoint, before a risky refactor or long-running operation, and before handoff. Prefer additive checkpoint commits and squash at merge rather than keeping substantial recoverable work only in one agent workspace. Draft pushes are collaboration and recovery snapshots; they are not evidence that the change is ready to merge.
+
+Do not use `git push --no-verify` to make agent-generated work appear qualified. Before changing a Draft PR to Ready for review, run `npm run verify:local`. GitHub Actions remains the independent merge/security boundary and the expensive PR workflows activate at the review-ready transition.
+
+For agent-owned branches, use `npm run pr:finalize` as the terminal step instead of manually parking a PR. It runs `verify:local`, pushes exact `HEAD`, verifies that the remote PR points at the same commit, and marks the PR Ready. Once the drain workflow is present on `main`, every Ready same-repository `agent/*` PR and allow-listed grouped Dependabot minor/patch PR is evaluated after its pull-request workflows complete; if all latest exact-HEAD workflows are green it is squash-merged automatically. No repository "Allow auto-merge" setting and no per-PR arming are required. Dependabot eligibility is stricter: the PR must be authored by `dependabot[bot]`, originate from this repository, and use one of the explicit grouped minor/patch branch identities configured in `.github/dependabot.yml`. Major, ungrouped, forked, or otherwise unknown dependency updates remain open for review. Apply the `no-auto-merge` label as an explicit emergency/maintainer opt-out.
+
+If the local executor cannot run the full suite, a maintainer/agent may use an explicit remote-fallback promotion only when the authoritative CI runs the same canonical `npm run verify:local` command for the exact HEAD. That fallback spends remote CI deliberately; it must not become the routine edit/debug loop.
 
 ## Priority order
 
