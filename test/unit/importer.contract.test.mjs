@@ -43,7 +43,7 @@ describe('synthetic ArchiMate XML import contract', () => {
       aspect: 'Active structure',
       name: 'Customer',
       style: {
-        fillColor: '#FFFFB5',
+        fillColor: '#EDD779',
         lineColor: '#00000066',
         textAlignment: 'center',
         textPosition: 'middle'

@@ -381,7 +381,7 @@ describe('MEFF View and Diagram import', () => {
     expect(nestedShape.x + parentShape.x).toBe(nestedNode.meffGeometry.x);
     expect(nestedShape.y + parentShape.y).toBe(nestedNode.meffGeometry.y);
     expect(nestedNode.style).toBeUndefined();
-    expect(nestedShape.style.fillColor).toBe('#B5FFFF');
+    expect(nestedShape.style.fillColor).toBe('#B0D0D9');
 
     const styledShape = factory.createShape({
       type: componentNode.type,
