@@ -21,8 +21,9 @@
   },
   "scripts": {
     "all": "run-s test compile",
-    "compile": "run-s compile:validator compile:browser",
+    "compile": "run-s compile:validator compile:model-dto compile:browser",
     "compile:validator": "node test/smoke/compile-validator.mjs",
+    "compile:model-dto": "tsc -p tsconfig.model-dto.json && node scripts/mark-model-dto-esm.mjs",
     "compile:browser": "node test/smoke/compile.mjs",
     "prepack": "npm run compile",
     "lint": "eslint --no-eslintrc --config .eslintrc.release.json bin/archimate-js.mjs bin/cli-io.mjs lib/BaseViewer.js lib/import/Importer.js lib/import/XmlPreflight.js test/cli/cli.test.mjs test/release/check.mjs test/security/supply-chain.test.mjs test/smoke/packed-consumer.test.mjs test/unit/import-diagnostics.test.mjs test/unit/svg-export.test.mjs",
@@ -67,6 +68,10 @@
     "./validator": {
       "types": "./dist/validator/index.d.ts",
       "import": "./dist/validator/index.js"
+    },
+    "./model-dto": {
+      "types": "./dist/model-dto/index.d.ts",
+      "import": "./dist/model-dto/index.js"
     }
   },
   "devDependencies": {

@@ -19,6 +19,7 @@ const run = (command, args, options = {}) => {
 
 try {
   run(process.execPath, ['test/smoke/compile-validator.mjs'], { cwd: root });
+  run('npm', ['run', 'compile:model-dto'], { cwd: root });
   run(process.execPath, ['test/smoke/compile.mjs'], { cwd: root });
   const packOutput = run('npm', [
     'pack', '--ignore-scripts', '--json', '--pack-destination', temp
@@ -37,10 +38,12 @@ try {
   const consumerEntry = path.join(consumer, 'consumer-entry.mjs');
   await writeFile(consumerEntry, `
     import Viewer, { mountViewer, renderViewToSvg } from 'archimate-js';
+    import { importMeffToModelDto } from 'archimate-js/model-dto';
     export default {
       viewer: typeof Viewer,
       mountViewer: typeof mountViewer,
-      renderViewToSvg: typeof renderViewToSvg
+      renderViewToSvg: typeof renderViewToSvg,
+      dtoImport: typeof importMeffToModelDto
     };
   `);
   const require = createRequire(path.join(root, 'package.json'));
@@ -64,7 +67,8 @@ try {
   global.window = dom.window;
   global.document = dom.window.document;
   const rootApi = require(bundlePath).default;
-  assert.deepEqual(rootApi, { viewer: 'function', mountViewer: 'function', renderViewToSvg: 'function' });
+  assert.deepEqual(rootApi, { viewer: 'function', mountViewer: 'function',
+    renderViewToSvg: 'function', dtoImport: 'function' });
 
   const consumerScript = String.raw`
     import assert from 'node:assert/strict';
@@ -76,6 +80,14 @@ try {
     );
     assert.equal(result.valid, true);
 
+    // SYNTHETIC: Minimal public MEFF model with no private architecture data.
+    const dto = await import('archimate-js/model-dto');
+    const xml = '<model xmlns="http://www.opengroup.org/xsd/archimate/3.0/" identifier="synthetic-model"><name>Synthetic</name></model>';
+    const model = dto.importMeffToModelDto(xml);
+    assert.equal(model.id, 'synthetic-model');
+    assert.equal(dto.parseModelDto(dto.serializeModelDto(model)).id, model.id);
+    assert.equal(typeof dto.validateModelDto, 'function');
+
     await assert.rejects(
       import('archimate-js/lib/Viewer'),
       (error) => error.code === 'ERR_PACKAGE_PATH_NOT_EXPORTED'
@@ -85,7 +97,8 @@ try {
 
   const packageJson = JSON.parse(await readFile(path.join(packageRoot, 'package.json'), 'utf8'));
   assert.equal(packageJson.exports['./validator'].import, './dist/validator/index.js');
-  assert.deepEqual(Object.keys(packageJson.exports).sort(), ['.', './validator']);
+  assert.equal(packageJson.exports['./model-dto'].import, './dist/model-dto/index.js');
+  assert.deepEqual(Object.keys(packageJson.exports).sort(), ['.', './model-dto', './validator']);
   assert.equal(packageJson.bin['archimate-js'], 'bin/archimate-js.mjs');
   await readFile(path.join(packageRoot, 'dist/browser/archimate-js.js'), 'utf8');
   const installedBin = process.platform === 'win32'

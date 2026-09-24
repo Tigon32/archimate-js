@@ -38,6 +38,21 @@
       "reason": "Issue #93 targets the outer diagram SVG after adding nested notation icon SVG elements.",
       "removalCondition": "Migrate the browser smoke suite to typed, smaller tests with #97.",
       "allowLegacySize": true
+    },
+    {
+      "path": "test/smoke/packed-consumer.test.mjs",
+      "reason": "Issue #92 extends the existing Node 22 native ESM package installation and consumer smoke test; its existing runner has no TypeScript runtime or Node type declarations.",
+      "removalCondition": "Migrate the packed consumer runner to TypeScript after a compatible Node typecheck and execution setup is available."
+    },
+    {
+      "path": "test/smoke/package.test.mjs",
+      "reason": "Issue #92 verifies the new package export in the existing Node 22 native ESM package smoke test without introducing a TypeScript runner for release scripts.",
+      "removalCondition": "Migrate the package smoke runner to TypeScript after a compatible Node typecheck and execution setup is available."
+    },
+    {
+      "path": "test/release/check.mjs",
+      "reason": "Issue #92 updates the release export whitelist for the opt-in DTO package subpath; this release runner currently uses native ESM on Node 22.",
+      "removalCondition": "Migrate the release runner to TypeScript after a compatible Node typecheck and execution setup is available."
     }
   ]
 }
