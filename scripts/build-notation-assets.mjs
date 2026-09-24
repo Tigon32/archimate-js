@@ -89,9 +89,13 @@ const declarations = (group, prefix) => Object.entries(group).map(([name, token]
   `  --am-ui-${prefix}${cssName(name)}: ${cssValue(token)};`).join('\n');
 const appCss = [
   '/* Generated from app.tokens.json; scoped to the application shell. */',
-  ...['light', 'dark'].map((mode) => {
-    const selector = mode === 'light' ? '.am-app, .am-app[data-theme="light"]' : '.am-app[data-theme="dark"]';
-    return `${selector} {\n` + declarations(app.theme[mode], '') + '\n}';
+  ...[
+    ['light', '.am-app, .am-app[data-theme="light"]', 'light'],
+    ['dark', '.am-app[data-theme="dark"]', 'dark'],
+    ['highContrastLight', '.am-app[data-theme="high-contrast-light"]', 'light'],
+    ['highContrastDark', '.am-app[data-theme="high-contrast-dark"]', 'dark']
+  ].map(([mode, selector, scheme]) => {
+    return `${selector} {\n  color-scheme: ${scheme};\n` + declarations(app.theme[mode], '') + '\n}';
   }),
   '.am-app {\n' + [
     declarations(app.spacing, 'space-'), declarations(app.border, 'border-'),
