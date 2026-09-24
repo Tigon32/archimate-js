@@ -29,6 +29,21 @@ it('updates nested geometry and edge attachments through undoable commands', () 
   expect(parseModelDto(editor.serialize())).toEqual(editor.getModel());
 });
 
+it('projects semantic display values and styles without exposing mutable source data', () => {
+  const editor = new DiagramAdapter(fixture());
+  const projection = editor.project('view-dto-export');
+  expect(projection.nodes.find((node) => node.id === 'node-component')).toMatchObject({
+    type: 'archimate:ApplicationComponent', name: 'Component One',
+    style: { stroke: '#14283C80', lineWidth: 7 }
+  });
+  expect(projection.connections[0]).toMatchObject({
+    relationshipId: 'serving-one-two', type: 'archimate:Serving', name: 'Serves'
+  });
+  expect(JSON.stringify(projection)).not.toMatch(/businessObject|\$parent|\$type/);
+  if (projection.nodes[0].style) projection.nodes[0].style.lineWidth = 900;
+  expect(editor.project('view-dto-export').nodes[0].style?.lineWidth).toBe(7);
+});
+
 it('connects, reconnects, labels and deletes without persisting canvas objects', () => {
   const editor = new DiagramAdapter(fixture());
   const original = editor.serialize();
@@ -86,10 +101,12 @@ it('binds an ID-only canvas port and emits detached state with the edited view I
   const renders: CanvasProjection[] = [];
   let onCommand: ((command: EditorCommand) => void) | undefined;
   let onSelection: ((ids: string[]) => void) | undefined;
+  let clears = 0;
   const port: CanvasPort = {
     render: (projection) => { renders.push(projection); },
     onCommand: (handler) => { onCommand = handler; return () => { onCommand = undefined; }; },
-    onSelection: (handler) => { onSelection = handler; return () => { onSelection = undefined; }; }
+    onSelection: (handler) => { onSelection = handler; return () => { onSelection = undefined; }; },
+    clear: () => { clears++; }
   };
   const events: string[] = [];
   editor.subscribe((event) => { events.push(`${event.type}:${event.viewId}`); event.model.id = 'modified'; });
@@ -108,6 +125,11 @@ it('binds an ID-only canvas port and emits detached state with the edited view I
   expect(editor.getModel().id).toBe('model-dto-export');
   expect(renders.every((value) => value.viewId === 'view-dto-export')).toBe(true);
   detach();
+  expect(clears).toBe(1);
+  const detachSecondView = editor.attach('view-two', port);
+  expect(renders.at(-1)?.viewId).toBe('view-two');
+  detachSecondView();
+  expect(clears).toBe(2);
   expect(onCommand).toBeUndefined();
   expect(onSelection).toBeUndefined();
 });
