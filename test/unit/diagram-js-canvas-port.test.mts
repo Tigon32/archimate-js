@@ -5,19 +5,31 @@ import { readFileSync } from 'node:fs';
 import { DiagramAdapter, DiagramJsCanvasPort, importMeffToModelDto } from '../../src/model-dto/index.js';
 import type { DiagramJsCanvasServices } from '../../src/model-dto/index.js';
 
+function mockModeling() {
+  return {
+    nativeCalls: 0,
+    _archimateRules: { canConnect: (_source: unknown, _target: unknown, connection: unknown) =>
+      (connection as { type: string }).type === 'Serving' ? { type: 'Serving' } : false },
+    moveElements(_shapes: unknown[], _delta: { x: number; y: number }, _target?: unknown,
+      _hints?: { attach?: boolean }) { this.nativeCalls++; },
+    resizeShape(_shape: unknown, _bounds: { x: number; y: number; width: number; height: number },
+      _minBounds?: unknown, _hints?: unknown) { this.nativeCalls++; },
+    updateLabel(_element: unknown, _label: string, _bounds?: unknown, _hints?: unknown) { this.nativeCalls++; },
+    createConnection(_source: unknown, _target: unknown, _attrs: unknown) { this.nativeCalls++; },
+    reconnect(_connection: unknown, _source: unknown, _target: unknown, _docking: unknown) { this.nativeCalls++; },
+    removeElements(_elements: unknown[]) { this.nativeCalls++; },
+    removeShape(_shape: unknown) { this.nativeCalls++; },
+    removeConnection(_connection: unknown) { this.nativeCalls++; }
+  };
+}
+
 function setup() {
   const model = importMeffToModelDto(readFileSync('test/fixtures/synthetic/dto-export-view.xml', 'utf8'));
   model.views.push({ id: 'view-two', nodes: [], connections: [] });
   const editor = new DiagramAdapter(model);
   const shapes = new Map<string, Record<string, unknown>>();
-  const modeling = {
-    nativeCalls: 0,
-    moveElements(_shapes: unknown[], _delta: { x: number; y: number }, _target?: unknown,
-      _hints?: { attach?: boolean }) { this.nativeCalls++; },
-    resizeShape(_shape: unknown, _bounds: { x: number; y: number; width: number; height: number },
-      _minBounds?: unknown, _hints?: unknown) { this.nativeCalls++; },
-    updateLabel(_element: unknown, _label: string, _bounds?: unknown, _hints?: unknown) { this.nativeCalls++; }
-  };
+  const connections = new Map<string, Record<string, unknown>>();
+  const modeling = mockModeling();
   const canvas = {
     root: { id: 'root', children: [] as Array<Record<string, unknown>> },
     getRootElement() { return this.root; },
@@ -30,9 +42,14 @@ function setup() {
       shapes.set(String(item.id), item);
       return item;
     },
-    addConnection(connection: unknown) { return connection; },
+    addConnection(connection: unknown) {
+      const item = connection as Record<string, unknown>;
+      connections.set(String(item.id), item);
+      this.root.children.push(item);
+      return item;
+    },
     removeShape(shape: unknown) { shapes.delete(String((shape as { id: string }).id)); },
-    removeConnection() {}
+    removeConnection(connection: unknown) { connections.delete(String((connection as { id: string }).id)); }
   };
   const services: DiagramJsCanvasServices = {
     canvas,
@@ -45,8 +62,105 @@ function setup() {
     modeling
   };
   const port = new DiagramJsCanvasPort(services);
-  return { editor, port, modeling, shapes };
+  return { editor, port, modeling, shapes, connections };
 }
+
+it('routes semantic connect, reconnect and view deletion through one history', () => {
+  const { editor, port, modeling, shapes, connections } = setup();
+  const original = editor.serialize();
+  const detach = editor.attach('view-dto-export', port);
+  const source = shapes.get('node-component');
+  const target = shapes.get('node-service');
+  modeling.createConnection(source, target, { id: 'new-connection', type: 'Serving',
+    waypoints: [{ x: 150, y: 70 }, { x: 200, y: 80 }, { x: 300, y: 70 }] });
+  const added = editor.getModel();
+  const created = added.views[0].connections.find((item) => item.id === 'new-connection')!;
+  const relationship = added.relationships.find((item) => item.id === created.relationshipId)!;
+  expect(relationship).toMatchObject({ type: 'archimate:Serving',
+    sourceId: 'component-one', targetId: 'service-two' });
+  expect(created.waypoints.map((point) => point.kind)).toEqual([
+    'sourceAttachment', 'bendpoint', 'targetAttachment'
+  ]);
+  expect(editor.exportMeff()).toContain(`identifier="${relationship.id}"`);
+  expect(connections.has('new-connection')).toBe(true);
+
+  modeling.reconnect(connections.get('new-connection'), shapes.get('node-service'),
+    shapes.get('node-component'), [{ x: 310, y: 75 }, { x: 230, y: 85 }, { x: 150, y: 75 }]);
+  const changed = editor.getModel();
+  expect(changed.relationships.find((item) => item.id === relationship.id)).toMatchObject({
+    sourceId: 'service-two', targetId: 'component-one'
+  });
+  expect(changed.views[0].connections.find((item) => item.id === 'new-connection')).toMatchObject({
+    sourceId: 'node-service', targetId: 'node-component'
+  });
+  expect(() => modeling.reconnect(connections.get('new-connection'), shapes.get('node-service'),
+    shapes.get('node-service'), { x: Number.NaN, y: 0 })).toThrow();
+  expect(editor.getModel()).toEqual(changed);
+  modeling.moveElements([shapes.get('node-service')], { x: 5, y: 0 });
+  const moved = editor.getModel();
+  modeling.removeElements([shapes.get('node-component')]);
+  expect(editor.getModel().views[0].connections).toEqual([]);
+  expect(editor.getModel().elements).toEqual(added.elements);
+  expect(editor.getModel().relationships).toEqual(changed.relationships);
+  expect(editor.undo()).toBe(true);
+  expect(editor.getModel()).toEqual(moved);
+  expect(editor.undo()).toBe(true);
+  expect(editor.getModel()).toEqual(changed);
+  expect(editor.undo()).toBe(true);
+  expect(editor.getModel()).toEqual(added);
+  expect(editor.undo()).toBe(true);
+  expect(editor.serialize()).toBe(original);
+  expect(modeling.nativeCalls).toBe(0);
+  detach();
+  const detachOther = editor.attach('view-two', port);
+  expect(editor.project('view-two').connections).toEqual([]);
+  detachOther();
+});
+
+it('rejects semantic endpoint mismatches and shared relationship retargeting atomically', () => {
+  const { editor, port, modeling, shapes, connections } = setup();
+  const detach = editor.attach('view-dto-export', port);
+  const original = editor.serialize();
+  expect(() => editor.execute({ type: 'connect', viewId: 'view-dto-export',
+    connection: { id: 'wrong-endpoints', kind: 'relationship', relationshipId: 'serving-one-two',
+      sourceId: 'node-service', targetId: 'node-component', waypoints: [
+        { x: 300, y: 75, kind: 'sourceAttachment' },
+        { x: 160, y: 75, kind: 'targetAttachment' }
+      ] } })).toThrow();
+  expect(editor.serialize()).toBe(original);
+  modeling.createConnection(shapes.get('node-component'), shapes.get('node-service'),
+    { id: 'shared-connection', type: 'Serving', relationshipRef: {
+      id: 'serving-one-two', type: 'Serving'
+    } });
+  const beforeRetarget = editor.serialize();
+  expect(() => modeling.reconnect(connections.get('shared-connection'),
+    shapes.get('node-service'), shapes.get('node-component'),
+    [{ x: 300, y: 75 }, { x: 160, y: 75 }])).toThrow();
+  expect(editor.serialize()).toBe(beforeRetarget);
+  expect(connections.get('shared-connection')).toMatchObject({ source: { id: 'node-component' },
+    target: { id: 'node-service' } });
+  expect(() => modeling.removeElements([shapes.get('node-component'), shapes.get('node-service')]))
+    .toThrow();
+  expect(editor.serialize()).toBe(beforeRetarget);
+  detach();
+});
+
+it('preserves finite fractional and negative waypoints in live reconnect commands', () => {
+  const { editor, port, modeling, shapes, connections } = setup();
+  const detach = editor.attach('view-dto-export', port);
+  const original = editor.serialize();
+  modeling.reconnect(connections.get('serving-connection'), shapes.get('node-component'),
+    shapes.get('node-service'), [{ x: -2.5, y: 70.25 }, { x: 200.5, y: 80 },
+      { x: 300, y: 75 }]);
+  expect(editor.getModel().views[0].connections[0].waypoints).toEqual([
+    { x: -2.5, y: 70.25, kind: 'sourceAttachment' },
+    { x: 200.5, y: 80, kind: 'bendpoint' },
+    { x: 300, y: 75, kind: 'targetAttachment' }
+  ]);
+  expect(editor.undo()).toBe(true);
+  expect(editor.serialize()).toBe(original);
+  detach();
+});
 
 it('routes move, resize, and label intents to one DTO history before native mutation', () => {
   const { editor, port, modeling, shapes } = setup();

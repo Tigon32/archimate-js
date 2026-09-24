@@ -4,6 +4,10 @@ import { invalid } from './validate.js';
 
 interface CanvasElement {
   id?: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
   children?: CanvasElement[];
   source?: unknown;
   target?: unknown;
@@ -34,11 +38,18 @@ interface DiagramJsSelection {
 }
 
 interface DiagramJsModeling {
+  _archimateRules?: { canConnect(source: unknown, target: unknown, connection: unknown): unknown };
   moveElements(shapes: unknown[], delta: { x: number; y: number }, target?: unknown,
     hints?: { attach?: boolean }): unknown;
   resizeShape(shape: unknown, bounds: { x: number; y: number; width: number; height: number },
     minBounds?: unknown, hints?: unknown): unknown;
   updateLabel(element: unknown, label: string, bounds?: unknown, hints?: unknown): unknown;
+  createConnection(source: unknown, target: unknown, attrs: unknown, parent?: unknown, hints?: unknown): unknown;
+  reconnect(connection: unknown, source: unknown, target: unknown, dockingOrPoints: unknown,
+    hints?: unknown): unknown;
+  removeElements(elements: unknown[]): unknown;
+  removeShape(shape: unknown, hints?: unknown): unknown;
+  removeConnection(connection: unknown, hints?: unknown): unknown;
 }
 
 /** Minimal service surface accepted from a live Viewer or Modeler instance. */
@@ -129,7 +140,7 @@ export class DiagramJsCanvasPort implements CanvasPort {
     const resizeShape = modeling.resizeShape;
     const updateLabel = modeling.updateLabel;
     const restore: Array<() => void> = [];
-    const install = (key: 'moveElements' | 'resizeShape' | 'updateLabel', original: (...args: never[]) => unknown,
+    const install = (key: keyof DiagramJsModeling, original: (...args: never[]) => unknown,
       replacement: (...args: never[]) => unknown): void => {
       const service = modeling as unknown as Record<string, (...args: never[]) => unknown>;
       service[key] = replacement;
@@ -149,12 +160,30 @@ export class DiagramJsCanvasPort implements CanvasPort {
       ((element: unknown, label: string): undefined => {
         return this.routeLabel(element, label, handler);
       }) as (...args: never[]) => unknown);
+    this.installTopology(modeling, handler, install);
     this.restoreModeling.push(...restore);
     return () => {
       for (const restoreMethod of restore.reverse()) restoreMethod();
       this.restoreModeling.splice(0, this.restoreModeling.length,
         ...this.restoreModeling.filter((restoreMethod) => !restore.includes(restoreMethod)));
     };
+  }
+
+  private installTopology(modeling: DiagramJsModeling, handler: (command: EditorCommand) => void,
+    install: (key: keyof DiagramJsModeling, original: (...args: never[]) => unknown,
+      replacement: (...args: never[]) => unknown) => void): void {
+    install('createConnection', modeling.createConnection as (...args: never[]) => unknown,
+      ((source: unknown, target: unknown, attrs: unknown): unknown =>
+        this.routeConnect(source, target, attrs, modeling, handler)) as (...args: never[]) => unknown);
+    install('reconnect', modeling.reconnect as (...args: never[]) => unknown,
+      ((connection: unknown, source: unknown, target: unknown, docking: unknown): undefined =>
+        this.routeReconnect(connection, source, target, docking, modeling, handler)) as (...args: never[]) => unknown);
+    install('removeElements', modeling.removeElements as (...args: never[]) => unknown,
+      ((elements: unknown[]): undefined => this.routeRemove(elements, handler)) as (...args: never[]) => unknown);
+    install('removeShape', modeling.removeShape as (...args: never[]) => unknown,
+      ((shape: unknown): undefined => this.routeRemove([shape], handler)) as (...args: never[]) => unknown);
+    install('removeConnection', modeling.removeConnection as (...args: never[]) => unknown,
+      ((connection: unknown): undefined => this.routeRemove([connection], handler)) as (...args: never[]) => unknown);
   }
 
   onSelection(handler: (ids: string[]) => void): () => void {
@@ -237,6 +266,98 @@ export class DiagramJsCanvasPort implements CanvasPort {
     const id = this.elementId(element);
     if (!this.currentNodes.has(id) && !this.currentConnections.has(id) || typeof label !== 'string') invalid();
     handler({ type: 'label', viewId: this.viewId, itemId: id, label });
+    return undefined;
+  }
+
+  private nodeId(element: unknown): string {
+    const id = this.elementId(element);
+    if (!this.currentNodes.get(id)?.elementId) invalid();
+    return id;
+  }
+
+  private allowed(source: unknown, target: unknown, type: string,
+    modeling: DiagramJsModeling): void {
+    const result = modeling._archimateRules?.canConnect(source, target, { type });
+    if (!result || typeof result !== 'object' ||
+        (result as { type?: unknown }).type !== type) invalid();
+  }
+
+  private point(value: unknown, kind: 'sourceAttachment' | 'bendpoint' | 'targetAttachment') {
+    if (!value || typeof value !== 'object') invalid();
+    const { x, y } = value as { x?: unknown; y?: unknown };
+    if (typeof x !== 'number' || !Number.isFinite(x) ||
+        typeof y !== 'number' || !Number.isFinite(y)) invalid();
+    return { x: x as number, y: y as number, kind };
+  }
+
+  private center(value: unknown, kind: 'sourceAttachment' | 'targetAttachment') {
+    const node = this.currentNodes.get(this.nodeId(value))!;
+    return this.point({ x: Math.round(node.x + node.width / 2),
+      y: Math.round(node.y + node.height / 2) }, kind);
+  }
+
+  private waypoints(input: unknown, source: unknown, target: unknown) {
+    if (input === undefined) return [this.center(source, 'sourceAttachment'),
+      this.center(target, 'targetAttachment')];
+    if (!Array.isArray(input) || input.length < 2) invalid();
+    return input.map((value, index) => this.point(value, index === 0 ? 'sourceAttachment' :
+      index === input.length - 1 ? 'targetAttachment' : 'bendpoint'));
+  }
+
+  private routeConnect(source: unknown, target: unknown, attrs: unknown,
+    modeling: DiagramJsModeling, handler: (command: EditorCommand) => void): unknown {
+    const sourceId = this.nodeId(source);
+    const targetId = this.nodeId(target);
+    if (!attrs || typeof attrs !== 'object') invalid();
+    const data = attrs as { id?: unknown; type?: unknown; relationshipRef?: { id?: unknown; type?: unknown };
+      waypoints?: unknown };
+    const rawType = data.relationshipRef?.type ?? data.type;
+    if (typeof rawType !== 'string' || !rawType) invalid();
+    const type = diagramType(rawType, '');
+    if (!type || type === 'Relationship') invalid();
+    this.allowed(source, target, type, modeling);
+    const relationshipId = data.relationshipRef?.id ?? `relationship-${crypto.randomUUID()}`;
+    const id = data.id ?? `connection-${crypto.randomUUID()}`;
+    if (typeof relationshipId !== 'string' || typeof id !== 'string') invalid();
+    const sourceElement = this.currentNodes.get(sourceId)!.elementId!;
+    const targetElement = this.currentNodes.get(targetId)!.elementId!;
+    const connection = { id, kind: 'relationship' as const, relationshipId, sourceId, targetId,
+      waypoints: this.waypoints(data.waypoints, source, target) };
+    handler({ type: 'connect', viewId: this.viewId, connection,
+      relationship: data.relationshipRef ? undefined :
+        { id: relationshipId, type: `archimate:${type}`, sourceId: sourceElement,
+          targetId: targetElement } });
+    return this.connections.get(id);
+  }
+
+  private routeReconnect(connection: unknown, source: unknown, target: unknown, docking: unknown,
+    modeling: DiagramJsModeling, handler: (command: EditorCommand) => void): undefined {
+    const id = this.elementId(connection);
+    const current = this.currentConnections.get(id);
+    if (!current?.type || !current.relationshipId) invalid();
+    const sourceId = this.nodeId(source);
+    const targetId = this.nodeId(target);
+    this.allowed(source, target, diagramType(current.type, ''), modeling);
+    let waypoints = this.waypoints(current.waypoints, source, target);
+    if (Array.isArray(docking)) waypoints = this.waypoints(docking, source, target);
+    else if (docking !== undefined) {
+      const oldSource = current.sourceId === sourceId;
+      const oldTarget = current.targetId === targetId;
+      if (oldSource === oldTarget) invalid();
+      waypoints[oldSource ? waypoints.length - 1 : 0] =
+        this.point(docking, oldSource ? 'targetAttachment' : 'sourceAttachment');
+    } else {
+      if (current.sourceId !== sourceId) waypoints[0] = this.center(source, 'sourceAttachment');
+      if (current.targetId !== targetId) waypoints[waypoints.length - 1] =
+        this.center(target, 'targetAttachment');
+    }
+    handler({ type: 'reconnect', viewId: this.viewId, connectionId: id, sourceId, targetId, waypoints });
+    return undefined;
+  }
+
+  private routeRemove(elements: unknown[], handler: (command: EditorCommand) => void): undefined {
+    if (!Array.isArray(elements) || elements.length !== 1) invalid();
+    handler({ type: 'delete', viewId: this.viewId, itemId: this.elementId(elements[0]) });
     return undefined;
   }
 
