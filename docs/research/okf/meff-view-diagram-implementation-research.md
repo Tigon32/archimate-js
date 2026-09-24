@@ -5,7 +5,7 @@ description: Schema-backed summary of MEFF 3.1 presentation fields and GitHub im
 resource: "https://www.opengroup.org/xsd/archimate/3.1/html-diagram/"
 tags: [archimate, meff, diagram, geometry, waypoints, styles, interoperability]
 status: stable
-retrieved_at: 2026-09-24T00:00:00Z
+retrieved_at: 2026-09-24T05:30:22Z
 authority: The Open Group schemas define format constraints; tool implementations are non-normative behavioral references.
 license_or_terms: This document summarizes and links sources only. No third-party source code or Open Group schema text is copied. Review source licenses before reuse.
 sources:
@@ -26,12 +26,16 @@ sources:
     title: Archi Open Group XML Exchange plug-in (archived; integrated into Archi)
     publisher: Archi project
   - id: archi-exchange-importer
-    resource: "https://github.com/archimatetool/OpenGroupXMLExchange/blob/master/org.opengroup.archimate.xmlexchange/src/org/opengroup/archimate/xmlexchange/XMLModelImporter.java"
+    resource: "https://github.com/archimatetool/archi/blob/master/org.opengroup.archimate.xmlexchange/src/org/opengroup/archimate/xmlexchange/XMLModelImporter.java"
     title: Archi MEFF XML model importer
     publisher: Archi project
   - id: archi-exchange-exporter
-    resource: "https://github.com/archimatetool/OpenGroupXMLExchange/blob/master/org.opengroup.archimate.xmlexchange/src/org/opengroup/archimate/xmlexchange/XMLModelExporter.java"
+    resource: "https://github.com/archimatetool/archi/blob/master/org.opengroup.archimate.xmlexchange/src/org/opengroup/archimate/xmlexchange/XMLModelExporter.java"
     title: Archi MEFF XML model exporter
+    publisher: Archi project
+  - id: archi-current-exchange-module
+    resource: "https://github.com/archimatetool/archi/tree/master/org.opengroup.archimate.xmlexchange"
+    title: Current Archi Open Group XML Exchange module
     publisher: Archi project
   - id: qan-ameff-converter
     resource: "https://github.com/qan-ai/ameff-archimate4-converter"
@@ -61,7 +65,7 @@ Node and connection styles may contain line color, fill color, and font; line wi
 
 ## Archi Open Group XML Exchange
 
-The standalone [OpenGroupXMLExchange repository is archived and read-only](https://github.com/archimatetool/OpenGroupXMLExchange); its README says the code was integrated into the main Archi application.[^archi-exchange-repo] Its importer provides the closest direct precedent for #58:
+The standalone [OpenGroupXMLExchange repository is archived and read-only](https://github.com/archimatetool/OpenGroupXMLExchange); its README says the code was integrated into the main Archi application. The current module is in [archimatetool/archi](https://github.com/archimatetool/archi/tree/master/org.opengroup.archimate.xmlexchange).[^archi-exchange-repo][^archi-current-exchange-module] Its importer provides the closest direct precedent for #58:
 
 - It reads diagram bounds and converts nested node coordinates into Archi's parent-relative internal model.
 - It resolves view connections after collecting nodes, then maps MEFF bendpoints into Archi's endpoint-relative connection representation.
@@ -92,8 +96,9 @@ This review establishes the schema field shape and relevant implementation patte
 [^opengroup-meff-faq]: [The Open Group MEFF FAQ](https://www.opengroup.org/open-group-archimate-model-exchange-file-format), version 1.10, accessed 2026-09-24.
 [^opengroup-meff-diagram-doc]: [MEFF 3.1 Diagram schema documentation](https://www.opengroup.org/xsd/archimate/3.1/html-diagram/), accessed 2026-09-24; compare with the pinned hashes in [the repository schema-validation record](../../standards/meff-schema-validation.md).
 [^archi-exchange-repo]: [Archi Open Group XML Exchange plug-in](https://github.com/archimatetool/OpenGroupXMLExchange), README states that the archived plug-in was integrated into Archi.
-[^archi-exchange-importer]: [XMLModelImporter.java](https://github.com/archimatetool/OpenGroupXMLExchange/blob/master/org.opengroup.archimate.xmlexchange/src/org/opengroup/archimate/xmlexchange/XMLModelImporter.java), reviewed 2026-09-24.
-[^archi-exchange-exporter]: [XMLModelExporter.java](https://github.com/archimatetool/OpenGroupXMLExchange/blob/master/org.opengroup.archimate.xmlexchange/src/org/opengroup/archimate/xmlexchange/XMLModelExporter.java), reviewed 2026-09-24.
+[^archi-current-exchange-module]: [Current Archi XML Exchange module](https://github.com/archimatetool/archi/tree/master/org.opengroup.archimate.xmlexchange), including the MEFF 3.1 XSDs and current importer/exporter.
+[^archi-exchange-importer]: [XMLModelImporter.java](https://github.com/archimatetool/archi/blob/master/org.opengroup.archimate.xmlexchange/src/org/opengroup/archimate/xmlexchange/XMLModelImporter.java), current source reviewed 2026-09-24.
+[^archi-exchange-exporter]: [XMLModelExporter.java](https://github.com/archimatetool/archi/blob/master/org.opengroup.archimate.xmlexchange/src/org/opengroup/archimate/xmlexchange/XMLModelExporter.java), current source reviewed 2026-09-24.
 [^qan-ameff-converter]: [QAN AMEFF converter](https://github.com/qan-ai/ameff-archimate4-converter), README and test guidance reviewed 2026-09-24. README identifies the project as MIT licensed.
 [^qan-xml-dom]: [Xml.java](https://github.com/qan-ai/ameff-archimate4-converter/blob/main/src/main/java/nl/archimate4/converter/Xml.java), reviewed 2026-09-24.
 [^qan-style-values]: [StyleValues.java](https://github.com/qan-ai/ameff-archimate4-converter/blob/main/src/main/java/nl/archimate4/converter/StyleValues.java), reviewed 2026-09-24.
