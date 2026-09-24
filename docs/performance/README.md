@@ -54,6 +54,33 @@ make individual wall-clock medians noisy; results are diagnostic scaling
 evidence, not a numeric regression gate or a substitute for browser rendering,
 memory, larger-tier, or real-model measurements.
 
+## Browser render baseline
+
+The browser CI job also runs the read-only synthetic showcase three times in
+fresh Chromium contexts and uploads `performance-baseline-browser` (JSON) for
+30 days. Locally, after `npm run compile`, run:
+
+```bash
+CHROME_BIN=/path/to/chromium node test/performance/browser-benchmark.mts --output=test-results/performance-baseline-browser.json
+```
+
+The `navigation-init-to-rendered-svg` timer starts in a document init script
+and stops when the example reports success and has at least five shapes and
+four connections. It includes document load, local fixture fetch, bundle
+startup, model import, and first SVG mount. Browser launch and context creation
+are outside the timer. The runner asserts SVG shape, connection, and text
+counts, equal counts across repeats, no page errors, and no off-origin requests.
+Its output contains only a SHA-256 digest of the synthetic fixture, three
+timings, their median, structural counts, and runtime metadata; it does not
+embed XML or page content. Compare runs only with the same fixture hash,
+schema, Chromium major version, and comparable runner environment.
+
+Timings are observational: CI host contention, cold asset loading, browser
+version, and the small sample count add noise. This is one small view with an
+automatic read-only mount; it does not measure interactive editing, peak
+memory, larger views, cancellation, or SVG raster/pixel quality. The numeric
+budgets and scaling decisions remain in #107.
+
 ## Provisional phase-1 tiers and budgets
 
 These are planning budgets, not CI pass/fail thresholds. They are intentionally broad until representative hardware and real-world view distributions are available.

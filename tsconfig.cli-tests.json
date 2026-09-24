@@ -21,6 +21,7 @@
     "test/unit/cli-export.test.mts",
     "test/browser/export-api.mts",
     "test/browser/theme-contrast.mts",
+    "test/performance/browser-benchmark.mts",
     "scripts/check-secrets.mts",
     "test/security/check-secrets.test.mts",
     "scripts/check-tracked-paths.mts",
