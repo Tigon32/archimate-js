@@ -9,7 +9,7 @@
     <archimate:BaseElement id="technology-node" xsi:type="archimate:Node" name="Cloud platform" />
   </archimate:Elements>
   <archimate:Relationships>
-    <archimate:Relationship id="assignment-customer-process" xsi:type="archimate:AssignmentRelationship" source="business-actor" target="business-process" />
+    <archimate:Relationship id="assignment-customer-process" xsi:type="archimate:AssignmentRelationship" source="business-actor" target="business-process" name="Assigns request" />
     <archimate:Relationship id="realization-process-service" xsi:type="archimate:RealizationRelationship" source="business-process" target="application-service" />
     <archimate:Relationship id="serving-component-service" xsi:type="archimate:ServingRelationship" source="application-component" target="application-service" />
     <archimate:Relationship id="deployment-component-node" xsi:type="archimate:AssignmentRelationship" source="application-component" target="technology-node" />
