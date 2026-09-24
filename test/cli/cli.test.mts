@@ -60,6 +60,7 @@ async function validationTests(): Promise<void> {
     await mkdir(path.join(unbuilt, 'dist'), { recursive: true });
     await cp(path.join(root, 'dist/cli'), path.join(unbuilt, 'dist/cli'), { recursive: true });
     await cp(path.join(root, 'dist/validator'), path.join(unbuilt, 'dist/validator'), { recursive: true });
+    await cp(path.join(root, 'dist/language'), path.join(unbuilt, 'dist/language'), { recursive: true });
     const missingBuild = runCli(path.join(unbuilt, 'dist/cli/main.mjs'), [
       'export', validFixture, '--view-id', 'view-synthetic-minimal',
       '--format', 'svg', '--output-dir', output

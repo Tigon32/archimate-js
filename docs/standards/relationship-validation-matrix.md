@@ -14,6 +14,11 @@ The public service targets **ArchiMate 3.2**. The version is declared as
 versioned rows are exported as `RELATIONSHIP_SEMANTIC_ROWS` so they can be
 reviewed without inspecting editor behavior.
 
+The reviewed rows are authored once in `src/language/relationship-decisions.mts`.
+The validator's public rows and decisions consume that source. This registry is
+the repository's reviewed 3.2 subset, not a complete standards matrix; the
+legacy editor maps remain outside its evidence boundary.
+
 ## Evidence boundary
 
 The Open Group ArchiMate 3.2 Specification is normative. The implementation
