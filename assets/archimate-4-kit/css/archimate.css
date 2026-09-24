@@ -1,0 +1,37 @@
+/* ArchiMate 4 design system — generated from tokens/tokens.json. Notation colours are part of the
+   standard and are intentionally identical in light and dark canvases. */
+:root {
+  --am-common: #E5DFD3;
+  --am-strategy: #EFBD5D;
+  --am-business: #EDD779;
+  --am-application: #B0D0D9;
+  --am-technology: #BCD9AE;
+  --am-motivation: #D1BADC;
+  --am-implementation: #F1BBB7;
+  --am-stroke: #000; --am-grouping-stroke: #585858; --am-label: #000;
+  --am-canvas: #fff; --am-line: 1px; --am-font: Arial, Helvetica, 'Liberation Sans', sans-serif;
+  --am-dot: 1 1; --am-dash: 4 1;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) { --am-canvas: #1e1f22; } }
+:root[data-theme='dark'] { --am-canvas: #1e1f22; }
+.am-diagram { background: var(--am-canvas); font-family: var(--am-font); }
+.am-diagram .am-shape { stroke: var(--am-stroke); stroke-width: var(--am-line); }
+.am-diagram .am-label { fill: var(--am-label); font-family: var(--am-font); }
+.am-diagram [data-domain='common'] { --am-fill: var(--am-common); }
+.am-diagram [data-domain='strategy'] { --am-fill: var(--am-strategy); }
+.am-diagram [data-domain='business'] { --am-fill: var(--am-business); }
+.am-diagram [data-domain='application'] { --am-fill: var(--am-application); }
+.am-diagram [data-domain='technology'] { --am-fill: var(--am-technology); }
+.am-diagram [data-domain='motivation'] { --am-fill: var(--am-motivation); }
+.am-diagram [data-domain='implementation'] { --am-fill: var(--am-implementation); }
+.am-diagram [data-type='Grouping'] .am-shape { fill: #fff; stroke: var(--am-grouping-stroke); stroke-dasharray: 6 3; }
+.am-diagram .am-shape, .am-icon .f { fill: var(--am-fill, #fff); }
+.am-icon { fill: none; stroke: var(--am-stroke); stroke-width: 1.1; stroke-linejoin: round; stroke-linecap: round; }
+.am-icon .k { fill: var(--am-stroke); stroke: none; } .am-icon .g { stroke: var(--am-grouping-stroke); stroke-dasharray: 1.2 1; }
+.am-rel { fill: none; stroke: var(--am-stroke); stroke-width: var(--am-line); }
+.am-rel--realization { stroke-dasharray: var(--am-dot); }
+.am-rel--access { stroke-dasharray: var(--am-dot); }
+.am-rel--influence { stroke-dasharray: var(--am-dash); }
+.am-rel--flow { stroke-dasharray: var(--am-dash); }
+/* Grid-card helper for documentation pages */
+.am-swatch { display:inline-block; width:1em; height:1em; border:1px solid #000; vertical-align:middle; }
