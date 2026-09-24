@@ -13,8 +13,11 @@ archimate-js export ./model.xml \
   --basename application-landscape \
   --scale 2 \
   --background '#ffffff' \
+  --fit contain \
+  --padding 24 \
   --pdf-page-size A4 \
-  --pdf-orientation landscape
+  --pdf-orientation landscape \
+  --pdf-title "Application landscape"
 ```
 
 Use exactly one of `--view-id`, `--view-name`, and `--all-views`. At least one `--format` is
@@ -27,8 +30,18 @@ required; formats may be comma-separated or supplied through repeated
 | `--basename` | Optional file basename; default `view`. Unsafe characters are replaced with `-`, combining marks are removed, and the result is limited to 80 characters. |
 | `--scale` | Integer `1` through `4`; default `1`. It controls PNG device scale. |
 | `--background` | `transparent`, `white`, `black`, or `#RRGGBB`; default `white`. PDF rejects `transparent`. |
+| `--fit` | `none`, `contain`, or `cover`; default `none` for compatibility. `contain` preserves the complete view inside the target PDF page; `cover` fills the target page and may crop at its edges. PNG uses the padded SVG bounds as its canvas, so both modes preserve the view aspect ratio without stretching. |
+| `--padding` | Nonnegative SVG units from `0` through `1024`; default `0`. Applied symmetrically to the canonical SVG bounds before all requested formats are derived. |
 | `--pdf-page-size` | `A3`, `A4`, `A5`, `Legal`, or `Letter`; default `A4`. |
 | `--pdf-orientation` | `portrait` or `landscape`; default `portrait`. |
+| `--pdf-title` | Optional PDF-only report title, escaped as text in the page header; maximum 200 characters. Requires `pdf` in `--format`. |
+| `--pdf-footer` | Optional PDF-only report footer, escaped as text in the page footer; maximum 200 characters. Requires `pdf` in `--format`. |
+
+Export geometry is bounded before browser capture and publication. After scale
+and padding, each raster dimension must be at most `32768` pixels and the
+pixel area at most `64000000`; invalid, non-finite, or overflowing SVG bounds
+are rejected. These limits protect the CLI from unbounded allocations and do
+not change the existing default output for ordinary views.
 
 For all views, omit `--basename` and select `--all-views`:
 
@@ -63,8 +76,10 @@ Partial-success / continue-on-error behavior is outside this command's current
 contract.
 
 The command validates the model before starting Chrome. It opens one browser
-context, blocks every network route, renders the selected view once, and
-derives all requested formats from that SVG in the same page. Outputs are
+context, blocks every network route, renders the selected view once, applies
+the shared fit/padding layout, waits for `document.fonts.ready` before raster
+or PDF capture, and derives all requested formats from that SVG in the same
+page. A font readiness timeout reports `FONT_READY_FAILED`. Outputs are
 written atomically. If generation or publication fails, the request reports
 failure and removes new files or restores files that existed before the
 request.
@@ -77,7 +92,9 @@ Diagnostics are structured JSON with deterministic exit codes:
 
 Diagnostics do not contain model XML, local paths, view identifiers, parser or
 browser exception text, or stack traces. A successful response reports the
-requested formats but not output paths.
+requested formats but not output paths. PNG and PDF are validated by signature
+and bounded geometry; their bytes are not promised to be stable across Chrome
+versions. SVG remains the deterministic structural report artifact.
 
 ## Programmatic API boundary
 

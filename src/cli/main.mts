@@ -23,7 +23,9 @@ function usage(): void {
   archimate-js render <model.xml> (--view-id <id> | --view-name <name>) --output <view.svg> [--chrome <path>]
   archimate-js export <model.xml> (--view-id <id> | --view-name <name> | --all-views) --format <svg,png,pdf> --output-dir <dir>
     [--basename <name>] [--scale <1..4>] [--background <transparent|white|black|#RRGGBB>]
-    [--pdf-page-size <A3|A4|A5|Legal|Letter>] [--pdf-orientation <portrait|landscape>] [--chrome <path>]
+    [--fit <none|contain|cover>] [--padding <0..1024>]
+    [--pdf-page-size <A3|A4|A5|Legal|Letter>] [--pdf-orientation <portrait|landscape>]
+    [--pdf-title <text>] [--pdf-footer <text>] [--chrome <path>]
 
 Commands emit structured JSON. Rendering requires an existing Chrome or Chromium installation.
 `);

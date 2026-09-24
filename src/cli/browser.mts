@@ -2,14 +2,16 @@ import { constants } from 'node:fs';
 import { access } from 'node:fs/promises';
 import path from 'node:path';
 
-import { chromium, type BrowserContext, type Page } from 'playwright-core';
+import { chromium, type Browser, type BrowserContext, type Page } from 'playwright-core';
 
 import { findChrome } from './io.mjs';
+import { applyLayout, validateLayout } from './layout.mjs';
 import type { ExportArtifacts, ExportOptions, RenderOptions } from './types.mjs';
 
 const RENDER_CODES = new Set([
   'INVALID_OPTIONS', 'MODEL_TOO_LARGE', 'MODEL_IMPORT_FAILED', 'VIEW_NOT_FOUND',
-  'VIEW_NAME_AMBIGUOUS', 'VIEW_RENDER_FAILED', 'VIEW_SELECTION_FAILED', 'VIEWER_FAILURE'
+  'VIEW_NAME_AMBIGUOUS', 'VIEW_RENDER_FAILED', 'VIEW_SELECTION_FAILED', 'VIEWER_FAILURE',
+  'EXPORT_AREA_EXCEEDED', 'EXPORT_DIMENSIONS_EXCEEDED', 'EXPORT_DIMENSIONS_INVALID', 'FONT_READY_FAILED'
 ]);
 
 export async function blockNetwork(context: BrowserContext): Promise<void> {
@@ -52,18 +54,31 @@ async function pngArtifact(page: Page, transparent: boolean): Promise<Uint8Array
 }
 
 async function pdfArtifact(page: Page, options: ExportOptions): Promise<Uint8Array> {
-  await page.evaluate(() => {
+  await page.evaluate(({ fit }) => {
     document.documentElement.style.width = '100%';
     document.documentElement.style.height = '100%';
     document.body.style.cssText =
       'margin:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:inherit';
     const svg = document.querySelector('svg');
-    if (svg) svg.setAttribute('style', 'max-width:100%;max-height:100%;width:100%;height:100%');
-  });
+    if (svg) {
+      svg.setAttribute('style', 'max-width:100%;max-height:100%;width:100%;height:100%');
+      svg.setAttribute('preserveAspectRatio',
+        `xMidYMid ${fit === 'cover' ? 'slice' : 'meet'}`);
+    }
+  }, { fit: options.fit });
+  const escapeHtml = (value: string): string => value.replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[character]!));
+  const withText = (value: string | undefined): string =>
+    value ? `<div style="font:10px sans-serif;width:100%;text-align:center">${escapeHtml(value)}</div>` : '';
   return page.pdf({
     format: options.pdfPageSize,
     landscape: options.pdfOrientation === 'landscape',
-    margin: { top: '0', right: '0', bottom: '0', left: '0' },
+    margin: { top: options.pdfTitle ? '24px' : '0', right: '0',
+      bottom: options.pdfFooter ? '24px' : '0', left: '0' },
+    displayHeaderFooter: Boolean(options.pdfTitle || options.pdfFooter),
+    headerTemplate: withText(options.pdfTitle),
+    footerTemplate: withText(options.pdfFooter),
     printBackground: true
   });
 }
@@ -76,6 +91,41 @@ async function ensureRenderer(bundlePath: string): Promise<void> {
   }
 }
 
+async function waitForFonts(page: Page): Promise<void> {
+  try {
+    await page.evaluate(async () => {
+      await Promise.race([
+        document.fonts.ready,
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error()), 5000))
+      ]);
+      if (document.fonts.status !== 'loaded') throw new Error();
+    });
+  } catch {
+    throw new Error('FONT_READY_FAILED');
+  }
+}
+
+async function captureExport(
+  renderer: Page,
+  capture: Page,
+  xml: string,
+  options: ExportOptions
+): Promise<ExportArtifacts> {
+  const svg = await renderSvg(renderer, xml, options);
+  validateLayout(svg, options);
+  const decorated = withBackground(applyLayout(svg, options.padding, options.fit), options.background);
+  const artifacts: ExportArtifacts = {};
+  if (options.formats.includes('svg') || options.allViews) artifacts.svg = decorated;
+  if (options.formats.some((format) => format !== 'svg')) {
+    await installSvg(capture, decorated, options.background);
+    await waitForFonts(capture);
+  }
+  if (options.formats.includes('png')) {
+    artifacts.png = await pngArtifact(capture, options.background === 'transparent');
+  }
+  if (options.formats.includes('pdf')) artifacts.pdf = await pdfArtifact(capture, options);
+  return artifacts;
+}
 export async function renderArtifacts(
   packageRoot: string,
   xml: string,
@@ -111,19 +161,11 @@ export async function renderBatchArtifacts(
     const capture = await context.newPage();
     const results: ExportArtifacts[] = [];
     for (const options of requests) {
-      const svg = await renderSvg(renderer, xml, options);
-      if (options.command === 'render') { results.push({ svg }); continue; }
-      const decorated = withBackground(svg, options.background);
-      const artifacts: ExportArtifacts = {};
-      if (options.formats.includes('svg') || options.allViews) artifacts.svg = decorated;
-      if (options.formats.some((format) => format !== 'svg')) {
-        await installSvg(capture, decorated, options.background);
+      if (options.command === 'render') {
+        results.push({ svg: await renderSvg(renderer, xml, options) });
+      } else {
+        results.push(await captureExport(renderer, capture, xml, options));
       }
-      if (options.formats.includes('png')) {
-        artifacts.png = await pngArtifact(capture, options.background === 'transparent');
-      }
-      if (options.formats.includes('pdf')) artifacts.pdf = await pdfArtifact(capture, options);
-      results.push(artifacts);
     }
     return results;
   } catch (error) {
