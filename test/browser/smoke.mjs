@@ -12,6 +12,7 @@ const resultsDirectory = path.join(root, 'test-results');
 const routes = new Map([
   ['/examples/read-only/', [ 'examples/read-only/index.html', 'text/html; charset=utf-8' ]],
   ['/examples/read-only/viewer.js', [ 'examples/read-only/viewer.js', 'text/javascript; charset=utf-8' ]],
+  ['/.ci-build/model-dto.js', [ '.ci-build/model-dto.js', 'text/javascript; charset=utf-8' ]],
   ['/examples/read-only/diagram.css', [ 'examples/read-only/diagram.css', 'text/css; charset=utf-8' ]],
   ['/assets/design-tokens/app-shell.css', [ 'assets/design-tokens/app-shell.css', 'text/css; charset=utf-8' ]],
   ['/assets/design-tokens/app.generated.css', [ 'assets/design-tokens/app.generated.css', 'text/css; charset=utf-8' ]],
@@ -24,6 +25,12 @@ const routes = new Map([
   ]],
   ['/test/fixtures/synthetic/directed-association.xml', [
     'test/fixtures/synthetic/directed-association.xml', 'application/xml; charset=utf-8'
+  ]],
+  ['/test/fixtures/synthetic/dto-export-view.xml', [
+    'test/fixtures/synthetic/dto-export-view.xml', 'application/xml; charset=utf-8'
+  ]],
+  ['/test/fixtures/meff-schema/valid-view-presentation.xml', [
+    'test/fixtures/meff-schema/valid-view-presentation.xml', 'application/xml; charset=utf-8'
   ]]
 ]);
 
@@ -68,6 +75,30 @@ try {
   stage = 'load synthetic read-only example';
   await page.goto(origin + '/examples/read-only/', { waitUntil: 'networkidle' });
   await page.locator('#status').waitFor({ state: 'visible' });
+
+  stage = 'check DTO import eligibility in the browser';
+  const eligibility = await page.evaluate(async () => {
+    await new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = '/.ci-build/model-dto.js';
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.append(script);
+    });
+    const api = window.ArchimateModelDto;
+    const supported = await (await fetch('/test/fixtures/synthetic/dto-export-view.xml')).text();
+    const unsupported = await (await fetch('/test/fixtures/meff-schema/valid-view-presentation.xml')).text();
+    const supportedEntry = api.createDtoEditorFromMeff(supported);
+    const rejectedEntry = api.createDtoEditorFromMeff(unsupported);
+    return {
+      supported: supportedEntry.eligible && supportedEntry.editor.getModel().id === 'model-dto-export',
+      unsupported: rejectedEntry.eligible === false &&
+        rejectedEntry.reasons[0]?.code === 'DTO_UNSUPPORTED_FIELDS' &&
+        !('model' in rejectedEntry) && !('editor' in rejectedEntry)
+    };
+  });
+  assert.deepEqual(eligibility, { supported: true, unsupported: true });
+
   await page.waitForFunction(() => {
     const status = document.querySelector('#status')?.textContent;
     return status && !status.startsWith('Loading');
