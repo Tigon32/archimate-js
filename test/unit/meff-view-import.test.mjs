@@ -193,21 +193,42 @@ describe('MEFF View and Diagram import', () => {
       elementsById: new Map([[component.id, component], [service.id, service]]),
       relationshipsById: new Map([[relationship.id, relationship]])
     });
-    const [componentNode] = parsed.views.diagrams.viewsList[0].viewElements;
+    const [componentNode, serviceNode, importedConnection] = parsed.views.diagrams.viewsList[0].viewElements;
     const nestedNode = componentNode.nodes[0];
     const factory = new ElementFactory({ create: () => ({}) }, {}, (message) => message);
     factory.baseCreate = (type, attrs) => ({ ...attrs, factoryType: type });
+    const shapesById = new Map();
+    const canvas = {
+      addShape(shape, parent) {
+        shape.parent = parent;
+        shapesById.set(shape.id, shape);
+        return shape;
+      },
+      addConnection(connection) { return connection; }
+    };
     const importer = new ArchimateImporter(
       { fire() {} },
-      { addShape(shape, parent) { shape.parent = parent; return shape; } },
+      canvas,
       factory,
-      { get() {} },
+      { get(id) { return shapesById.get(id); } },
       (message) => message,
       {}
     );
     const root = { type: 'root', x: 0, y: 0 };
     const parentShape = importer.addElement(componentNode, root);
     const nestedShape = importer.addElement(nestedNode, parentShape);
+    const serviceShape = importer.addElement(serviceNode, root);
+    factory.createConnection = (attrs) => attrs;
+    const drawnConnection = importer.addConnection(importedConnection);
+
+    expect(drawnConnection.source).toBe(parentShape);
+    expect(drawnConnection.target).toBe(serviceShape);
+    expect(drawnConnection.waypoints.map(({ x, y, kind }) => ({ x, y, kind }))).toEqual([
+      { x: 160, y: 75, kind: 'sourceAttachment' },
+      { x: 220, y: 80, kind: 'bendpoint' },
+      { x: 260, y: 100, kind: 'bendpoint' },
+      { x: 300, y: 75, kind: 'targetAttachment' }
+    ]);
 
     expect(parentShape.x).toBe(20);
     expect(parentShape.y).toBe(40);
