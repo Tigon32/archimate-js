@@ -8,7 +8,7 @@ See [third-party notices](THIRD_PARTY_NOTICES.md) for bundled font licenses, pro
 
 ## What is implemented today
 
-The package entry point exports the default `Viewer` class and the named `mountViewer` and `renderViewToSvg` helpers from [`index.js`](index.js). These are the supported read-only viewer and SVG report APIs.
+The package entry point exports the default `Viewer` class, the named `mountViewer` and `renderViewToSvg` helpers, and the headless `routeViewConnections`, `optimizeDiagram`, and `applyLayoutPatch` geometry APIs from [`index.js`](index.js). See [diagram routing and reversible optimization](docs/layout/diagram-optimization.md) for usage and limits.
 
 | Capability | Current implementation | Important boundary |
 | --- | --- | --- |
