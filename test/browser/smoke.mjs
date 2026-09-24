@@ -206,8 +206,8 @@ try {
     return {
       markerStyle: path?.getAttribute('style'),
       markerShape: parsed.querySelector('defs marker path')?.getAttribute('d'),
-      labelTexts: [...parsed.querySelectorAll('.djs-label')].map((label) => label.textContent),
-      unnamedLabels: [...unnamed.querySelectorAll('.djs-label')].map((label) => label.textContent)
+      labelTexts: [...parsed.querySelectorAll('[data-element-id$="_label"] .djs-label')].map((label) => label.textContent),
+      unnamedLabels: [...unnamed.querySelectorAll('[data-element-id$="_label"] .djs-label')].map((label) => label.textContent)
     };
   });
   assert.match(directedAssociation.markerStyle || '', /marker-end:\s*url\(['"]?#archimate-export-id-\d+/);
