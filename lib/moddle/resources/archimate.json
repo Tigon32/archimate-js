@@ -315,7 +315,7 @@
         },
         {
           "name": "size",
-          "type": "Integer",
+          "type": "Real",
           "isAttr": true
         },   
         {
@@ -345,28 +345,19 @@
           "name": "b",
           "type": "Integer",
           "isAttr": true
+        },
+        {
+          "name": "a",
+          "type": "Integer",
+          "isAttr": true
         }
       ]
     },
     { "name": "FillColor",
-      "superClass": ["Color"],
-      "properties": [
-        {
-          "name": "a",
-          "type": "Integer",
-          "isAttr": true
-        }
-      ]
+      "superClass": ["Color"]
     },
     { "name": "LineColor",
-      "superClass": ["Color"],
-      "properties": [
-        {
-          "name": "a",
-          "type": "Integer",
-          "isAttr": true
-        }
-      ]
+      "superClass": ["Color"]
     },
     { "name": "Waypoints",
       "properties": [
