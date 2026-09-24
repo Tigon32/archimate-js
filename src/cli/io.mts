@@ -166,3 +166,75 @@ export async function writeBatchArtifacts(
     throw new Error('OUTPUT_WRITE_FAILED');
   }
 }
+
+type PartialGroup = { files: Array<{ filename: string; contents: string | Uint8Array }> };
+
+async function preparePartialDirectory(directory: string): Promise<string> {
+  const absolute = path.resolve(directory);
+  const parts: string[] = [];
+  let cursor = absolute;
+  while (cursor !== path.dirname(cursor)) { parts.unshift(cursor); cursor = path.dirname(cursor); }
+  try {
+    for (const component of parts) {
+      const item = await lstat(component).catch((error: NodeJS.ErrnoException) => {
+        if (error.code === 'ENOENT') return undefined;
+        throw error;
+      });
+      if (item && (!item.isDirectory() || item.isSymbolicLink())) throw new Error();
+    }
+    await mkdir(absolute, { recursive: true });
+  } catch { throw new Error('OUTPUT_WRITE_FAILED'); }
+  return absolute;
+}
+
+function partialTarget(directory: string, filename: string, inputPath: string): string {
+  if (!filename || path.basename(filename) !== filename || filename === '.' || filename === '..') {
+    throw new Error('OUTPUT_WRITE_FAILED');
+  }
+  const target = path.join(directory, filename);
+  if (target === path.resolve(inputPath) || filename.toLowerCase() === 'manifest.json') {
+    throw new Error('OUTPUT_WRITE_FAILED');
+  }
+  return target;
+}
+
+/** Each view commits independently; manifest failure restores the whole request. */
+export async function writePartialBatchArtifacts(
+  directory: string, groups: PartialGroup[], inputPath: string,
+  makeManifest: (failedIndexes: Set<number>) => string
+): Promise<Set<number>> {
+  const absolute = await preparePartialDirectory(directory);
+  const manifestPath = path.join(absolute, 'manifest.json');
+  await snapshot(manifestPath);
+  const committed: PreviousOutput[] = [];
+  const failed = new Set<number>();
+  const names = new Set<string>(['manifest.json']);
+  try {
+    for (let index = 0; index < groups.length; index++) {
+      const previous: PreviousOutput[] = [];
+      const current: PreviousOutput[] = [];
+      try {
+        for (const file of groups[index].files) {
+          const target = partialTarget(absolute, file.filename, inputPath);
+          if (names.has(file.filename.toLowerCase())) throw new Error('OUTPUT_WRITE_FAILED');
+          names.add(file.filename.toLowerCase());
+          previous.push(await snapshot(target));
+        }
+        for (let item = 0; item < previous.length; item++) {
+          await writeAtomic(previous[item].path, groups[index].files[item].contents);
+          current.push(previous[item]);
+        }
+        committed.push(...current);
+      } catch {
+        try { await rollback(current); } catch { throw new Error('OUTPUT_CLEANUP_FAILED'); }
+        failed.add(index);
+      }
+    }
+    await writeAtomic(manifestPath, makeManifest(failed));
+    return failed;
+  } catch (error) {
+    try { await rollback(committed); } catch { throw new Error('OUTPUT_CLEANUP_FAILED'); }
+    if (error instanceof Error && error.message === 'OUTPUT_CLEANUP_FAILED') throw error;
+    throw new Error('OUTPUT_WRITE_FAILED');
+  }
+}

@@ -36,6 +36,7 @@ export type ExportOptions = ViewSelection & {
   pdfFooter?: string;
   chrome?: string;
   allViews?: boolean;
+  continueOnError?: boolean;
 };
 
 export type CliOptions = ValidateOptions | RenderOptions | ExportOptions | { command: 'help' };

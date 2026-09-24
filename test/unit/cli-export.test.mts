@@ -8,9 +8,10 @@ import type { BrowserContext } from 'playwright-core';
 import { parseArguments, sanitizeBasename } from '../../src/cli/arguments.mjs';
 import { blockNetwork } from '../../src/cli/browser.mjs';
 import { writeArtifacts, writeAtomic } from '../../src/cli/io.mjs';
-import { writeBatchArtifacts } from '../../src/cli/io.mjs';
+import { writeBatchArtifacts, writePartialBatchArtifacts } from '../../src/cli/io.mjs';
 import { listBatchViews } from '../../src/cli/views.mjs';
 import { prepareBatch } from '../../src/cli/batch.mjs';
+import { failedBatchEntry, partialManifest, preparePartialView } from '../../src/cli/batch.mjs';
 import { applyLayout, validateLayout } from '../../src/cli/layout.mjs';
 import type { ExportOptions } from '../../src/cli/types.mjs';
 
@@ -64,6 +65,10 @@ describe('batch selection', () => {
       '--output-dir', 'out']) as { allViews?: boolean }).allViews, true);
     assert.throws(() => parseArguments(['export', 'model.xml', '--all-views', '--view-id', 'x',
       '--format', 'svg', '--output-dir', 'out']), { message: 'CLI_USAGE' });
+    assert.throws(() => parseArguments(['export', 'model.xml', '--view-id', 'x',
+      '--continue-on-error', '--format', 'svg', '--output-dir', 'out']), { message: 'CLI_USAGE' });
+    assert.equal((parseArguments(['export', 'model.xml', '--all-views', '--continue-on-error',
+      '--format', 'svg', '--output-dir', 'out']) as ExportOptions).continueOnError, true);
     const views = listBatchViews(fixture);
     assert.deepEqual(views.map(({ id }) => id), ['view-a', 'view-b', 'view-z']);
     assert.equal(new Set(views.map(({ basename }) => basename.toLowerCase())).size, 3);
@@ -160,7 +165,57 @@ describe('batch outputs', () => {
       assert.equal(await readFile(path.join(directory, 'manifest.json'), 'utf8'), 'previous manifest');
     } finally { await rm(directory, { recursive: true, force: true }); }
   });
+});
 
+describe('partial batch outputs', () => {
+  test('continue mode rolls back a failed middle view and publishes later views', async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'archimate-partial-'));
+    try {
+      await writeFile(path.join(directory, 'middle.svg'), 'previous');
+      await writeFile(path.join(directory, `.middle.png.${process.pid}.tmp`), 'collision');
+      const groups = [
+        { files: [{ filename: 'first.svg', contents: 'first' }] },
+        { files: [{ filename: 'middle.svg', contents: 'replacement' },
+          { filename: 'middle.png', contents: Uint8Array.of(1) }] },
+        { files: [{ filename: 'last.svg', contents: 'last' }] }
+      ];
+      const failed = await writePartialBatchArtifacts(directory, groups, 'model.xml', (indexes) => {
+        const views = ['first', 'middle', 'last'].map((id) => ({ id, name: id, basename: id }));
+        const entries = views.map((view, index) => indexes.has(index)
+          ? failedBatchEntry(view, 'OUTPUT_WRITE_FAILED')
+          : preparePartialView(view, { svg: '<svg viewBox="0 0 2 2"/>' }, ['svg']).entry);
+        return partialManifest(entries);
+      });
+      assert.deepEqual([...failed], [1]);
+      assert.equal(await readFile(path.join(directory, 'middle.svg'), 'utf8'), 'previous');
+      assert.equal(await readFile(path.join(directory, 'last.svg'), 'utf8'), 'last');
+      const manifest = JSON.parse(await readFile(path.join(directory, 'manifest.json'), 'utf8'));
+      assert.equal(manifest.overallStatus, 'partial_failure');
+      assert.deepEqual(manifest.entries.map((entry: { status: string }) => entry.status),
+        ['success', 'failed', 'success']);
+      assert.deepEqual(manifest.entries[1].diagnostics, [{ code: 'OUTPUT_WRITE_FAILED' }]);
+    } finally { await rm(directory, { recursive: true, force: true }); }
+  });
+
+  test('manifest write failure restores all successful views and prior manifest', async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'archimate-partial-rollback-'));
+    try {
+      await writeFile(path.join(directory, 'first.svg'), 'old');
+      await writeFile(path.join(directory, 'manifest.json'), 'previous manifest');
+      await writeFile(path.join(directory, `.manifest.json.${process.pid}.tmp`), 'collision');
+      await assert.rejects(writePartialBatchArtifacts(directory, [
+        { files: [{ filename: 'first.svg', contents: 'new' }] },
+        { files: [{ filename: 'last.svg', contents: 'new' }] }
+      ], 'model.xml', () => '{}'), { message: 'OUTPUT_WRITE_FAILED' });
+      assert.equal(await readFile(path.join(directory, 'first.svg'), 'utf8'), 'old');
+      await assert.rejects(readFile(path.join(directory, 'last.svg')));
+      assert.equal(await readFile(path.join(directory, 'manifest.json'), 'utf8'), 'previous manifest');
+    } finally { await rm(directory, { recursive: true, force: true }); }
+  });
+
+});
+
+describe('batch path safety', () => {
   test('rejects symlink directory ancestry and output targets', async () => {
     const directory = await mkdtemp(path.join(os.tmpdir(), 'archimate-batch-link-'));
     try {

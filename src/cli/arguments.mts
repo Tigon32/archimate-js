@@ -114,10 +114,11 @@ function parseExport(input: string, rest: string[]): ExportOptions {
   const seen = new Set<string>();
   for (let index = 0; index < rest.length; index += 2) {
     const option = rest[index];
-    if (option === '--all-views') {
+    if (option === '--all-views' || option === '--continue-on-error') {
       if (seen.has(option)) throw new Error('CLI_USAGE');
       seen.add(option);
-      parsed.allViews = true;
+      if (option === '--all-views') parsed.allViews = true;
+      else parsed.continueOnError = true;
       index -= 1;
       continue;
     }
@@ -134,6 +135,7 @@ function parseExport(input: string, rest: string[]): ExportOptions {
     } else assignExportOption(parsed, seen, option, value);
   }
   if (parsed.allViews && seen.has('--basename')) throw new Error('CLI_USAGE');
+  if (parsed.continueOnError && !parsed.allViews) throw new Error('CLI_USAGE');
   parsed.basename = sanitizeBasename(parsed.basename!);
   return validateExport(parsed, formats);
 }

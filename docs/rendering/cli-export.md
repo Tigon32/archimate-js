@@ -36,6 +36,7 @@ required; formats may be comma-separated or supplied through repeated
 | `--pdf-orientation` | `portrait` or `landscape`; default `portrait`. |
 | `--pdf-title` | Optional PDF-only report title, escaped as text in the page header; maximum 200 characters. Requires `pdf` in `--format`. |
 | `--pdf-footer` | Optional PDF-only report footer, escaped as text in the page footer; maximum 200 characters. Requires `pdf` in `--format`. |
+| `--continue-on-error` | Optional with `--all-views` only. Attempts every view in stable ID order and exits `1` if any view fails. |
 
 Export geometry is bounded before browser capture and publication. After scale
 and padding, each raster dimension must be at most `32768` pixels and the
@@ -72,8 +73,19 @@ manifest is written last. On a publication failure, new files are removed and
 pre-existing files, including the manifest, are restored. Existing symlinked
 output directory components and output targets are rejected. Output directory
 paths must not be changed concurrently by another process during publication.
-Partial-success / continue-on-error behavior is outside this command's current
-contract.
+For an explicit partial-failure policy, pass `--continue-on-error`. Rendering
+continues after an individual view fails; each completed view publishes its
+requested formats as a unit. Failed views leave no new or changed artifacts,
+including when a later format fails to write. An existing artifact for a failed
+view is restored. The local version `2` manifest contains `policy:
+"continue-on-error"`, `overallStatus: "success"` or `"partial_failure"`, and
+each view's `status` (`success` or `failed`), outputs, and stable diagnostic
+codes. A failed view has no outputs. A manifest write failure restores all
+artifacts published by this request and leaves the previous manifest intact;
+it returns a global output failure instead of partial success. Directory
+setup and browser startup failures likewise fail the request before the
+partial manifest is published. Existing directory components and targets
+must not be symlinks, and output paths must not change concurrently.
 
 The command validates the model before starting Chrome. It opens one browser
 context, blocks every network route, renders the selected view once, applies
@@ -95,6 +107,10 @@ browser exception text, or stack traces. A successful response reports the
 requested formats but not output paths. PNG and PDF are validated by signature
 and bounded geometry; their bytes are not promised to be stable across Chrome
 versions. SVG remains the deterministic structural report artifact.
+In continue mode, a completed batch with any failed view reports only
+`BATCH_PARTIAL_FAILURE` on stdout; the local manifest contains view IDs and
+per-view codes. Fail-fast mode has no manifest on render failure. Neither
+mode treats a partial batch as successful.
 
 ## Programmatic API boundary
 
