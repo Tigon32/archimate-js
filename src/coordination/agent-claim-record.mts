@@ -189,6 +189,13 @@ export function parseAgentClaimComment(body: string, expectedIssue?: number): Ag
   const candidates: Array<{ source: string; language: string }> = [];
 
   for (const fence of fences) {
+    // Treat any embedded protocol marker as an attempted record before parsing.
+    // Looking only at JSON.parse's final `schema` value would miss duplicate
+    // schema keys when the later value belongs to another version.
+    if (fence.source.includes(SCHEMA_PREFIX)) {
+      candidates.push(fence);
+      continue;
+    }
     let parsed: unknown;
     try {
       parsed = JSON.parse(fence.source);
@@ -288,7 +295,7 @@ function validateRecordSemantics(
     return 'lease_started_at must equal claimed_at for a new lease';
   }
   if (shapeKey === 'heartbeat'
-    && timestampValue(record.heartbeat_at) - timestampValue(record.lease_started_at) > 8 * 60 * 60 * 1000
+    && timestampValue(record.expires_at) - timestampValue(record.lease_started_at) > 8 * 60 * 60 * 1000
     && !isCommentId(record.maintainer_reack_comment_id)) {
     return 'heartbeat beyond eight hours requires maintainer_reack_comment_id';
   }

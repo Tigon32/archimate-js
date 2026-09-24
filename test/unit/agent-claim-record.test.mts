@@ -64,6 +64,19 @@ it('enforces record-local lineage and lease transition constraints', () => {
   };
   expect(parseAgentClaimComment(wrap(longLease)).status).toBe('invalid');
   expect(parseAgentClaimComment(wrap({ ...longLease, maintainer_reack_comment_id: '7000000110' })).status).toBe('valid');
+
+  const heartbeatBeforeCapWithOverlongExpiry = {
+    ...heartbeatSource,
+    heartbeat_at: '2026-09-24T09:59:00Z',
+    expires_at: '2026-09-24T11:59:00Z',
+    lease_started_at: '2026-09-24T02:00:00Z',
+    last_work_observed_at: '2026-09-24T09:58:00Z'
+  };
+  expect(parseAgentClaimComment(wrap(heartbeatBeforeCapWithOverlongExpiry)).status).toBe('invalid');
+  expect(parseAgentClaimComment(wrap({
+    ...heartbeatBeforeCapWithOverlongExpiry,
+    maintainer_reack_comment_id: '7000000110'
+  })).status).toBe('valid');
 });
 
 it('rejects invalid timestamps and lease timing constraints', () => {
@@ -80,4 +93,9 @@ it('distinguishes unrelated prose and permits explanatory text outside a fence',
 
 it('rejects comments containing more than one protocol record', () => {
   expect(parseAgentClaimComment(`${validAgentClaimComments[0]}\n\n${validAgentClaimComments[1]}`).status).toBe('invalid');
+});
+
+it('rejects duplicate schema keys even when the final value is another version', () => {
+  const comment = '```json\n{"schema":"archimate-js.agent-claim/v1","schema":"example/v2"}\n```';
+  expect(parseAgentClaimComment(comment).status).toBe('invalid');
 });
