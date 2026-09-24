@@ -3,8 +3,29 @@ import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-import { createExportService, exportView } from '../../dist/export/index.mjs';
-import { raceAbortable } from '../../dist/export/service.mjs';
+import type { ExportArtifact, ExportFileResult, ExportRequest, ExportResult,
+  ExportServiceConfig } from '../../src/export/types.mjs';
+
+type ExportService = {
+  exportView(request: ExportRequest): Promise<ExportResult>;
+  exportViews(requests: readonly ExportRequest[]): Promise<ExportResult[]>;
+  writeExport(request: ExportRequest & { basename?: string }): Promise<ExportFileResult>;
+};
+type ExportModule = {
+  createExportService(config?: ExportServiceConfig): ExportService;
+  exportView(request: ExportRequest): Promise<ExportResult>;
+};
+type RaceAbortable = <T>(
+  operation: Promise<T>, signal: AbortSignal | undefined,
+  onLateResolve: (value: T) => Promise<void>
+) => Promise<T>;
+
+const exportModulePath = '../../dist/export/index.mjs';
+const serviceModulePath = '../../dist/export/service.mjs';
+const { createExportService, exportView } =
+  await import(exportModulePath) as ExportModule;
+const { raceAbortable } =
+  await import(serviceModulePath) as { raceAbortable: RaceAbortable };
 
 const root = path.resolve(import.meta.dirname, '../..');
 const xml = await readFile(path.join(root, 'test/fixtures/synthetic/minimal-application-view.xml'), 'utf8');
@@ -16,7 +37,7 @@ try {
     scale: 2, background: 'white', fit: 'contain', padding: 12
   });
   assert.equal(result.valid, true);
-  assert.deepEqual(result.artifacts.map(({ format }) => format), ['svg', 'png', 'pdf']);
+  assert.deepEqual(result.artifacts.map(({ format }: ExportArtifact) => format), ['svg', 'png', 'pdf']);
   assert.match(String(result.artifacts[0].bytes), /^<svg[^>]+role="(?:img|graphics-document document)"/);
   assert.equal(Buffer.from(result.artifacts[1].bytes).subarray(0, 8).toString('hex'),
     '89504e470d0a1a0a');
@@ -27,7 +48,7 @@ try {
     xml, viewName: 'Synthetic Minimal View', formats: ['svg'],
     basename: 'safe / report'
   });
-  assert.deepEqual(written.files.map((file) => path.basename(file)), ['safe-report.svg']);
+  assert.deepEqual(written.files.map((file: string) => path.basename(file)), ['safe-report.svg']);
   assert.match(await readFile(written.files[0], 'utf8'), /^<svg/);
 
   await assert.rejects(exportView({ xml, viewId: 'private-view-id', formats: ['svg'] }),

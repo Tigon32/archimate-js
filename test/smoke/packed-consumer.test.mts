@@ -86,7 +86,18 @@ try {
     renderViewToSvg: 'function', dtoImport: 'function', dtoExport: 'function',
     outline: 'function', outlineText: 'function',
     layoutView: 'function' });
-  const exportApi = await import('archimate-js/export');
+  const exportSubpath = [ 'archimate-js', 'export' ].join('/');
+  const exportApi = await import(exportSubpath) as {
+    exportView: Function;
+    writeExport: Function;
+    createExportService(config?: { chrome?: string; outputDirectory?: string }): {
+      exportView(request: Record<string, unknown>): Promise<{
+        valid: boolean; artifacts: Array<{ bytes: string | Uint8Array }>;
+      }>;
+      exportViews(requests: readonly Record<string, unknown>[]): Promise<unknown[]>;
+      writeExport(request: Record<string, unknown>): Promise<unknown>;
+    };
+  };
   assert.equal(typeof exportApi.exportView, 'function');
   assert.equal(typeof exportApi.createExportService, 'function');
   assert.equal(typeof exportApi.writeExport, 'function');
