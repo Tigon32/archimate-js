@@ -96,7 +96,9 @@ describe('atomic outputs', () => {
       await rm(directory, { recursive: true, force: true });
     }
   });
+});
 
+describe('batch outputs', () => {
   test('publishes manifest last and restores prior files after failed manifest write', async () => {
     const directory = await mkdtemp(path.join(os.tmpdir(), 'archimate-batch-rollback-'));
     try {

@@ -110,36 +110,40 @@ async function browserTests(): Promise<void> {
     assert.equal(missing.output.includes('private-view-id'), false);
     await assert.rejects(readdir(missingPath));
 
-    const batchDir = path.join(directory, 'batch');
-    const batchArgs = [
-      'export', batchFixture, '--all-views', '--format', 'svg,png,pdf', '--output-dir', batchDir
-    ];
-    const batch = runCli(cli, batchArgs, 0);
-    assert.equal(batch.json.valid, true);
-    const first = JSON.parse(await readFile(path.join(batchDir, 'manifest.json'), 'utf8'));
-    assert.equal(first.schemaVersion, 1);
-    assert.deepEqual(first.entries.map((item: { viewId: string }) => item.viewId),
-      ['view-a', 'view-b', 'view-z']);
-    assert.equal(new Set(first.entries.flatMap((item: { outputs: Array<{ path: string }> }) =>
-      item.outputs.map((output) => output.path))).size, 9);
-    for (const entry of first.entries) {
-      assert.deepEqual(entry.outputs.map((item: { format: string }) => item.format), ['svg', 'png', 'pdf']);
-      for (const output of entry.outputs) {
-        assert.equal(path.basename(output.path), output.path);
-        assert.ok(output.dimensions.width > 0 && output.dimensions.height > 0);
-        assert.equal(createHash('sha256').update(await readFile(path.join(batchDir, output.path)))
-          .digest('hex'), output.sha256);
-      }
-    }
-    const svgHashes = first.entries.map((item: { outputs: Array<{ format: string; sha256: string }> }) =>
-      item.outputs.find((output) => output.format === 'svg')?.sha256);
-    runCli(cli, batchArgs, 0);
-    const second = JSON.parse(await readFile(path.join(batchDir, 'manifest.json'), 'utf8'));
-    assert.deepEqual(second.entries.map((item: { outputs: Array<{ format: string; sha256: string }> }) =>
-      item.outputs.find((output) => output.format === 'svg')?.sha256), svgHashes);
+    await batchBrowserTests(directory);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+}
+
+async function batchBrowserTests(directory: string): Promise<void> {
+  const batchDir = path.join(directory, 'batch');
+  const batchArgs = [
+    'export', batchFixture, '--all-views', '--format', 'svg,png,pdf', '--output-dir', batchDir
+  ];
+  const batch = runCli(cli, batchArgs, 0);
+  assert.equal(batch.json.valid, true);
+  const first = JSON.parse(await readFile(path.join(batchDir, 'manifest.json'), 'utf8'));
+  assert.equal(first.schemaVersion, 1);
+  assert.deepEqual(first.entries.map((item: { viewId: string }) => item.viewId),
+    ['view-a', 'view-b', 'view-z']);
+  assert.equal(new Set(first.entries.flatMap((item: { outputs: Array<{ path: string }> }) =>
+    item.outputs.map((output) => output.path))).size, 9);
+  for (const entry of first.entries) {
+    assert.deepEqual(entry.outputs.map((item: { format: string }) => item.format), ['svg', 'png', 'pdf']);
+    for (const output of entry.outputs) {
+      assert.equal(path.basename(output.path), output.path);
+      assert.ok(output.dimensions.width > 0 && output.dimensions.height > 0);
+      assert.equal(createHash('sha256').update(await readFile(path.join(batchDir, output.path)))
+        .digest('hex'), output.sha256);
+    }
+  }
+  const svgHashes = first.entries.map((item: { outputs: Array<{ format: string; sha256: string }> }) =>
+    item.outputs.find((output) => output.format === 'svg')?.sha256);
+  runCli(cli, batchArgs, 0);
+  const second = JSON.parse(await readFile(path.join(batchDir, 'manifest.json'), 'utf8'));
+  assert.deepEqual(second.entries.map((item: { outputs: Array<{ format: string; sha256: string }> }) =>
+    item.outputs.find((output) => output.format === 'svg')?.sha256), svgHashes);
 }
 
 const mode = process.argv[2];

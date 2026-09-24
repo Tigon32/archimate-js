@@ -7,8 +7,7 @@ const MEFF = 'http://www.opengroup.org/xsd/archimate/3.0/';
 
 export type BatchView = { id: string; name: string; basename: string };
 
-/** Select only diagram records the existing renderer can resolve by ID. */
-export function listBatchViews(xml: string): BatchView[] {
+function parseDiagramViews(xml: string): Array<{ id: string; name: string }> {
   const views: Array<{ id: string; name: string }> = [];
   const stack: string[] = [];
   let active: { id: string; name: string } | undefined;
@@ -38,6 +37,12 @@ export function listBatchViews(xml: string): BatchView[] {
     stack.pop();
   });
   try { parser.write(xml).close(); } catch { throw new Error('BATCH_VIEWS_INVALID'); }
+  return views;
+}
+
+/** Select only diagram records the existing renderer can resolve by ID. */
+export function listBatchViews(xml: string): BatchView[] {
+  const views = parseDiagramViews(xml);
   const ids = new Set<string>();
   for (const view of views) {
     if (!view.id || ids.has(view.id)) throw new Error('BATCH_VIEWS_INVALID');
