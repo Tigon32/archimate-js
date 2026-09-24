@@ -70,8 +70,10 @@ view identifiers and names; public CLI diagnostics contain neither.
 The default batch policy is fail-fast. All views render before publication; on
 render failure no files are published. Files are written atomically and the
 manifest is written last. On a publication failure, new files are removed and
-pre-existing files, including the manifest, are restored. Existing symlinked
-output directory components and output targets are rejected. Output directory
+pre-existing files, including the manifest, are restored. A verified macOS
+system `/var` or `/tmp` alias is normalized to its `/private` path before
+checking output components. User-created symlinked directory components and
+output targets are rejected. Output directory
 paths must not be changed concurrently by another process during publication.
 For an explicit partial-failure policy, pass `--continue-on-error`. Rendering
 continues after an individual view fails; each completed view publishes its
@@ -84,8 +86,9 @@ codes. A failed view has no outputs. A manifest write failure restores all
 artifacts published by this request and leaves the previous manifest intact;
 it returns a global output failure instead of partial success. Directory
 setup and browser startup failures likewise fail the request before the
-partial manifest is published. Existing directory components and targets
-must not be symlinks, and output paths must not change concurrently.
+partial manifest is published. The same canonical output-root check applies
+to partial publication; components below the verified system prefix and output
+targets must not be symlinks. Output paths must not change concurrently.
 
 For `--all-views`, the service renders views sequentially in one browser
 session. SVG is retained internally as the canonical geometry source for the
