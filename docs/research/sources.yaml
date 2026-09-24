@@ -116,17 +116,18 @@ sources:
     title: ArchiMate 4 specification documentation
     publisher: The Open Group
     url: https://pubs.opengroup.org/architecture/archimate4-doc
-    version: ArchiMate 4, released April 2026; HTML specification opened after secure user sign-in
-    retrieved_at: 2026-09-23
-    license_or_terms: Open Group downloads page advertises a free personal 90-day evaluation; exact license scope not reviewed
-    redistribution: Do not reproduce or redistribute specification text.
-    source_revision: HTML specification and Chapter 5 opened/read after user-assisted authentication on 2026-09-23
+    version: ArchiMate 4; document C260; ISBN 1-957866-75-8; published April 2026
+    retrieved_at: 2026-09-24
+    license_or_terms: User-supplied HTML contains an AI-use restriction requiring prior written permission from the copyright owners; evaluation access does not establish that permission.
+    redistribution: Do not reproduce or redistribute specification text; confirm rights before generating new substantive content from it.
+    source_revision: Chapter 5 previously accessed after user-assisted authentication on 2026-09-23; bibliographic and usage metadata checked against user-supplied HTML on 2026-09-24.
     confidence: medium
     claims:
       - The Open Group announced ArchiMate 4 in April 2026 and lists it as the latest specification on its licensed-downloads page.
       - The documentation URL opened as HTML after the user completed secure sign-in.
       - Chapter 5 says Association relationships may be directed or undirected.
     constraints:
+      - Existing Chapter 5 synopsis and Association claim were generated from the authenticated publication before the attached HTML revealed its AI-use restriction; review applicable rights before relying on or extending those notes.
       - Do not infer ArchiMate 4 exchange-schema availability from this language specification.
       - Verify the applicable license and access path before using the specification for product implementation.
     review_after: 2026-12-23
