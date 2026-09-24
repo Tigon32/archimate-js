@@ -74,8 +74,39 @@ fields or variants that cannot survive a MEFF round trip. Callers must handle
 `MEFF_DTO_EXPORT_INVALID` and preserve the original model for unsupported
 inputs; a rejected export emits no partial XML.
 
-The existing `Modeler`/`BaseViewer` entry point still uses moddle objects for
-its legacy save path. Routing supported geometry and presentation-label edits
-through DTO commands does not yet move that save path to the adapter.
-Unsupported imports stay on the original viewer path so the legacy save path
-cannot silently drop their model fields.
+For a live `Modeler`, open one DTO session per import and save through that
+session. The session imports the complete model through the existing Modeler
+first, checks DTO round-trip eligibility, and attaches the canvas port only
+for an eligible view:
+
+```ts
+import { DtoModelerSession } from 'archimate-js/model-dto';
+
+const session = await DtoModelerSession.open(modeler, xml, 'view-one');
+if (session.eligible) {
+  // Modeler gestures update session.editor's DTO command history.
+  session.editor?.undo();
+  const { xml: meffXml, dtoJson } = session.save();
+  // Write artifacts only after save() returns both validated outputs.
+} else {
+  showImportReasons(session.reasons);
+}
+session.close();
+```
+
+`save()` reads the latest committed DTO, validates its full MEFF round trip,
+and returns MEFF XML and DTO JSON together. Diagram node and relationship
+connection presentation labels, semantic IDs, endpoint references, styles,
+integer geometry, and waypoints are preserved within the DTO MEFF subset.
+Unsupported visual variants and fields remain ineligible, and edits outside
+the MEFF subset fail with `MEFF_DTO_EXPORT_INVALID` before yielding an artifact.
+Save on an ineligible or closed session, after another Modeler import, or
+after an unbridged native command fails with `DTO_EDITING_INELIGIBLE`.
+Failures provide stable, content-free diagnostics. Do not write a file until
+`save()` succeeds.
+
+`BaseViewer.saveXML()` keeps its existing moddle-backed contract for viewer
+and legacy consumers, including imports outside the DTO subset. It does not
+represent edits made through the DTO session. Call `session.save()` to persist
+those edits, and retain the original model through the legacy path when the
+session is ineligible.

@@ -4,6 +4,8 @@ export { exportModelDtoToMeff } from './meff-export.js';
 export { validateModelDto, serializeModelDto, parseModelDto } from './validate.js';
 export { DiagramAdapter } from './editor.js';
 export { DiagramJsCanvasPort } from './diagram-js-canvas-port.js';
+export { DtoModelerSession } from './modeler-session.js';
+export type { DtoModelerServices, DtoSaveResult } from './modeler-session.js';
 export {
   assessModelDtoEditingEligibility, checkMeffEditingEligibility, createDtoEditorFromMeff
 } from './eligibility.js';

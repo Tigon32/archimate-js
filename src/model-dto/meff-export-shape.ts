@@ -30,7 +30,7 @@ function style(value: StyleDto | undefined): Record<string, unknown> | undefined
 
 function node(value: ViewNodeDto, elements: Map<string, ElementDto>,
   nodes: Map<string, { id: string }>): Record<string, unknown> {
-  if (value.kind !== 'element' || value.label !== undefined || value.conceptRef !== undefined ||
+  if (value.kind !== 'element' || value.conceptRef !== undefined ||
       value.xpathPart !== undefined) return invalid();
   const elementRef = elements.get(value.elementId!);
   if (!elementRef) return invalid();
@@ -54,7 +54,7 @@ function path(values: PointDto[]): PointDto[] {
 
 function connection(value: ViewConnectionDto, nodes: Map<string, { id: string }>,
   relationships: Map<string, { id: string }>): Record<string, unknown> {
-  if (value.kind !== 'relationship' || value.label !== undefined) return invalid();
+  if (value.kind !== 'relationship') return invalid();
   const relationshipRef = relationships.get(value.relationshipId!);
   const source = nodes.get(value.sourceId!);
   const target = nodes.get(value.targetId!);
