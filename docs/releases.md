@@ -9,6 +9,7 @@ import Viewer, { mountViewer, renderViewToSvg } from 'archimate-js';
 import { validateArchimateXml, ARCHIMATE_LANGUAGE_VERSION } from 'archimate-js/validator';
 import { importMeffToModelDto, exportModelDtoToMeff, serializeModelDto, parseModelDto } from 'archimate-js/model-dto';
 import { layoutView } from 'archimate-js/layout';
+import { createExportService } from 'archimate-js/export';
 import 'archimate-js/app-shell.css'; // Optional app control styles for a CSS-capable bundler.
 ```
 
@@ -33,6 +34,13 @@ Review
 The opt-in `layout` subpath accepts a validated DTO model and selected view id;
 it computes a detached view and reversible geometry patch for explicit full
 built-in layout. See [layout facade scope](layout/diagram-optimization.md).
+The Node-only `export` subpath accepts bounded XML and one selected view and
+exports SVG, PNG, or PDF through an existing local Chrome/Chromium. Configure
+trusted runtime values such as `chrome` and `outputDirectory` with
+`createExportService`; they are not accepted as untrusted per-request paths.
+The service blocks network access, supports cancellation, returns safe coded
+diagnostics, and publishes files atomically when configured with an output
+root. Browser consumers continue to use `renderViewToSvg` for SVG.
 `package.json` `exports` is the authoritative list; source paths
 such as `archimate-js/lib/...`, `archimate-js/src/...`, and internal dependency
 paths are unsupported and intentionally blocked. There is no promise to keep

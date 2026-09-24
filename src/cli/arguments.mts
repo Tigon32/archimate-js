@@ -12,6 +12,7 @@ import type {
 import { MAX_PADDING } from './layout.mjs';
 
 const FORMATS = new Set<ExportFormat>(['svg', 'png', 'pdf']);
+const CANONICAL_FORMATS: readonly ExportFormat[] = ['svg', 'png', 'pdf'];
 const PAGE_SIZES = new Set<PdfPageSize>(['A3', 'A4', 'A5', 'Legal', 'Letter']);
 const ORIENTATIONS = new Set<PdfOrientation>(['portrait', 'landscape']);
 const FITS = new Set<FitMode>(['none', 'contain', 'cover']);
@@ -105,7 +106,7 @@ function validateExport(parsed: Partial<ExportOptions>, formats: Set<ExportForma
     path.resolve(parsed.input!) === path.resolve(parsed.outputDirectory!, `${parsed.basename}.${format}`))) {
     throw new Error('CLI_USAGE');
   }
-  return { ...parsed, formats: [...formats] } as ExportOptions;
+  return { ...parsed, formats: CANONICAL_FORMATS.filter((format) => formats.has(format)) } as ExportOptions;
 }
 
 function parseExport(input: string, rest: string[]): ExportOptions {

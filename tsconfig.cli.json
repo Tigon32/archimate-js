@@ -1,13 +1,13 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "strict": true,
     "declaration": false,
     "sourceMap": false,
-    "outDir": "dist/cli",
-    "rootDir": "src/cli",
+    "outDir": "dist",
+    "rootDir": "src",
     "lib": ["ES2022", "DOM"],
     "types": ["node"],
     "skipLibCheck": true

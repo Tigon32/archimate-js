@@ -15,7 +15,8 @@
     "test/smoke/package.test.mts",
     "test/smoke/packed-consumer.test.mts",
     "test/release/evidence.test.mts",
-    "test/unit/cli-export.test.mts"
+    "test/unit/cli-export.test.mts",
+    "test/browser/export-api.mts"
   ],
   "exclude": ["node_modules", "dist", "coverage", "test-results"]
 }

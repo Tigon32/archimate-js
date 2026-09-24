@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { access, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
 import os from 'node:os';
@@ -26,6 +27,7 @@ try {
   run(process.execPath, ['test/smoke/compile-validator.mjs'], { cwd: root });
   run('npm', ['run', 'compile:model-dto'], { cwd: root });
   run('npm', ['run', 'compile:layout'], { cwd: root });
+  run('npm', ['run', 'compile:export'], { cwd: root });
   run(process.execPath, ['test/smoke/compile.mjs'], { cwd: root });
   run('npm', ['run', 'compile:cli'], { cwd: root });
   const packOutput = run('npm', [
@@ -84,6 +86,48 @@ try {
     renderViewToSvg: 'function', dtoImport: 'function', dtoExport: 'function',
     outline: 'function', outlineText: 'function',
     layoutView: 'function' });
+  const exportApi = await import('archimate-js/export');
+  assert.equal(typeof exportApi.exportView, 'function');
+  assert.equal(typeof exportApi.createExportService, 'function');
+  assert.equal(typeof exportApi.writeExport, 'function');
+  assert.deepEqual(await exportApi.createExportService().exportViews([]), []);
+  const chrome = process.env.CHROME_BIN || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+  try {
+    await access(chrome, constants.X_OK);
+    const fixture = await readFile(
+      path.join(root, 'test/fixtures/synthetic/minimal-application-view.xml'), 'utf8');
+    const success = await exportApi.createExportService({ chrome }).exportView({
+      xml: fixture, viewId: 'view-synthetic-minimal', formats: ['svg']
+    });
+    assert.equal(success.valid, true);
+    assert.match(String(success.artifacts[0].bytes), /^<svg/);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT' &&
+        (error as NodeJS.ErrnoException).code !== 'EACCES') throw error;
+  }
+  await assert.rejects(exportApi.exportView({
+    xml: '<model/>', viewId: 'view', formats: ['svg']
+  }), (error) => error instanceof Error && 'code' in error &&
+    ['INVALID_OPTIONS', 'MODEL_IMPORT_FAILED', 'VIEW_RENDER_FAILED', 'OUTPUT_WRITE_FAILED']
+      .includes(String(error.code)),
+  'packed export invalid XML');
+  const outputDirectory = path.join(consumer, 'export-output');
+  const exportService = exportApi.createExportService({
+    chrome: '/definitely/missing/chrome', outputDirectory
+  });
+  await assert.rejects(exportService.exportView({
+    xml: '<model xmlns="http://www.opengroup.org/xsd/archimate/3.0/" identifier="synthetic-model"><name>Synthetic</name></model>',
+    viewId: 'missing-private-view', formats: ['svg']
+  }), (error) => error instanceof Error && 'code' in error &&
+    error.code === 'BROWSER_NOT_FOUND' && !String(error).includes('/definitely'),
+  'packed export browser failure');
+  await assert.rejects(exportService.writeExport({
+    xml: '<model/>', viewId: 'view', formats: ['svg'], basename: 'unsafe'
+  }), (error) => error instanceof Error && 'code' in error &&
+    ['BROWSER_NOT_FOUND', 'MODEL_IMPORT_FAILED', 'VIEW_RENDER_FAILED', 'OUTPUT_WRITE_FAILED']
+      .includes(String(error.code)) && !String(error).includes('/definitely'),
+  'packed write invalid XML');
+  await assert.rejects(readFile(outputDirectory, 'utf8'));
 
   const consumerScript = String.raw`
     import assert from 'node:assert/strict';
@@ -140,9 +184,10 @@ try {
   assert.equal(exportEntry('./validator').import, './dist/validator/index.js');
   assert.equal(exportEntry('./model-dto').import, './dist/model-dto/index.js');
   assert.equal(exportEntry('./layout').import, './dist/layout/index.js');
+  assert.equal(exportEntry('./export').import, './dist/export/index.mjs');
   assert.equal(packageJson.exports['./app-shell.css'], './assets/design-tokens/app-shell.css');
   assert.deepEqual(Object.keys(packageJson.exports).sort(),
-    ['.', './app-shell.css', './layout', './model-dto', './validator']);
+    ['.', './app-shell.css', './export', './layout', './model-dto', './validator']);
   const stylePath = consumerRequire.resolve('archimate-js/app-shell.css');
   assert.match(await readFile(stylePath, 'utf8'), /\.am-app \.am-ui-status/);
   await readFile(path.join(packageRoot, 'assets/design-tokens/app.generated.css'), 'utf8');

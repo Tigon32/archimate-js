@@ -1,5 +1,5 @@
 import { constants } from 'node:fs';
-import { access, lstat, mkdir, open, readFile, rename, rm } from 'node:fs/promises';
+import { access, lstat, mkdir, open, readFile, realpath, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { ExportArtifacts, ExportFormat } from './types.mjs';
@@ -136,7 +136,15 @@ export async function writeBatchArtifacts(
         if (error.code === 'ENOENT') return undefined;
         throw error;
       });
-      if (item && (!item.isDirectory() || item.isSymbolicLink())) throw new Error('OUTPUT_WRITE_FAILED');
+      if (item && ((!item.isDirectory() && !item.isSymbolicLink()) ||
+          (item.isSymbolicLink() && !await safeSystemAlias(component)))) {
+        throw new Error('OUTPUT_WRITE_FAILED');
+      }
+    }
+
+    async function safeSystemAlias(component: string): Promise<boolean> {
+      if (process.platform !== 'darwin' || !['/var', '/tmp'].includes(component)) return false;
+      try { return (await realpath(component)) === `/private${component}`; } catch { return false; }
     }
     await mkdir(absolute, { recursive: true });
     const all = [...files, { filename: 'manifest.json', contents: manifest }];
@@ -180,7 +188,13 @@ async function preparePartialDirectory(directory: string): Promise<string> {
         if (error.code === 'ENOENT') return undefined;
         throw error;
       });
-      if (item && (!item.isDirectory() || item.isSymbolicLink())) throw new Error();
+      if (item && ((!item.isDirectory() && !item.isSymbolicLink()) ||
+          (item.isSymbolicLink() && !await safeSystemAlias(component)))) throw new Error();
+    }
+
+    async function safeSystemAlias(component: string): Promise<boolean> {
+      if (process.platform !== 'darwin' || component !== '/var') return false;
+      try { return (await realpath(component)) === '/private/var'; } catch { return false; }
     }
     await mkdir(absolute, { recursive: true });
   } catch { throw new Error('OUTPUT_WRITE_FAILED'); }
