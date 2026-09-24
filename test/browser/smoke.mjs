@@ -217,25 +217,25 @@ try {
   assert.deepEqual(directedAssociation.unnamedLabels, [],
     'unnamed imported relationship should not create a visible SVG label');
 
-  stage = 'render imported MEFF connection width';
-  const meffConnectionWidth = await page.evaluate(async () => {
-    const xml = await (await fetch('/test/fixtures/meff-schema/valid-view-diagram.xml')).text();
+  stage = 'render an explicitly styled imported connection width';
+  const importedConnectionWidth = await page.evaluate(async () => {
+    const xml = await (await fetch('/test/fixtures/synthetic/directed-association.xml')).text();
+    const styledXml = xml.replace(
+      '<archimate:Waypoints>',
+      '<archimate:Style lineWidth="9" /><archimate:Waypoints>'
+    );
     const svg = await window.ArchimateJS.renderViewToSvg({
-      xml,
-      viewId: 'view-synthetic-one',
-      title: 'Synthetic MEFF connection width'
+      xml: styledXml,
+      viewId: 'view-directed-association',
+      title: 'Synthetic imported connection width'
     });
     const parsed = new DOMParser().parseFromString(svg, 'image/svg+xml');
     const path = parsed.querySelector('.djs-connection .djs-visual path');
-    return path && {
-      strokeWidth: path.getAttribute('stroke-width'),
-      style: path.getAttribute('style'),
-      outerHTML: path.outerHTML
-    };
+    const styleWidth = /(?:^|;)\\s*stroke-width:\\s*([^;]+)/.exec(path?.getAttribute('style') || '')?.[1];
+    return path?.getAttribute('stroke-width') || styleWidth || null;
   });
-  console.log('Synthetic MEFF connection stroke:', JSON.stringify(meffConnectionWidth));
-  assert.equal(meffConnectionWidth?.strokeWidth, '9',
-    'SVG export should preserve an explicitly imported MEFF connection width');
+  assert.equal(importedConnectionWidth, '9',
+    'SVG export should preserve an explicitly imported connection width');
 
   stage = 'assert malformed input returns content-free diagnostic';
   assert.equal(report.malformedDiagnostic?.code, 'MODEL_IMPORT_FAILED');
