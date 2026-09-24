@@ -487,6 +487,9 @@ try {
         .map((item) => item.getAttribute('aria-label')),
       adversarialName: adversarial.querySelector('.djs-shape .djs-visual[role="graphics-object group"]')
         ?.getAttribute('aria-label'),
+      adversarialParserError: adversarial.querySelector('parsererror')?.textContent?.slice(0, 500),
+      adversarialMarkupStart: adversarialSvg.slice(0, 280),
+      adversarialSemanticCount: adversarial.querySelectorAll('[role="graphics-object group"]').length,
       adversarialActiveMarkup: adversarial.querySelector('script, foreignObject') !== null,
       duplicateIds: ids.length !== new Set(ids).size,
       brokenReferences: refs.filter((id) => !ids.includes(id)),

@@ -20,7 +20,7 @@ it('serializes the same rendered view deterministically', () => {
     'width="640" height="480" viewBox="0 2 640 480">',
     '<title id="archimate-svg-title">Sample view</title>',
     '<desc id="archimate-svg-description">Synthetic architecture view</desc>',
-    '<defs><marker id="arrow"/></defs><g id="view"><rect width="10" height="10"/></g></svg>'
+    '<defs aria-hidden="true"><marker id="arrow"/></defs><g id="view"><rect width="10" height="10"/></g></svg>'
   ].join('');
 
   expect(createSvg(input)).toBe(snapshot);
@@ -136,7 +136,7 @@ it('names nested semantic groups and unnamed/repeated relationships without leak
 
   expect(content.getAttribute('data-element-id')).toBeNull();
   expect(group.getAttribute('role')).toBe('graphics-object group');
-  expect(nested.getAttribute('aria-label')).toBe('ApplicationComponent: Front & <end>');
+  expect(nested.getAttribute('aria-label')).toBe('ApplicationComponent: Front &amp; &lt;end&gt;');
   expect(nested.children[0].getAttribute('aria-hidden')).toBe('true');
   expect(nested.children[1].getAttribute('aria-hidden')).toBe('true');
   expect(nested.getAttribute('aria-hidden')).toBeNull();
