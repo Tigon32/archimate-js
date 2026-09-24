@@ -226,9 +226,15 @@ try {
       title: 'Synthetic MEFF connection width'
     });
     const parsed = new DOMParser().parseFromString(svg, 'image/svg+xml');
-    return parsed.querySelector('.djs-connection .djs-visual path')?.getAttribute('stroke-width');
+    const path = parsed.querySelector('.djs-connection .djs-visual path');
+    return path && {
+      strokeWidth: path.getAttribute('stroke-width'),
+      style: path.getAttribute('style'),
+      outerHTML: path.outerHTML
+    };
   });
-  assert.equal(meffConnectionWidth, '9',
+  console.log('Synthetic MEFF connection stroke:', JSON.stringify(meffConnectionWidth));
+  assert.equal(meffConnectionWidth?.strokeWidth, '9',
     'SVG export should preserve an explicitly imported MEFF connection width');
 
   stage = 'assert malformed input returns content-free diagnostic';
