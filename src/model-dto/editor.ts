@@ -2,6 +2,7 @@ import type { ModelDto, PointDto, RelationshipDto, StyleDto, ViewConnectionDto, 
 import { exportModelDtoToMeff } from './meff-export.js';
 import { assessModelDtoEditingEligibility, editingIneligibleError } from './eligibility.js';
 import { invalid, serializeModelDto, validateModelDto } from './validate.js';
+import { validateRelationshipSemantics } from '../language/relationship-semantics.mjs';
 
 /** The canvas receives values and identifiers, never mutable diagram-js objects. */
 export interface CanvasProjection {
@@ -127,6 +128,21 @@ function checkEndpoints(model: ModelDto, view: ModelDto['views'][number],
       relationship.targetId !== conceptAt(view, connection.targetId)) invalid();
 }
 
+function checkRelationshipDecision(model: ModelDto, relationship: RelationshipDto): void {
+  const source = model.elements.find((element) => element.id === relationship.sourceId);
+  const target = model.elements.find((element) => element.id === relationship.targetId);
+  if (!source || !target) invalid();
+  const result = validateRelationshipSemantics({ sourceType: source.type,
+    relationshipType: relationship.type, targetType: target.type });
+  if (result.decision === 'allowed') return;
+  const error = new TypeError(result.decision === 'disallowed' ?
+    'The relationship edit is disallowed by the reviewed ArchiMate 3.2 profile.' :
+    'The relationship edit is outside the reviewed ArchiMate 3.2 decision set.');
+  Object.assign(error, { code: result.decision === 'disallowed' ?
+    'DTO_RELATIONSHIP_DISALLOWED' : 'DTO_RELATIONSHIP_UNSUPPORTED' });
+  throw error;
+}
+
 function connect(model: ModelDto, view: ModelDto['views'][number],
   command: Extract<EditorCommand, { type: 'connect' }>): void {
   if (view.connections.some((connection) => connection.id === command.connection.id)) invalid();
@@ -136,7 +152,11 @@ function connect(model: ModelDto, view: ModelDto['views'][number],
         model.elements.some((item) => item.id === command.relationship!.id)) invalid();
     model.relationships.push(command.relationship);
   }
-  if (command.connection.kind === 'relationship') checkEndpoints(model, view, command.connection);
+  if (command.connection.kind === 'relationship') {
+    checkEndpoints(model, view, command.connection);
+    // A second view reference does not create or retarget an imported relationship.
+    if (command.relationship) checkRelationshipDecision(model, command.relationship);
+  }
   else if (command.relationship) invalid();
   view.connections.push(command.connection);
 }
@@ -150,9 +170,11 @@ function reconnect(model: ModelDto, view: ModelDto['views'][number],
     if (!relationship) invalid();
     const sourceId = conceptAt(view, command.sourceId);
     const targetId = conceptAt(view, command.targetId);
-    if ((relationship.sourceId !== sourceId || relationship.targetId !== targetId) &&
+    const changed = relationship.sourceId !== sourceId || relationship.targetId !== targetId;
+    if (changed &&
         model.views.some((item) => item.connections.some((candidate) =>
           candidate !== connection && candidate.relationshipId === relationship.id))) invalid();
+    if (changed) checkRelationshipDecision(model, { ...relationship, sourceId, targetId });
     relationship.sourceId = sourceId;
     relationship.targetId = targetId;
   }

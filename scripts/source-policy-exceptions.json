@@ -35,7 +35,7 @@
     },
     {
       "path": "test/browser/smoke.mjs",
-      "reason": "Issues #93 and #95 extend the existing Node 22 native ESM browser smoke runner with SVG and scoped UI theme checks; its runner has no TypeScript execution or Node type declarations.",
+      "reason": "Issues #93, #95, and #204 extend the existing Node 22 native ESM browser smoke runner with SVG, scoped UI theme, and reviewed relationship-edit checks; its runner has no TypeScript execution or Node type declarations.",
       "removalCondition": "Migrate the browser smoke suite to typed, smaller tests with the browser/Node TypeScript test runner and #97.",
       "allowLegacySize": true
     },

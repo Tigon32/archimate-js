@@ -15,9 +15,11 @@ versioned rows are exported as `RELATIONSHIP_SEMANTIC_ROWS` so they can be
 reviewed without inspecting editor behavior.
 
 The reviewed rows are authored once in `src/language/relationship-decisions.mts`.
-The validator's public rows and decisions consume that source. This registry is
-the repository's reviewed 3.2 subset, not a complete standards matrix; the
-legacy editor maps remain outside its evidence boundary.
+The pure service lives beside those rows in `src/language/relationship-semantics.mts`.
+The validator's public API re-exports it, and the DTO editor command boundary
+uses it for new relationship edits. This registry is the repository's reviewed
+3.2 subset, not a complete standards matrix; legacy canvas affordance maps
+remain outside its evidence boundary.
 
 ## Evidence boundary
 
@@ -82,8 +84,14 @@ A combination missing from the decision set is `unsupported`. Absence never
 means `disallowed`. This avoids false conformance claims while the evidence set
 is expanded and reviewed.
 
-The legacy editor relationship maps remain implementation behavior. They are
-not treated as standards evidence and are not imported into the validator.
+The legacy editor relationship maps remain implementation behavior for the
+canvas's immediate gesture affordance. They are not standards evidence and are
+not imported into the validator or DTO editor command decision. A failed DTO
+command preserves existing model state. Imported relationships with unreviewed
+tuples remain representable and can be referenced by another view; the editor
+blocks authoring or retargeting a semantic relationship without a reviewed
+`allowed` row. A changed endpoint checked against an explicit
+`disallowed` row fails distinctly from an absent `unsupported` combination.
 
 ## Deterministic behavior
 

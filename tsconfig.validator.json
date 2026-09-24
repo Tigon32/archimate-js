@@ -12,5 +12,6 @@
     "lib": ["ES2022", "DOM"],
     "skipLibCheck": true
   },
-  "include": ["src/validator/**/*.ts", "src/language/relationship-decisions.mts"]
+  "include": ["src/validator/**/*.ts", "src/language/relationship-decisions.mts",
+    "src/language/relationship-semantics.mts"]
 }
