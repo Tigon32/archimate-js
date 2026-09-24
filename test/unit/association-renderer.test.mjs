@@ -31,7 +31,7 @@ describe('Association direction rendering', () => {
       isDirected: false,
       lineWidth: 3
     }));
-    expect(explicit.graphics.querySelector('path')?.style.strokeWidth).toBe('3');
+    expect(getRenderedStrokeWidth(explicit.graphics)).toBe(3);
 
     const numericStringWidth = createRenderer();
     numericStringWidth.renderer.drawConnection(numericStringWidth.graphics, directedAssociation({
@@ -39,14 +39,14 @@ describe('Association direction rendering', () => {
       isDirected: false,
       lineWidth: '3'
     }));
-    expect(numericStringWidth.graphics.querySelector('path')?.style.strokeWidth).toBe('3');
+    expect(getRenderedStrokeWidth(numericStringWidth.graphics)).toBe(3);
 
     const defaultWidth = createRenderer();
     defaultWidth.renderer.drawConnection(defaultWidth.graphics, directedAssociation({
       typeOption: false,
       isDirected: false
     }));
-    expect(defaultWidth.graphics.querySelector('path')?.style.strokeWidth).toBe('1');
+    expect(getRenderedStrokeWidth(defaultWidth.graphics)).toBe(1);
 
     const invalidWidth = createRenderer();
     invalidWidth.renderer.drawConnection(invalidWidth.graphics, directedAssociation({
@@ -54,9 +54,14 @@ describe('Association direction rendering', () => {
       isDirected: false,
       lineWidth: 0
     }));
-    expect(invalidWidth.graphics.querySelector('path')?.style.strokeWidth).toBe('1');
+    expect(getRenderedStrokeWidth(invalidWidth.graphics)).toBe(1);
   });
 });
+
+function getRenderedStrokeWidth(graphics) {
+  const path = graphics.querySelector('path');
+  return Number.parseFloat(path?.style.strokeWidth || path?.getAttribute('stroke-width') || 'NaN');
+}
 
 function createRenderer() {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
