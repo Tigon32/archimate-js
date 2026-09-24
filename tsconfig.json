@@ -44,6 +44,7 @@
     "test/smoke/packed-consumer.test.mts",
     "test/release/evidence.test.mts",
     "test/release/consumer-verification.test.mts",
+    "test/release/packed-assets.test.mts",
     "test/security/check-secrets.test.mts",
     "test/security/check-tracked-paths.test.mts",
     "test/security/supply-chain.test.mts",
