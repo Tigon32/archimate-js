@@ -75,9 +75,11 @@ for compatible additions, and major for incompatible changes once stable.
 
 ## Operational release gate
 
-The read-only GitHub Actions workflow `Release gate` runs on a manual dispatch
-or a `v*` tag. It does not publish packages, request credentials, or use
-repository secrets. A tag must match `package.json` exactly (`v` plus the
+The GitHub Actions workflow `Release gate` runs on a manual dispatch or a `v*`
+tag. Its readiness job is read-only and uses no repository secrets. A separate
+attestation job runs only after a successful tag readiness job; only that job
+can request an OIDC token and write an attestation. Neither job publishes a
+package. A tag must match `package.json` exactly (`v` plus the
 package version); a mismatch fails the gate. It runs the maintained lint profile
 for the importer, release scripts, and related tests, the full test suite,
 compile checks, the browser render smoke test, and the packed-package consumer
@@ -111,9 +113,22 @@ repository. The
 run, Node/npm versions, package and lockfile hashes, and successful check names.
 Download and verify the artifact locally with `sha256sum -c SHA256SUMS`; compare
 the source SHA and workflow run in the manifest with the release tag. This
-checksum file detects corruption after download; it is not a signed attestation
-or proof of a trusted build. The workflow grants read-only repository access
-and does not publish an npm package.
+checksum file detects corruption after download but does not authenticate the
+build. On a successful `v*` tag run, the separate attestation job downloads
+the same run's evidence, checks every checksum, identifies the single tarball,
+and requests a GitHub build-provenance attestation for that tarball only. It has
+`contents: read`, `id-token: write`, and `attestations: write` permissions;
+manual dispatches skip this job and remain read-only. Verify a downloaded
+tarball from a completed tag run with:
+
+```sh
+gh attestation verify path/to/archimate-js-*.tgz -R Tigon32/archimate-js
+```
+
+The attestation workflow is wired but issuance remains unverified until a
+reviewed tag run produces an attestation and the downloaded tarball passes this
+command. An attestation binds a digest to a workflow identity; it does not
+establish ArchiMate conformance or operational release readiness.
 
 ## Local release checks
 
