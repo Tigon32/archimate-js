@@ -8,6 +8,11 @@ in the DTO or exposed through the port. MEFF imports should enter through
 round trip. The adapter validates a full candidate DTO before each command
 commits. Failed commands leave the model and history intact.
 
+For a renderer-independent text description of a selected view, use the
+[accessible outline API](accessible-outline.md). Its view node IDs are the
+selection bridge planned under #104; creating an outline does not change the
+editor's selection or focus.
+
 ```ts
 import { createDtoEditorFromMeff } from 'archimate-js/model-dto';
 
