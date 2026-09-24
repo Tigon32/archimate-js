@@ -86,8 +86,14 @@ Current supported import evidence covers a bounded subset:
 - Stable, content-free diagnostics for unsupported records and unresolved
   references.
 
-MEFF XML export and import -> export -> import equivalence remain open in
-[#59](https://github.com/Tigon32/archimate-js/issues/59). Model metadata,
+`exportMeff(model)` and `viewer.saveMeff()` serialize this declared subset
+deterministically, returning `{ xml, diagnostics }`. Missing or duplicate XML IDs
+and unresolved mandatory references reject export. Unsupported optional fields
+produce content-free `MEFF_EXPORT_*` omission diagnostics; callers must inspect
+them before relying on an exchange. Synthetic model and diagram fixtures are
+tested for semantic import/export/import equivalence and generated output is
+checked against the pinned official MEFF 3.1 XSDs in CI. See the
+[export profile](docs/standards/meff-export.md). Model metadata,
 organizations, property definitions/properties, viewpoint definitions, local
 diagram annotations/drill-down references, and non-Element/non-Relationship
 presentation records are tracked as follow-up gaps from the P08 review. See the

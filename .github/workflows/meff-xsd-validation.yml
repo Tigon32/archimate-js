@@ -5,6 +5,10 @@ on:
     paths:
       - ".github/workflows/meff-xsd-validation.yml"
       - "test/fixtures/meff-schema/**"
+      - "test/unit/meff-export.test.mjs"
+      - "lib/export/Meff.js"
+      - "lib/import/MeffModel.js"
+      - "lib/import/MeffView.js"
       - "docs/standards/meff-schema-validation.md"
   workflow_dispatch:
 
@@ -78,3 +82,24 @@ jobs:
             exit 1
           fi
           echo "Positive Model and View/Diagram fixtures are schema-valid; negative Model fixture failed for missing identifier."
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Generate transient round-trip exports
+        env:
+          MEFF_XSD_OUTPUT_DIR: ${{ runner.temp }}/meff-exports
+        run: |
+          npm ci --ignore-scripts
+          npx vitest run test/unit/meff-export.test.mjs
+
+      - name: Validate generated exports against pinned schemas
+        shell: bash
+        run: |
+          set -euo pipefail
+          xmllint --noout --schema "${RUNNER_TEMP}/meff-xsd-3.1/archimate3_Model.xsd" "${RUNNER_TEMP}/meff-exports/exported-model.xml"
+          xmllint --noout --schema "${RUNNER_TEMP}/meff-xsd-3.1/archimate3_Diagram.xsd" "${RUNNER_TEMP}/meff-exports/exported-view-diagram.xml"
+          xmllint --noout --schema "${RUNNER_TEMP}/meff-xsd-3.1/archimate3_Diagram.xsd" "${RUNNER_TEMP}/meff-exports/exported-edited-diagram.xml"

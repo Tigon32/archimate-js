@@ -31,8 +31,8 @@ exercise Model-core import, supported View records, and supported Diagram
 geometry/style presentation data.
 
 This evidence does not establish full MEFF support, ArchiMate semantic validity,
-tool certification, or cross-tool portability. MEFF XML export and
-import/export/import equivalence remain open in #59. Model metadata,
+tool certification, or cross-tool portability. Export and import/export/import
+equivalence cover the declared subset in #59, with omission diagnostics. Model metadata,
 organizations, property records, local Diagram annotations, presentation-only
 Diagram records, and Viewpoint metadata are tracked separately in #74, #75, #76,
 and #77. Unsupported content must keep using stable, content-free diagnostics.

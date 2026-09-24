@@ -60,9 +60,19 @@ Element/Container/Label nodes, Relationship/Line connections, authored geometry,
 local labels/documentation, view-level properties, and supported styles to the
 view tree. See [the declared profile](meff-diagram-import.md) for rendering
 limits and unsupported nested viewpoint structures.
-The package does not currently provide a MEFF XML exporter, so no
-export-omission diagnostic is emitted. Add those diagnostics with the
-supported-subset exporter tracked by [#59](https://github.com/Tigon32/archimate-js/issues/59).
+`exportMeff(model)` and `viewer.saveMeff()` return export-stage warnings for
+omitted optional data. Codes are deduplicated and sorted:
+
+| Code | Omitted content |
+|---|---|
+| `MEFF_EXPORT_MODEL_OMITTED` | Model metadata, organizations, properties, definitions |
+| `MEFF_EXPORT_ELEMENT_OMITTED` | Unsupported element fields or records |
+| `MEFF_EXPORT_RELATIONSHIP_OMITTED` | Unsupported relationship fields or records |
+| `MEFF_EXPORT_VIEW_OMITTED` | Viewpoint fields or unsupported views |
+| `MEFF_EXPORT_DIAGRAM_OMITTED` | Unsupported nodes, connections, labels, and presentation fields |
+
+The exporter rejects invalid mandatory IDs/references with `MEFF_EXPORT_INVALID`
+instead of returning incomplete exchange XML.
 
 ## Related issues
 
