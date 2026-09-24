@@ -41,9 +41,14 @@ const files = new Map([
   ['/unsupported.xml', 'test/fixtures/meff-schema/valid-view-presentation.xml']
 ]);
 const server = createServer((request: { url?: string }, response: {
-  writeHead(status: number): { end(): void }; setHeader(name: string, value: string): void;
+  writeHead(status: number): { end(body?: string): void }; setHeader(name: string, value: string): void;
 }) => {
-  const name = files.get(new URL(request.url || '/', 'http://localhost').pathname);
+  const route = new URL(request.url || '/', 'http://localhost').pathname;
+  if (route === '/') {
+    response.setHeader('content-type', 'text/html; charset=utf-8');
+    return void response.writeHead(200).end('<!doctype html><html><body></body></html>');
+  }
+  const name = files.get(route);
   if (!name) return void response.writeHead(404).end();
   response.setHeader('content-type', name.endsWith('.xml') ? 'application/xml' : 'text/javascript');
   createReadStream(path.join(root, name)).pipe(response);
@@ -51,10 +56,14 @@ const server = createServer((request: { url?: string }, response: {
 await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
 let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
 try {
+  const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  const documentResponse = await fetch(origin + '/');
+  assert.equal(documentResponse.status, 200, 'browser harness must serve its root document');
+  assert.match(await documentResponse.text(), /<!doctype html>/i);
   browser = await chromium.launch({ executablePath: process.env.CHROME_BIN || undefined,
     headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
   const page = await browser.newPage();
-  await page.goto(`http://127.0.0.1:${(server.address() as { port: number }).port}/`);
+  await page.goto(origin + '/');
   await page.addScriptTag({ url: '/.ci-build/dto-save-test.js' });
   const result = await page.evaluate(async () => {
     const api = (window as unknown as { DtoSaveTest: Record<string, any> }).DtoSaveTest;
