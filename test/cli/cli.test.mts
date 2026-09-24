@@ -110,7 +110,7 @@ async function legacyRenderTest(directory: string): Promise<void> {
     ], 0);
     assert.equal(render.json.command, 'render');
     assert.equal(render.json.valid, true);
-    assert.match(await readFile(legacyPath, 'utf8'), /^<svg[^>]+role="img"/);
+    assert.match(await readFile(legacyPath, 'utf8'), /^<svg[^>]+role="graphics-document document"/);
 }
 
 async function defaultExportTest(directory: string): Promise<void> {
@@ -124,7 +124,7 @@ async function defaultExportTest(directory: string): Promise<void> {
     const svg = await readFile(path.join(directory, 'Quarter-View.svg'), 'utf8');
     const png = await readFile(path.join(directory, 'Quarter-View.png'));
     const pdf = await readFile(path.join(directory, 'Quarter-View.pdf'));
-    assert.match(svg, /^<svg[^>]+role="img"/);
+    assert.match(svg, /^<svg[^>]+role="graphics-document document"/);
     assert.ok(svg.includes('<rect width="100%" height="100%" fill="#ffffff"/>'));
     assert.deepEqual(pngDimensions(png), { width: 1020, height: 340 });
     assert.equal(pdf.subarray(0, 5).toString('ascii'), '%PDF-');
@@ -252,7 +252,7 @@ async function assertLegacyRender(directory: string): Promise<void> {
   ], 0);
   assert.equal(render.json.command, 'render');
   assert.equal(render.json.valid, true);
-  assert.match(await readFile(legacyPath, 'utf8'), /^<svg[^>]+role="img"/);
+  assert.match(await readFile(legacyPath, 'utf8'), /^<svg[^>]+role="graphics-document document"/);
 }
 
 async function assertDefaultExport(directory: string): Promise<void> {
@@ -266,7 +266,7 @@ async function assertDefaultExport(directory: string): Promise<void> {
   const svg = await readFile(path.join(directory, 'Quarter-View.svg'), 'utf8');
   const png = await readFile(path.join(directory, 'Quarter-View.png'));
   const pdf = await readFile(path.join(directory, 'Quarter-View.pdf'));
-  assert.match(svg, /^<svg[^>]+role="img"/);
+  assert.match(svg, /^<svg[^>]+role="graphics-document document"/);
   assert.ok(svg.includes('<rect width="100%" height="100%" fill="#ffffff"/>'));
   assert.deepEqual(pngDimensions(png), { width: 1020, height: 340 });
   assert.equal(pdf.subarray(0, 5).toString('ascii'), '%PDF-');
