@@ -1,4 +1,4 @@
-import type { ModelDto, PointDto, ViewConnectionDto, ViewNodeDto } from './types.js';
+import type { ModelDto, PointDto, StyleDto, ViewConnectionDto, ViewNodeDto } from './types.js';
 import { exportModelDtoToMeff } from './meff-export.js';
 import { assessModelDtoEditingEligibility, editingIneligibleError } from './eligibility.js';
 import { invalid, serializeModelDto, validateModelDto } from './validate.js';
@@ -7,9 +7,10 @@ import { invalid, serializeModelDto, validateModelDto } from './validate.js';
 export interface CanvasProjection {
   viewId: string;
   nodes: Array<{ id: string; parentId?: string; elementId?: string; kind: ViewNodeDto['kind'];
-    x: number; y: number; width: number; height: number; label?: string }>;
-  connections: Array<{ id: string; sourceId?: string; targetId?: string;
-    waypoints: PointDto[]; label?: string }>;
+    type?: string; name?: string; x: number; y: number; width: number; height: number;
+    label?: string; style?: StyleDto }>;
+  connections: Array<{ id: string; relationshipId?: string; sourceId?: string; targetId?: string;
+    type?: string; name?: string; waypoints: PointDto[]; label?: string; style?: StyleDto }>;
   selectedIds: string[];
 }
 
@@ -29,6 +30,7 @@ export interface CanvasPort {
   render(projection: CanvasProjection): void;
   onCommand(handler: (command: EditorCommand) => void): () => void;
   onSelection(handler: (ids: string[]) => void): () => void;
+  clear?(): void;
 }
 
 function findNode(nodes: ViewNodeDto[], id: string): ViewNodeDto | undefined {
@@ -40,11 +42,14 @@ function findNode(nodes: ViewNodeDto[], id: string): ViewNodeDto | undefined {
   return undefined;
 }
 
-function nodesOf(nodes: ViewNodeDto[], parentId?: string): CanvasProjection['nodes'] {
+function nodesOf(nodes: ViewNodeDto[], elements: ModelDto['elements'], parentId?: string): CanvasProjection['nodes'] {
   return nodes.flatMap((node): CanvasProjection['nodes'] => [
     { id: node.id, parentId, elementId: node.elementId, kind: node.kind,
-      x: node.x, y: node.y, width: node.width, height: node.height, label: node.label },
-    ...nodesOf(node.nodes, node.id)
+      type: elements.find((item) => item.id === node.elementId)?.type,
+      name: elements.find((item) => item.id === node.elementId)?.name,
+      x: node.x, y: node.y, width: node.width, height: node.height, label: node.label,
+      style: node.style ? structuredClone(node.style) : undefined },
+    ...nodesOf(node.nodes, elements, node.id)
   ]);
 }
 
@@ -185,9 +190,13 @@ export class DiagramAdapter {
   project(viewId: string): CanvasProjection {
     const view = this.model.views.find((item) => item.id === viewId);
     if (!view) invalid();
-    return { viewId, nodes: nodesOf(view.nodes), connections: view.connections.map((item) => ({
+    return { viewId, nodes: nodesOf(view.nodes, this.model.elements), connections: view.connections.map((item) => ({
       id: item.id, sourceId: item.sourceId, targetId: item.targetId,
-      waypoints: structuredClone(item.waypoints), label: item.label
+      relationshipId: item.relationshipId,
+      type: this.model.relationships.find((relationship) => relationship.id === item.relationshipId)?.type,
+      name: this.model.relationships.find((relationship) => relationship.id === item.relationshipId)?.name,
+      waypoints: structuredClone(item.waypoints), label: item.label,
+      style: item.style ? structuredClone(item.style) : undefined
     })), selectedIds: [...(this.selection.get(viewId) || [])] };
   }
 
@@ -198,7 +207,7 @@ export class DiagramAdapter {
 
   /** A UI port translates native canvas events to ID-only commands and selection. */
   attach(viewId: string, port: CanvasPort): () => void {
-    if (this.canvases.has(port)) invalid();
+    if (this.canvases.size || this.canvases.has(port)) invalid();
     port.render(this.project(viewId));
     const offCommand = port.onCommand((command) => {
       if (command.viewId !== viewId) invalid();
@@ -206,9 +215,9 @@ export class DiagramAdapter {
     });
     let offSelection: () => void;
     try { offSelection = port.onSelection((ids) => { this.select(viewId, ids); }); }
-    catch (error) { offCommand(); throw error; }
+    catch (error) { offCommand(); port.clear?.(); throw error; }
     this.canvases.set(port, viewId);
-    return () => { offCommand(); offSelection(); this.canvases.delete(port); };
+    return () => { offCommand(); offSelection(); this.canvases.delete(port); port.clear?.(); };
   }
 
   select(viewId: string, ids: string[]): void {
