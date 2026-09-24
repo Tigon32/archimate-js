@@ -17,7 +17,7 @@ function run(name, id, status = 'completed', conclusion = 'success') {
   return { name, id, status, conclusion };
 }
 
-describe('agent PR drain', () => {
+describe('agent PR drain workflow state', () => {
   it('keeps only the newest run per workflow name', () => {
     const latest = latestRunsByName([
       run('CI', 1, 'completed', 'skipped'),
@@ -31,35 +31,27 @@ describe('agent PR drain', () => {
     const decision = evaluateDrainState({
       pr: basePr,
       repository,
-      runs: [
-        run('CI', 10),
-        run('Automated security analysis', 11),
-        run('MEFF XSD validation', 12, 'completed', 'skipped')
-      ]
+      runs: [run('CI', 10), run('Automated security analysis', 11), run('MEFF XSD validation', 12, 'completed', 'skipped')]
     });
     expect(decision).toEqual({ action: 'merge', reason: 'all-exact-head-workflows-green:agent' });
   });
 
-  it('does not mistake a skipped draft-era required workflow for qualification', () => {
+  it('does not treat skipped required workflows as qualification', () => {
     const decision = evaluateDrainState({
       pr: basePr,
       repository,
-      runs: [
-        run('CI', 10),
-        run('Automated security analysis', 11, 'completed', 'skipped')
-      ]
+      runs: [run('CI', 10), run('Automated security analysis', 11, 'completed', 'skipped')]
     });
     expect(decision.action).toBe('block');
   });
+});
 
-  it('waits while a workflow for the exact head is still running', () => {
+describe('agent PR drain failure handling', () => {
+  it('waits while an exact-head workflow is still running', () => {
     const decision = evaluateDrainState({
       pr: basePr,
       repository,
-      runs: [
-        run('CI', 10),
-        run('Automated security analysis', 11, 'in_progress', null)
-      ]
+      runs: [run('CI', 10), run('Automated security analysis', 11, 'in_progress', null)]
     });
     expect(decision.action).toBe('wait');
   });
@@ -68,16 +60,12 @@ describe('agent PR drain', () => {
     const decision = evaluateDrainState({
       pr: basePr,
       repository,
-      runs: [
-        run('CI', 10),
-        run('Automated security analysis', 11),
-        run('MEFF XSD validation', 12, 'completed', 'failure')
-      ]
+      runs: [run('CI', 10), run('Automated security analysis', 11), run('MEFF XSD validation', 12, 'completed', 'failure')]
     });
     expect(decision.action).toBe('block');
   });
 
-  it('supports an explicit no-auto-merge emergency brake', () => {
+  it('supports the no-auto-merge emergency brake', () => {
     const decision = evaluateDrainState({
       pr: { ...basePr, labels: [{ name: 'no-auto-merge' }] },
       repository,
@@ -85,25 +73,27 @@ describe('agent PR drain', () => {
     });
     expect(decision).toEqual({ action: 'skip', reason: 'opt-out-label' });
   });
+});
 
-  it('allows only configured grouped Dependabot minor/patch lanes', () => {
+describe('Dependabot drain eligibility', () => {
+  it('allows configured grouped minor/patch lanes', () => {
     const safe = {
       ...basePr,
       user: { login: 'dependabot[bot]' },
-      head: {
-        ...basePr.head,
-        ref: 'dependabot/npm_and_yarn/npm-security-minor-and-patch-acde1234'
-      }
+      head: { ...basePr.head, ref: 'dependabot/npm_and_yarn/npm-security-minor-and-patch-acde1234' }
     };
     expect(classifyAutomergeCandidate(safe, repository)).toMatchObject({
       eligible: true,
       kind: 'dependabot',
       group: 'npm-security-minor-and-patch'
     });
+  });
 
+  it('keeps unknown Dependabot updates manual', () => {
     const unknown = {
-      ...safe,
-      head: { ...safe.head, ref: 'dependabot/npm_and_yarn/some-major-update' }
+      ...basePr,
+      user: { login: 'dependabot[bot]' },
+      head: { ...basePr.head, ref: 'dependabot/npm_and_yarn/some-major-update' }
     };
     expect(classifyAutomergeCandidate(unknown, repository)).toEqual({
       eligible: false,
@@ -111,31 +101,34 @@ describe('agent PR drain', () => {
     });
   });
 
-  it('requires Dependabot to be the actual bot, not merely a matching branch name', () => {
+  it('requires the real Dependabot author', () => {
     const spoofed = {
       ...basePr,
-      head: {
-        ...basePr.head,
-        ref: 'dependabot/npm_and_yarn/npm-minor-and-patch-acde1234'
-      }
+      head: { ...basePr.head, ref: 'dependabot/npm_and_yarn/npm-minor-and-patch-acde1234' }
     };
     expect(classifyAutomergeCandidate(spoofed, repository)).toEqual({
       eligible: false,
       reason: 'unsupported-branch'
     });
   });
+});
 
-  it('never drains fork or unsupported branches', () => {
-    expect(evaluateDrainState({
+describe('drain trust boundaries', () => {
+  it('never drains fork branches', () => {
+    const decision = evaluateDrainState({
       pr: { ...basePr, head: { ...basePr.head, repo: { full_name: 'someone/fork' } } },
       repository,
       runs: []
-    }).action).toBe('skip');
+    });
+    expect(decision.action).toBe('skip');
+  });
 
-    expect(evaluateDrainState({
+  it('never drains unsupported human branches', () => {
+    const decision = evaluateDrainState({
       pr: { ...basePr, head: { ...basePr.head, ref: 'feature/manual' } },
       repository,
       runs: []
-    })).toEqual({ action: 'skip', reason: 'unsupported-branch' });
+    });
+    expect(decision).toEqual({ action: 'skip', reason: 'unsupported-branch' });
   });
 });
