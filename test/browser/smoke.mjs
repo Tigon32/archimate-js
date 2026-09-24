@@ -70,10 +70,10 @@ try {
   }, null, { timeout: 10000 });
   assert.equal(await page.locator('#status').textContent(), 'Loaded the public synthetic service delivery example.');
   assert.ok(await page.locator('#diagram svg text').count() >= 5, 'HTML embed should render the multi-layer synthetic view');
-  const embeddedDiagramText = await page.locator('#diagram svg').textContent();
+  const embeddedDiagramText = await page.locator('#diagram svg.am-diagram').textContent();
   assert.ok(embeddedDiagramText.includes('Assigns request'),
     'viewer should render the named imported relationship label');
-  const diagramBounds = await page.locator('#diagram svg').boundingBox();
+  const diagramBounds = await page.locator('#diagram svg.am-diagram').boundingBox();
   assert.ok(diagramBounds && diagramBounds.width > 0 && diagramBounds.height > 0,
     'HTML embed should have visible diagram dimensions');
   for (const label of ['Customer', 'Submit request', 'Request service', 'Request portal', 'Cloud platform']) {

@@ -32,6 +32,12 @@
       "reason": "Issue #93 updates one expected Application color to the supplied kit; the existing legacy test suite exceeds the function-size limit.",
       "removalCondition": "Split this suite into typed, smaller import tests as #92 migrates view DTO tests.",
       "allowLegacySize": true
+    },
+    {
+      "path": "test/browser/smoke.mjs",
+      "reason": "Issue #93 targets the outer diagram SVG after adding nested notation icon SVG elements.",
+      "removalCondition": "Migrate the browser smoke suite to typed, smaller tests with #97.",
+      "allowLegacySize": true
     }
   ]
 }
