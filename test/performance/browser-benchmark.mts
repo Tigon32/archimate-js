@@ -14,7 +14,7 @@ declare global {
 }
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const fixturePath = 'test/fixtures/synthetic/read-only-showcase.xml';
+const fixturePath = 'test/fixtures/synthetic/read-only-showcase-outline-meff.xml';
 const routes = new Map<string, [string, string]>([
   ['/examples/read-only/', ['examples/read-only/index.html', 'text/html; charset=utf-8']],
   ['/examples/read-only/viewer.js', ['examples/read-only/viewer.js', 'text/javascript; charset=utf-8']],
@@ -26,7 +26,8 @@ const routes = new Map<string, [string, string]>([
   ['/assets/ibm-plex-font/IBMPlexSans-SemiBold.ttf', ['assets/ibm-plex-font/IBMPlexSans-SemiBold.ttf', 'font/ttf']],
   ['/node_modules/diagram-js/assets/diagram-js.css', ['node_modules/diagram-js/assets/diagram-js.css', 'text/css; charset=utf-8']],
   ['/.ci-build/archimate-js.js', ['.ci-build/archimate-js.js', 'text/javascript; charset=utf-8']],
-  ['/test/fixtures/synthetic/read-only-showcase.xml', [fixturePath, 'application/xml; charset=utf-8']]
+  ['/.ci-build/model-dto.js', ['.ci-build/model-dto.js', 'text/javascript; charset=utf-8']],
+  ['/test/fixtures/synthetic/read-only-showcase-outline-meff.xml', [fixturePath, 'application/xml; charset=utf-8']]
 ]);
 
 function median(samples: number[]): number {
