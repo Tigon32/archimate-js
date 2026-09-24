@@ -175,6 +175,77 @@ If history is ambiguous, the issue is closed, or acknowledgement is missing,
 remain stopped. A maintainer resolves ambiguity with a valid `supersede` or
 narrowly permitted self-release; no operator invents a winner.
 
+## PR state and safe recovery
+
+The issue lease and the PR branch are separate records: a valid lease does not
+make a PR healthy, and a PR does not prove ownership. Classify the PR before
+touching it:
+
+- **Active:** exactly one valid lease is live; the owner is responding; the
+  claimed branch is unchanged by others; and commits or checks are progressing.
+- **Waiting:** the lease is valid and the owner has documented a bounded wait
+  for review, CI, a dependency, or a maintainer decision. The owner keeps
+  heartbeats and does not use waiting to extend an idle lease indefinitely.
+- **Stalled:** the lease is still valid, but the owner has missed the required
+  15-minute heartbeat or no work progress has been observed for 30 minutes, or
+  the PR has a repeated failure/no-change condition. Stalled is a
+  notification state, not permission for another operator to edit.
+- **Orphaned:** no valid live owner remains because the lease was released,
+  handed off, or superseded; an expired lease is orphaned only after the
+  required takeover path is complete. Absence of a recent commit alone never
+  proves orphaning.
+
+Before any recovery decision, re-read the issue and PR and verify the lease
+record, owner/actor, branch and worktree, commit ancestry, check results,
+review state, linked dependencies, and file overlap with other active PRs.
+If there is no valid lease or the PR cannot be classified unambiguously, fail
+closed: treat the branch as live-owned, escalate to a maintainer, and do not
+edit, claim, force-push, close, or change its checks.
+If the owner is live and the PR is stalled, notify that owner with the
+observed failure and stop; do not claim the issue, edit the branch, force-push,
+close the PR, or change its checks. If the owner is waiting, record the
+dependency and wait for the declared event or maintainer decision.
+
+For an expired or otherwise orphaned PR, preserve the original branch and
+history. Use the takeover or handoff procedure above, or open a new recovery
+issue when the original scope is no longer safely actionable. The receiver
+must create a new branch and lease; it may then choose one of these explicit
+paths:
+
+1. **Rebase:** create a recovery branch from the preserved branch, rebase it
+   onto current `main`, resolve conflicts without weakening tests, and retain
+   the original PR as an audit link.
+2. **Cherry-pick:** create a branch from current `main` and cherry-pick only
+   verified commits, documenting omissions and conflict resolutions.
+3. **Supersede:** open a replacement PR linked to the original, validate it
+   against current `main`, and close the original only after the replacement
+   has the required checks and review.
+4. **Close:** close the original when it is obsolete, duplicate, or
+   unrepairable, preserving its branch and recording the reason and any
+   follow-up issue.
+
+Every recovery path validates the complete change on current `main` with the
+repository's required checks. Never weaken or delete tests, lower a required
+check, bypass branch protection, or merge around a failed check to make a
+recovery appear green. The future serialized controller in
+[#140](https://github.com/Tigon32/archimate-js/issues/140) should automate
+these classifications, fencing checks, notifications, and audit transitions;
+until then, this manual procedure is fail-closed.
+
+### Recovery examples
+
+- A PR owner has a valid lease but CI has failed twice on the same external
+  service. Mark it **waiting** only if the owner documents the service and
+  keeps heartbeats; otherwise notify the live owner as **stalled**. No second
+  operator edits the branch.
+- A lease expired after the owner stopped responding. The prospective operator
+  posts `takeover-requested`, observes the required 15-minute window, and
+  obtains maintainer acknowledgement naming the expired claim and observation
+  window. Only then does the receiver create a new branch from current `main`,
+  cherry-pick the verified commits, run all required checks, and link the
+  preserved original branch and PR. The original is superseded or closed only
+  after that audit trail is complete.
+
 ## Independent worked examples
 
 These examples are independent scenarios. Their timestamps and lease
