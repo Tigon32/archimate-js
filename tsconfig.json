@@ -8,5 +8,27 @@
     "lib": ["ES2022", "DOM"],
     "skipLibCheck": true
   },
-  "include": ["src/validator/**/*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.mts",
+    "src/**/*.cts",
+    "src/**/*.tsx",
+    "lib/**/*.ts",
+    "lib/**/*.mts",
+    "lib/**/*.cts",
+    "lib/**/*.tsx",
+    "bin/**/*.ts",
+    "bin/**/*.mts",
+    "bin/**/*.cts",
+    "bin/**/*.tsx",
+    "test/**/*.ts",
+    "test/**/*.mts",
+    "test/**/*.cts",
+    "test/**/*.tsx",
+    "index.ts",
+    "index.mts",
+    "index.cts",
+    "index.tsx"
+  ],
+  "exclude": ["node_modules", "dist", "coverage", "test/fixtures", "test-results"]
 }
