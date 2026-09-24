@@ -140,7 +140,7 @@
     },
     {
       "path": "assets/design-tokens/app-shell.css",
-      "gitBlobSha1": "e039cb2e9dff6ec2123705e440018728f710c451",
+      "gitBlobSha1": "9531f6610a76638aef010b02c9ea1646645ae2ac",
       "source": "project"
     },
     {
@@ -620,7 +620,7 @@
     },
     {
       "path": "package.json",
-      "gitBlobSha1": "7105a1cca861ee577d78a77e9354692ed154f7a2",
+      "gitBlobSha1": "f3ab43fc5cfa526fa865254b67c9636d39774f54",
       "source": "project"
     },
     {
