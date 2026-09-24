@@ -20,9 +20,6 @@ const routes = new Map([
   ]],
   ['/test/fixtures/synthetic/directed-association.xml', [
     'test/fixtures/synthetic/directed-association.xml', 'application/xml; charset=utf-8'
-  ]],
-  ['/test/fixtures/meff-schema/valid-view-diagram.xml', [
-    'test/fixtures/meff-schema/valid-view-diagram.xml', 'application/xml; charset=utf-8'
   ]]
 ]);
 
@@ -231,7 +228,7 @@ try {
     });
     const parsed = new DOMParser().parseFromString(svg, 'image/svg+xml');
     const path = parsed.querySelector('.djs-connection .djs-visual path');
-    const styleWidth = /(?:^|;)\\s*stroke-width:\\s*([^;]+)/.exec(path?.getAttribute('style') || '')?.[1];
+    const styleWidth = /(?:^|;)\s*stroke-width:\s*([^;]+)/.exec(path?.getAttribute('style') || '')?.[1]?.trim();
     return path?.getAttribute('stroke-width') || styleWidth || null;
   });
   assert.equal(importedConnectionWidth, '9',
