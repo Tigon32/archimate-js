@@ -1,0 +1,39 @@
+name: Agent PR drain
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+      - Automated security analysis
+      - MEFF XSD validation
+    types:
+      - completed
+
+concurrency:
+  group: agent-pr-drain-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: write
+  pull-requests: write
+
+jobs:
+  drain:
+    name: Drain qualified agent PR
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout trusted drain policy
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Evaluate and drain exact-head agent PR
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: node scripts/drain-agent-pr.mjs

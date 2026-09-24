@@ -31,7 +31,9 @@ Create a Draft PR early and push the WIP branch after each coherent checkpoint, 
 
 Do not use `git push --no-verify` to make agent-generated work appear qualified. Before changing a Draft PR to Ready for review, run `npm run verify:local`. GitHub Actions remains the independent merge/security boundary and the expensive PR workflows activate at the review-ready transition.
 
-For unattended queue draining, repository maintainers should enable GitHub **Settings → General → Pull Requests → Allow auto-merge**. Once the exact current `HEAD` passes the full local gate, mark the Draft PR Ready and enable auto-merge on that PR. Remote required checks then decide whether it merges; a failed check leaves the PR open for repair rather than requiring a manual merge after success.
+For agent-owned branches, use `npm run pr:finalize` as the terminal step instead of manually parking a PR. It runs `verify:local`, pushes exact `HEAD`, verifies that the remote PR points at the same commit, and marks the PR Ready. Once the drain workflow is present on `main`, every Ready same-repository `agent/*` PR is evaluated after its pull-request workflows complete; if all latest exact-HEAD workflows are green it is squash-merged automatically. No repository "Allow auto-merge" setting and no per-PR arming are required. Apply the `no-auto-merge` label as an explicit emergency/maintainer opt-out.
+
+If the local executor cannot run the full suite, a maintainer/agent may use an explicit remote-fallback promotion only when the authoritative CI runs the same canonical `npm run verify:local` command for the exact HEAD. That fallback spends remote CI deliberately; it must not become the routine edit/debug loop.
 
 ## Priority order
 
