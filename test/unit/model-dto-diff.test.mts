@@ -72,9 +72,11 @@ it('ignores collection order but detects additions and removals by ID', () => {
 it('rejects unsupported fields and projection diagnostics without leaking content', () => {
   const source = fixture();
   const unknown = { ...source, confidentialPayload: 'SYNTHETIC_SECRET' };
+  const cyclic = { ...source, omitted: {} as Record<string, unknown> };
+  cyclic.omitted.self = cyclic.omitted;
   const warning = { ...source, diagnostics: [{ code: 'DTO_UNSUPPORTED_FIELDS',
     severity: 'warning', stage: 'projection', message: 'SYNTHETIC_SECRET' }] };
-  for (const candidate of [unknown, warning]) {
+  for (const candidate of [unknown, cyclic, warning]) {
     expect(() => diffModelDto(candidate, source)).toThrowError(
       'The model DTO cannot be compared without loss.');
     try { diffModelDto(candidate, source); }

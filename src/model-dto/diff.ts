@@ -39,9 +39,28 @@ function stable(value: unknown): string {
   return JSON.stringify(canonical(value));
 }
 
+function sameData(input: unknown, validated: unknown): boolean {
+  if (Array.isArray(input) || Array.isArray(validated)) {
+    return Array.isArray(input) && Array.isArray(validated) &&
+      input.length === validated.length &&
+      input.every((item, index) => sameData(item, validated[index]));
+  }
+  if (input && typeof input === 'object' || validated && typeof validated === 'object') {
+    if (!input || !validated || typeof input !== 'object' ||
+      typeof validated !== 'object') return false;
+    const source = input as Record<string, unknown>;
+    const target = validated as Record<string, unknown>;
+    return Object.keys(source).every((key) => source[key] === undefined ||
+      Object.hasOwn(target, key) && sameData(source[key], target[key])) &&
+      Object.keys(target).every((key) => target[key] === undefined ||
+        Object.hasOwn(source, key) && sameData(source[key], target[key]));
+  }
+  return input === validated;
+}
+
 function eligible(input: unknown): ModelDto {
   const model = validateModelDto(input);
-  if (model.diagnostics.length || stable(input) !== stable(model)) {
+  if (model.diagnostics.length || !sameData(input, model)) {
     const error = new TypeError('The model DTO cannot be compared without loss.');
     Object.assign(error, { code: 'MODEL_DTO_DIFF_INELIGIBLE' });
     throw error;
