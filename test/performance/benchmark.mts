@@ -216,11 +216,21 @@ export function createSyntheticFixtures(size: number): SyntheticFixtures {
 
 async function loadValidator(): Promise<{ validateArchimateXml: Validator }> {
   try {
-    const validator: ValidatorModule = await import('../../dist/validator/index.js');
-    return validator;
+    const modulePath = '../../dist/validator/index.js';
+    const validatorModule: unknown = await import(modulePath);
+    if (!isValidatorModule(validatorModule)) {
+      throw new TypeError('Validator build does not expose validateArchimateXml');
+    }
+    return validatorModule;
   } catch (error) {
     throw new Error('Validator build is missing. Run "npm run compile:validator" before the benchmark.', { cause: error });
   }
+}
+
+function isValidatorModule(value: unknown): value is ValidatorModule {
+  return typeof value === 'object' && value !== null &&
+    'validateArchimateXml' in value &&
+    typeof value.validateArchimateXml === 'function';
 }
 
 function summarizeSemantic(validation: ValidationResult, size: number): Record<string, unknown> {
