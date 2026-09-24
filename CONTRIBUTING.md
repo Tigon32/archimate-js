@@ -35,6 +35,8 @@ For agent-owned branches, use `npm run pr:finalize` as the terminal step instead
 
 If the local executor cannot run the full suite, a maintainer/agent may use an explicit remote-fallback promotion only when the authoritative CI runs the same canonical `npm run verify:local` command for the exact HEAD. That fallback spends remote CI deliberately; it must not become the routine edit/debug loop.
 
+Remote verification is also cost-ordered. Node 24 owns the single full qualification run. Node 22 runs only compatibility-sensitive package/CLI checks after the primary gate passes. Browser-only CLI/performance evidence is collected in the Node 24 primary job instead of a duplicate browser job. macOS is not a default PR lane: its path-safety regression runs only when relevant CLI/path files change, plus a weekly drift check.
+
 ## Priority order
 
 1. Remove sensitive logging and silent partial-import behavior.
