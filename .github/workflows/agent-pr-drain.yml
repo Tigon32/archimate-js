@@ -1,4 +1,4 @@
-name: Agent PR drain
+name: Qualified PR drain
 
 on:
   workflow_run:
@@ -10,7 +10,7 @@ on:
       - completed
 
 concurrency:
-  group: agent-pr-drain-${{ github.event.workflow_run.head_sha }}
+  group: qualified-pr-drain-${{ github.event.workflow_run.head_sha }}
   cancel-in-progress: false
 
 permissions:
@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   drain:
-    name: Drain qualified agent PR
+    name: Drain qualified PR
     if: github.event.workflow_run.event == 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -32,7 +32,7 @@ jobs:
           ref: main
           persist-credentials: false
 
-      - name: Evaluate and drain exact-head agent PR
+      - name: Evaluate and drain exact-head qualified PR
         env:
           GITHUB_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}

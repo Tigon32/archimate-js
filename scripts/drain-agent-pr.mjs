@@ -1,4 +1,11 @@
 const REQUIRED_WORKFLOWS = new Set(['CI', 'Automated security analysis']);
+const DEPENDABOT_SAFE_GROUPS = [
+  'npm-minor-and-patch',
+  'npm-security-minor-and-patch',
+  'archimate-font-minor-and-patch',
+  'archimate-font-security-minor-and-patch',
+  'actions-minor-and-patch'
+];
 const GOOD_OPTIONAL_CONCLUSIONS = new Set(['success', 'skipped']);
 
 export function latestRunsByName(runs) {
@@ -10,12 +17,29 @@ export function latestRunsByName(runs) {
   return latest;
 }
 
+export function classifyAutomergeCandidate(pr, repository) {
+  if (pr.head?.repo?.full_name !== repository) return { eligible: false, reason: 'fork-pr' };
+
+  if (pr.head?.ref?.startsWith('agent/')) {
+    return { eligible: true, kind: 'agent' };
+  }
+
+  const dependabot = pr.user?.login === 'dependabot[bot]' && pr.head?.ref?.startsWith('dependabot/');
+  if (dependabot) {
+    const group = DEPENDABOT_SAFE_GROUPS.find((name) => pr.head.ref.includes(name));
+    if (group) return { eligible: true, kind: 'dependabot', group };
+    return { eligible: false, reason: 'dependabot-not-allowlisted' };
+  }
+
+  return { eligible: false, reason: 'unsupported-branch' };
+}
+
 export function evaluateDrainState({ pr, runs, repository }) {
   if (!pr || pr.state !== 'open') return { action: 'skip', reason: 'pr-not-open' };
   if (pr.draft) return { action: 'wait', reason: 'pr-is-draft' };
   if (pr.base?.ref !== 'main') return { action: 'skip', reason: 'non-main-base' };
-  if (pr.head?.repo?.full_name !== repository) return { action: 'skip', reason: 'fork-pr' };
-  if (!pr.head?.ref?.startsWith('agent/')) return { action: 'skip', reason: 'non-agent-branch' };
+  const candidate = classifyAutomergeCandidate(pr, repository);
+  if (!candidate.eligible) return { action: 'skip', reason: candidate.reason };
   if ((pr.labels || []).some((label) => label.name === 'no-auto-merge')) {
     return { action: 'skip', reason: 'opt-out-label' };
   }
@@ -38,7 +62,7 @@ export function evaluateDrainState({ pr, runs, repository }) {
     }
   }
 
-  return { action: 'merge', reason: 'all-exact-head-workflows-green' };
+  return { action: 'merge', reason: `all-exact-head-workflows-green:${candidate.kind}` };
 }
 
 async function api(path, options = {}) {
