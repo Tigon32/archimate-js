@@ -7,7 +7,7 @@ import { createServer } from 'node:http';
 import { cpus } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium, type BrowserContext, type Page, type Route } from 'playwright-core';
+import { chromium, type Browser, type BrowserContext, type Page, type Route } from 'playwright-core';
 
 declare global {
   interface Window { __syntheticRenderMs?: number }
@@ -44,68 +44,79 @@ function createFixtureServer() {
   });
 }
 
+async function observeRender(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const started = performance.now();
+    const observer = new MutationObserver(() => {
+      const status = document.querySelector('#status');
+      const diagram = document.querySelector('#diagram svg.am-diagram');
+      if (status?.getAttribute('data-state') === 'success' && diagram &&
+          document.querySelectorAll('#diagram .djs-shape').length >= 5 &&
+          document.querySelectorAll('#diagram .djs-connection').length >= 4) {
+        window.__syntheticRenderMs = performance.now() - started;
+        observer.disconnect();
+      }
+    });
+    observer.observe(document, { subtree: true, attributes: true, childList: true });
+  });
+}
+
+type Structure = { shapes: number; connections: number; text: number };
+
+async function measureOnce(browser: Browser, origin: string): Promise<{ durationMs: number; structure: Structure }> {
+  const context: BrowserContext = await browser.newContext({ colorScheme: 'light' });
+  try {
+    let offOriginRequests = 0;
+    let pageErrors = 0;
+    await context.route('**/*', (route: Route) => {
+      if (route.request().url().startsWith(origin + '/')) return route.continue();
+      offOriginRequests += 1;
+      return route.abort();
+    });
+    const page: Page = await context.newPage();
+    page.on('pageerror', () => { pageErrors += 1; });
+    await observeRender(page);
+    await page.goto(origin + '/examples/read-only/', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => Number.isFinite(window.__syntheticRenderMs), null, { timeout: 15000 });
+    const measured: { durationMs: number | undefined; status: string | null | undefined;
+      shapes: number; connections: number; text: number } = await page.evaluate(() => ({
+      durationMs: window.__syntheticRenderMs,
+      status: document.querySelector('#status')?.getAttribute('data-state'),
+      shapes: document.querySelectorAll('#diagram .djs-shape').length,
+      connections: document.querySelectorAll('#diagram .djs-connection').length,
+      text: document.querySelectorAll('#diagram svg text').length
+    }));
+    assert.equal(measured.status, 'success');
+    assert.ok(measured.shapes >= 5 && measured.connections >= 4 && measured.text >= 5);
+    if (typeof measured.durationMs !== 'number' || !Number.isFinite(measured.durationMs) || measured.durationMs < 0) {
+      throw new Error('Browser timing is missing or invalid');
+    }
+    assert.equal(offOriginRequests, 0);
+    assert.equal(pageErrors, 0);
+    return { durationMs: measured.durationMs,
+      structure: { shapes: measured.shapes, connections: measured.connections, text: measured.text } };
+  } finally {
+    await context.close();
+  }
+}
+
 async function run() {
   const output = process.argv.find((arg) => arg.startsWith('--output='))?.slice('--output='.length);
   const fixtureSha256 = createHash('sha256').update(await readFile(path.join(root, fixturePath))).digest('hex');
   const server = createFixtureServer();
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
-  let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
+  let browser: Browser | undefined;
   try {
     browser = await chromium.launch({ executablePath: process.env.CHROME_BIN || undefined,
       headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
     const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
     const samplesMs: number[] = [];
-    let structure: { shapes: number; connections: number; text: number } | undefined;
+    let structure: Structure | undefined;
     for (let repeat = 0; repeat < 3; repeat += 1) {
-      const context: BrowserContext = await browser.newContext({ colorScheme: 'light' });
-      try {
-        let offOriginRequests = 0;
-        let pageErrors = 0;
-        await context.route('**/*', (route: Route) => {
-          if (route.request().url().startsWith(origin + '/')) return route.continue();
-          offOriginRequests += 1;
-          return route.abort();
-        });
-        const page: Page = await context.newPage();
-        page.on('pageerror', () => { pageErrors += 1; });
-        await page.addInitScript(() => {
-          const started = performance.now();
-          const observer = new MutationObserver(() => {
-            const status = document.querySelector('#status');
-            const diagram = document.querySelector('#diagram svg.am-diagram');
-            if (status?.getAttribute('data-state') === 'success' && diagram &&
-                document.querySelectorAll('#diagram .djs-shape').length >= 5 &&
-                document.querySelectorAll('#diagram .djs-connection').length >= 4) {
-              window.__syntheticRenderMs = performance.now() - started;
-              observer.disconnect();
-            }
-          });
-          observer.observe(document, { subtree: true, attributes: true, childList: true });
-        });
-        await page.goto(origin + '/examples/read-only/', { waitUntil: 'domcontentloaded' });
-        await page.waitForFunction(() => Number.isFinite(window.__syntheticRenderMs), null, { timeout: 15000 });
-        const measured: { durationMs: number | undefined; status: string | null | undefined;
-          shapes: number; connections: number; text: number } = await page.evaluate(() => ({
-          durationMs: window.__syntheticRenderMs,
-          status: document.querySelector('#status')?.getAttribute('data-state'),
-          shapes: document.querySelectorAll('#diagram .djs-shape').length,
-          connections: document.querySelectorAll('#diagram .djs-connection').length,
-          text: document.querySelectorAll('#diagram svg text').length
-        }));
-        assert.equal(measured.status, 'success');
-        assert.ok(measured.shapes >= 5 && measured.connections >= 4 && measured.text >= 5);
-        if (typeof measured.durationMs !== 'number' || !Number.isFinite(measured.durationMs) || measured.durationMs < 0) {
-          throw new Error('Browser timing is missing or invalid');
-        }
-        assert.equal(offOriginRequests, 0);
-        assert.equal(pageErrors, 0);
-        const current = { shapes: measured.shapes, connections: measured.connections, text: measured.text };
-        if (structure) assert.deepEqual(current, structure);
-        structure = current;
-        samplesMs.push(measured.durationMs);
-      } finally {
-        await context.close();
-      }
+      const current = await measureOnce(browser, origin);
+      if (structure) assert.deepEqual(current.structure, structure);
+      structure = current.structure;
+      samplesMs.push(current.durationMs);
     }
     const result = {
       schemaVersion: 1, provenance: 'SYNTHETIC', fixtureSha256,
