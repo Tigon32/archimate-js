@@ -17,6 +17,7 @@ ADRs record consequential decisions for this fork. They should be short, dated, 
 | 0002 | Standard-first interoperability | Proposed |
 | 0003 | Deterministic report rendering | Proposed |
 | 0004 | TypeScript-first incremental migration and module size | Accepted |
+| 0005 | Coordinate concurrent agent development with expiring issue claims | Proposed |
 
 ## Template
 
