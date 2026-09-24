@@ -28,7 +28,7 @@
     "compile:layout": "tsc -p tsconfig.layout.json && node scripts/mark-layout-esm.mjs",
     "compile:browser": "node test/smoke/compile.mjs",
     "prepack": "npm run compile",
-    "lint": "eslint --no-eslintrc --config .eslintrc.release.json lib/BaseViewer.js lib/import/Importer.js lib/import/XmlPreflight.js test/release/check.mjs test/security/supply-chain.test.mjs test/unit/import-diagnostics.test.mjs test/unit/svg-export.test.mjs",
+    "lint": "eslint --no-eslintrc --config .eslintrc.release.json lib/BaseViewer.js lib/import/Importer.js lib/import/XmlPreflight.js lib/util/SvgExportUtil.mjs test/release/check.mjs test/security/supply-chain.test.mjs test/unit/import-diagnostics.test.mjs",
     "test": "run-s test:tokens test:package test:security test:supply-chain test:automated-analysis test:fixtures test:provenance test:typecheck test:validator-build test:cli test:packed-consumer test:unit",
     "test:tokens": "node scripts/build-notation-assets.mjs --check",
     "test:package": "node test/smoke/package.test.mts",

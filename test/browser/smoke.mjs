@@ -441,20 +441,82 @@ try {
       title: 'Synthetic unnamed Association'
     });
     const unnamed = new DOMParser().parseFromString(unnamedSvg, 'image/svg+xml');
+    const repeatedSvg = await api.renderViewToSvg({
+      xml: xml.replace('name="Component B"', 'name="Component A"'),
+      viewId: 'view-directed-association'
+    });
+    const adversarialSvg = await api.renderViewToSvg({
+      xml: xml.replace('name="Component A"', 'name="&lt;Front &amp; end&gt;"'),
+      viewId: 'view-directed-association'
+    });
+    const repeated = new DOMParser().parseFromString(repeatedSvg, 'image/svg+xml');
+    const adversarial = new DOMParser().parseFromString(adversarialSvg, 'image/svg+xml');
+    const host = document.createElement('div');
+    Object.assign(host.style, { position: 'fixed', left: '-2000px', width: '1024px', height: '768px' });
+    document.body.append(host);
+    let saved;
+    let viewer;
+    try {
+      viewer = await api.mountViewer({ xml, viewId: 'view-directed-association', container: host });
+      saved = (await viewer.saveSVG({ title: 'Synthetic directed Association' })).svg;
+    } finally {
+      viewer?.destroy();
+      host.remove();
+    }
+    const ids = [...parsed.querySelectorAll('[id]')].map((element) => element.id);
+    const refs = [...parsed.querySelectorAll('[aria-labelledby], [aria-describedby]')]
+      .flatMap((element) => [element.getAttribute('aria-labelledby'), element.getAttribute('aria-describedby')]
+        .filter(Boolean).flatMap((value) => value.split(/\s+/)));
+    const node = parsed.querySelector('.djs-shape .djs-visual[role="graphics-object group"]');
+    const relation = parsed.querySelector('.djs-connection .djs-visual[role="graphics-object group"]');
+    const unnamedRelation = unnamed.querySelector('.djs-connection .djs-visual[role="graphics-object group"]');
 
     return {
       markerStyle: path?.getAttribute('style'),
       markerShape: parsed.querySelector('defs marker path')?.getAttribute('d'),
-      labelTexts: [...parsed.querySelectorAll('[data-element-id$="_label"] .djs-label')].map((label) => label.textContent),
-      unnamedLabels: [...unnamed.querySelectorAll('[data-element-id$="_label"] .djs-label')].map((label) => label.textContent)
+      labelTexts: [...parsed.querySelectorAll('.djs-label')].map((label) => label.textContent),
+      unnamedLabels: [...unnamed.querySelectorAll('.djs-label')].map((label) => label.textContent),
+      rootRole: parsed.documentElement.getAttribute('role'),
+      saveSvgRootRole: new DOMParser().parseFromString(saved, 'image/svg+xml').documentElement.getAttribute('role'),
+      saveSvgRelationName: new DOMParser().parseFromString(saved, 'image/svg+xml')
+        .querySelector('.djs-connection .djs-visual[role="graphics-object group"]')?.getAttribute('aria-label'),
+      nodeName: node?.getAttribute('aria-label'),
+      relationName: relation?.getAttribute('aria-label'),
+      unnamedRelationName: unnamedRelation?.getAttribute('aria-label'),
+      repeatedNames: [...repeated.querySelectorAll('.djs-shape .djs-visual[role="graphics-object group"]')]
+        .map((item) => item.getAttribute('aria-label')),
+      adversarialName: adversarial.querySelector('.djs-shape .djs-visual[role="graphics-object group"]')
+        ?.getAttribute('aria-label'),
+      adversarialParserError: adversarial.querySelector('parsererror')?.textContent?.slice(0, 500),
+      adversarialMarkupStart: adversarialSvg.slice(0, 280),
+      adversarialSemanticCount: adversarial.querySelectorAll('[role="graphics-object group"]').length,
+      adversarialActiveMarkup: adversarial.querySelector('script, foreignObject') !== null,
+      duplicateIds: ids.length !== new Set(ids).size,
+      brokenReferences: refs.filter((id) => !ids.includes(id)),
+      leaksRawIds: /data-element-id=|association-a-b|component-a|component-b/.test(svg),
+      decorativeHidden: [...parsed.querySelectorAll('.djs-visual path, defs marker path')]
+        .every((item) => item.getAttribute('aria-hidden') === 'true' || item.closest('[aria-hidden="true"]') !== null)
     };
   });
   assert.match(directedAssociation.markerStyle || '', /marker-end:\s*url\(['"]?#archimate-export-id-\d+/);
   assert.equal(directedAssociation.markerShape, 'M 1 5 L 11 10');
   assert.ok(directedAssociation.labelTexts.some((label) => label?.includes('Directed Association')),
     'named imported relationship should render a visible SVG label');
-  assert.deepEqual(directedAssociation.unnamedLabels, [],
+  assert.ok(!directedAssociation.unnamedLabels.some((label) => label?.includes('Directed Association')),
     'unnamed imported relationship should not create a visible SVG label');
+  assert.equal(directedAssociation.rootRole, 'graphics-document document');
+  assert.equal(directedAssociation.saveSvgRootRole, directedAssociation.rootRole);
+  assert.equal(directedAssociation.saveSvgRelationName, directedAssociation.relationName);
+  assert.match(directedAssociation.nodeName || '', /ApplicationComponent: Component A/);
+  assert.match(directedAssociation.relationName || '', /Association.*Directed Association.*from Component A to Component B/);
+  assert.match(directedAssociation.unnamedRelationName || '', /Association.*from Component A to Component B/);
+  assert.ok(directedAssociation.repeatedNames.filter((name) => name?.includes('Component A')).length >= 2);
+  assert.ok(directedAssociation.adversarialName?.includes('<Front & end>'));
+  assert.equal(directedAssociation.adversarialActiveMarkup, false);
+  assert.equal(directedAssociation.duplicateIds, false);
+  assert.deepEqual(directedAssociation.brokenReferences, []);
+  assert.equal(directedAssociation.leaksRawIds, false);
+  assert.equal(directedAssociation.decorativeHidden, true);
 
   stage = 'render an explicitly styled imported connection width';
   const importedConnectionWidth = await page.evaluate(async () => {

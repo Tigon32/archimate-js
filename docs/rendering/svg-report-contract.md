@@ -41,9 +41,26 @@ the same renderer through `mountViewer` and `viewer.saveSVG()`.
 
 ## Accessibility requirements
 
-- SVG `role` and title/description metadata where feasible.
-- Element labels represented as text, not only paths.
-- Semantic source model and view IDs available as non-private metadata.
+- The standalone root has a title, concise description, and a graphics-document
+  role with a document fallback. Structured elements and relationships carry
+  their own names and graphics-object roles with group fallbacks.
+- Meaningful names use the selected view's visible label, concept or
+  relationship type, and relationship endpoints. Decorative geometry, markers,
+  and duplicate label groups do not become additional accessible objects.
+- Generated accessibility references are stable and unique. Source model IDs,
+  internal paths, other views, and hidden model documentation are not exported
+  as accessibility metadata. Only content represented in the selected view
+  and caller-provided title/description may be named.
+
+Graphics-ARIA roles and SVG accessible names follow the
+[W3C Graphics-ARIA Recommendation](https://www.w3.org/TR/graphics-aria-1.0/)
+and [SVG Accessibility API Mappings](https://www.w3.org/TR/svg-aam-1.0/).
+Assistive technology support for standalone and embedded SVG varies; a
+semantic export does not replace the textual outline and keyboard navigation
+tracked by #104. Verify the exported SVG with VoiceOver and NVDA in a browser,
+including nested groups, repeated names, and unnamed relationships. Keep
+static exports out of the tab order; interactive selection behavior belongs
+to the viewer/editor integration in #104.
 
 ## Acceptance checks
 
