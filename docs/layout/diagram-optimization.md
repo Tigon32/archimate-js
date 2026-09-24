@@ -58,3 +58,39 @@ the headless APIs above are the supported public entry points.
 The fixture in `test/unit/diagram-layout.test.mjs` is **SYNTHETIC** and covers
 obstacles, parallel routes, groups, nesting, labels, multiple relationship
 types, patch replay, and undo/redo.
+
+## Async DTO layout facade (issue #100, first slice)
+
+```js
+import { layoutView } from 'archimate-js/layout';
+
+const result = await layoutView(modelDto, 'selected-view-id', {
+  strategy: 'builtin', mode: 'full', spacing: 40
+});
+if (result.status === 'ok') {
+  // The original DTO model stays untouched. Persist result.view explicitly.
+  // result.patch holds before/after DTO bounds and waypoint arrays for undo.
+  console.log(result.metrics.overlapCountBefore, result.metrics.overlapCountAfter);
+} else {
+  console.log(result.diagnostics);
+}
+```
+
+The facade accepts the project-owned `ModelDto` boundary and returns a detached
+`ViewDto`, a reversible geometry patch, and the built-in optimizer's actual
+crossing, sibling-overlap, movement, reroute, and view-bound metrics. It does
+not inspect or alter diagram-js runtime objects. Pass `strategy: 'builtin'`
+explicitly; simply importing or rendering a view does not lay it out. If a
+selected connection lacks an endpoint, or the DTO is invalid, it returns a
+diagnostic without a view or patch. Unavailable `elk-layered`, `incremental`,
+and `pins` options also return explicit diagnostics, with no fallback to full
+built-in layout. Unknown options are rejected so future controls are not
+silently ignored. This call runs asynchronously at the API boundary, but the
+built-in optimizer itself currently runs on the calling thread.
+
+This is a partial implementation of #100. Layered compound layout, hard and
+soft pins, incremental stability, advanced labels, worker execution, and
+benchmark/quality metrics beyond those measured by the existing optimizer
+remain open. The existing diagram-js command stack still owns interactive
+undo and redo; the DTO patch is plain transport data and is not applied to
+the canvas automatically.
