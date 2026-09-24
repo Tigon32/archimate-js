@@ -237,4 +237,27 @@ describe('MEFF View and Diagram import', () => {
     });
     expect(componentNode.meffGeometry.coordinateSpace).toBe('diagram');
   });
+
+  it('produces the same geometry and diagnostics on repeated imports', async () => {
+    const xml = await readFile(fixturePath, 'utf8');
+    const component = { id: 'component-one', type: 'archimate:ApplicationComponent' };
+    const service = { id: 'service-two', type: 'archimate:ApplicationService' };
+    const relationship = { id: 'serving-one-two', type: 'archimate:Serving' };
+    const rootElement = {
+      elementsById: new Map([[component.id, component], [service.id, service]]),
+      relationshipsById: new Map([[relationship.id, relationship]])
+    };
+    const first = parseMeffViews(xml, rootElement);
+    const second = parseMeffViews(xml, rootElement);
+    const projectGeometry = (result) => result.views.diagrams.viewsList[0].viewElements.map((item) => ({
+      id: item.id,
+      geometry: item.meffGeometry,
+      style: item.style,
+      waypoints: item.waypointsNode && item.waypointsNode.waypoints
+    }));
+
+    expect(first.diagnostics).toEqual(second.diagnostics);
+    expect(projectGeometry(first)).toEqual(projectGeometry(second));
+    expect(first.diagnostics).toEqual([]);
+  });
 });
