@@ -13,6 +13,12 @@ const packageJson = JSON.parse(
   scripts: Record<string, string>;
 };
 
+function exportEntry(name: string): { import?: string; types?: string } {
+  const entry = packageJson.exports[name];
+  if (typeof entry !== 'object') throw new TypeError(`${name} must be a conditional export`);
+  return entry;
+}
+
 assert.equal(packageJson.name, 'archimate-js');
 assert.equal(packageJson.license, 'MIT');
 assert.ok(packageJson.dependencies['diagram-js'], 'diagram-js dependency is declared');
@@ -29,11 +35,11 @@ assert.ok(!packageJson.files.includes('archimate-font/lib/css'), 'package does n
 assert.ok(packageJson.files.includes('dist'), 'package publishes compiled distributions');
 assert.equal(packageJson.bin['archimate-js'], 'dist/cli/main.mjs');
 assert.ok(packageJson.dependencies['playwright-core'], 'headless CLI runtime is declared');
-assert.equal(packageJson.exports['./validator'].import, './dist/validator/index.js');
-assert.equal(packageJson.exports['./model-dto'].import, './dist/model-dto/index.js');
-assert.equal(packageJson.exports['./model-dto'].types, './dist/model-dto/index.d.ts');
-assert.equal(packageJson.exports['./layout'].import, './dist/layout/index.js');
-assert.equal(packageJson.exports['./layout'].types, './dist/layout/index.d.ts');
+assert.equal(exportEntry('./validator').import, './dist/validator/index.js');
+assert.equal(exportEntry('./model-dto').import, './dist/model-dto/index.js');
+assert.equal(exportEntry('./model-dto').types, './dist/model-dto/index.d.ts');
+assert.equal(exportEntry('./layout').import, './dist/layout/index.js');
+assert.equal(exportEntry('./layout').types, './dist/layout/index.d.ts');
 assert.equal(packageJson.exports['./app-shell.css'], './assets/design-tokens/app-shell.css');
 assert.ok(packageJson.scripts['test:unit'].includes('--coverage.enabled'), 'unit tests publish informational coverage');
 

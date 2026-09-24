@@ -123,10 +123,15 @@ try {
     bin: Record<string, string>;
     exports: Record<string, { import?: string } | string>;
   };
+  const exportEntry = (name: string): { import?: string } => {
+    const entry = packageJson.exports[name];
+    if (typeof entry !== 'object') throw new TypeError(`${name} must be a conditional export`);
+    return entry;
+  };
   const consumerRequire = createRequire(path.join(consumer, 'package.json'));
-  assert.equal(packageJson.exports['./validator'].import, './dist/validator/index.js');
-  assert.equal(packageJson.exports['./model-dto'].import, './dist/model-dto/index.js');
-  assert.equal(packageJson.exports['./layout'].import, './dist/layout/index.js');
+  assert.equal(exportEntry('./validator').import, './dist/validator/index.js');
+  assert.equal(exportEntry('./model-dto').import, './dist/model-dto/index.js');
+  assert.equal(exportEntry('./layout').import, './dist/layout/index.js');
   assert.equal(packageJson.exports['./app-shell.css'], './assets/design-tokens/app-shell.css');
   assert.deepEqual(Object.keys(packageJson.exports).sort(),
     ['.', './app-shell.css', './layout', './model-dto', './validator']);
