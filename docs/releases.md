@@ -8,8 +8,12 @@ Consumers should import only the package root or the documented subpaths:
 import Viewer, { mountViewer, renderViewToSvg } from 'archimate-js';
 import { validateArchimateXml, ARCHIMATE_LANGUAGE_VERSION } from 'archimate-js/validator';
 import { importMeffToModelDto, exportModelDtoToMeff, serializeModelDto, parseModelDto } from 'archimate-js/model-dto';
+import 'archimate-js/app-shell.css'; // Optional app control styles for a CSS-capable bundler.
 ```
 
+The `app-shell.css` subpath supplies scoped `.am-app` control styles and the
+locally packaged IBM Plex font; the host adds `.am-app` to its control root.
+It does not style diagram notation. See [app shell states](roadmap/app-shell-styles.md).
 The root exports the default `Viewer`, `mountViewer(options)`, and
 `renderViewToSvg(options)`. Use a browser-oriented bundler to consume the root
 entry; its source uses extensionless module specifiers and is not a direct

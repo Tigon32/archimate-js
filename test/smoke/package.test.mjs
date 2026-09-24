@@ -24,6 +24,7 @@ assert.ok(packageJson.dependencies['playwright-core'], 'headless CLI runtime is 
 assert.equal(packageJson.exports['./validator'].import, './dist/validator/index.js');
 assert.equal(packageJson.exports['./model-dto'].import, './dist/model-dto/index.js');
 assert.equal(packageJson.exports['./model-dto'].types, './dist/model-dto/index.d.ts');
+assert.equal(packageJson.exports['./app-shell.css'], './assets/design-tokens/app-shell.css');
 assert.ok(packageJson.scripts['test:unit'].includes('--coverage.enabled'), 'unit tests publish informational coverage');
 
 console.log('package smoke test passed');

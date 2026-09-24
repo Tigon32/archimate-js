@@ -7,9 +7,13 @@ This repository accepts dependency updates through reviewed pull requests. Depen
 For dependency changes:
 
 1. Review the upstream changelog, package metadata, and license before accepting the update.
-2. Run `npm audit`, `npm test`, and `npm run compile`. Review each audit finding; do not run `npm audit fix --force` as an unattended remediation.
+2. Let the pull-request dependency-review workflow identify newly introduced advisories, then run `npm audit`, `npm test`, and `npm run compile`. Review each audit finding; do not run `npm audit fix --force` as an unattended remediation.
 3. Keep install-time scripts disabled in CI with `npm install --ignore-scripts`. If a future dependency requires an install script, document why it is needed and restrict approval to that package and script.
 4. Update `THIRD_PARTY_NOTICES.md` when a dependency, bundled asset, license, or attribution changes.
+
+The automated checks are described in
+[`automated-analysis.md`](automated-analysis.md). They are review aids and do
+not prove that a dependency or the repository is free of vulnerabilities.
 
 ## Workflow boundary
 

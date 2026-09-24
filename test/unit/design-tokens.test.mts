@@ -48,7 +48,8 @@ describe('DTCG 2025.10 subset', () => {
       }
       if (token.$type === 'number') expect(Number.isFinite(token.$value)).toBe(true);
       if (token.$type === 'fontFamily') {
-        expect(token.$value).toEqual(['Arial', 'Helvetica', 'Liberation Sans', 'sans-serif']);
+        expect(token.$value.length).toBeGreaterThan(0);
+        expect(token.$value.every((family) => family.length > 0 && !family.includes(','))).toBe(true);
       }
     }
   });
@@ -58,6 +59,8 @@ describe('DTCG 2025.10 subset', () => {
     expect(notation.color.domain.application.fill.$value.hex).toBe('#b0d0d9');
     expect(notation.box.width.$value).toEqual({ value: 120, unit: 'px' });
     expect(notation.box.rounded_radius_ratio_of_height.$value).toBe(0.1094);
+    expect(notation.typography.family.$value).toEqual(['Arial', 'Helvetica', 'Liberation Sans', 'sans-serif']);
+    expect(app.typography.family.$value).toEqual(['IBM Plex', 'Arial', 'sans-serif']);
     expect(notationFill('Application')).toBe('#B0D0D9');
     expect(cornerRadius('BusinessProcess', 55)).toBeCloseTo(55 * 0.1094);
     expect(notation.$extensions['org.archimatejs.notation'].rules.relationship.flow.target).toBe('triangle-filled');

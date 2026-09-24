@@ -76,15 +76,27 @@ function validate(node, path = 'root') {
 validate(notation);
 validate(app);
 
+const cssName = (name) => name.replace(/[A-Z]/g, (letter) => '-' + letter.toLowerCase());
+const cssValue = (token) => {
+  if (token.$type === 'color') return token.$value.hex;
+  if (token.$type === 'dimension') return `${token.$value.value}${token.$value.unit}`;
+  if (token.$type === 'number') return String(token.$value);
+  if (token.$type === 'fontFamily') return token.$value.map((name) =>
+    name.includes(' ') ? JSON.stringify(name) : name).join(', ');
+  throw new Error('Unsupported app token type');
+};
+const declarations = (group, prefix) => Object.entries(group).map(([name, token]) =>
+  `  --am-ui-${prefix}${cssName(name)}: ${cssValue(token)};`).join('\n');
 const appCss = [
   '/* Generated from app.tokens.json; scoped to the application shell. */',
   ...['light', 'dark'].map((mode) => {
     const selector = mode === 'light' ? '.am-app, .am-app[data-theme="light"]' : '.am-app[data-theme="dark"]';
-    return `${selector} {\n` + Object.entries(app.theme[mode]).map(([name, token]) =>
-      `  --am-ui-${name}: ${token.$value.hex};`).join('\n') + '\n}';
+    return `${selector} {\n` + declarations(app.theme[mode], '') + '\n}';
   }),
-  '.am-app {\n' + Object.entries(app.spacing).map(([name, token]) =>
-    `  --am-ui-space-${name}: ${token.$value.value}${token.$value.unit};`).join('\n') + '\n}'
+  '.am-app {\n' + [
+    declarations(app.spacing, 'space-'), declarations(app.border, 'border-'),
+    declarations(app.typography, 'font-')
+  ].join('\n') + '\n}'
 ].join('\n') + '\n';
 const js = '// Generated from assets/archimate-4-kit by scripts/build-notation-assets.mjs.\n' +
   `export const tokens = ${JSON.stringify(source)};\n` +
