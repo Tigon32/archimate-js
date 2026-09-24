@@ -2,7 +2,7 @@ import { constants } from 'node:fs';
 import { access } from 'node:fs/promises';
 import path from 'node:path';
 
-import { chromium, type BrowserContext, type Page } from 'playwright-core';
+import { chromium, type Browser, type BrowserContext, type Page } from 'playwright-core';
 
 import { findChrome } from './io.mjs';
 import { applyLayout, validateLayout } from './layout.mjs';
@@ -126,7 +126,6 @@ async function captureExport(
   if (options.formats.includes('pdf')) artifacts.pdf = await pdfArtifact(capture, options);
   return artifacts;
 }
-
 export async function renderArtifacts(
   packageRoot: string,
   xml: string,
