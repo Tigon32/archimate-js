@@ -126,30 +126,47 @@ export async function writeBatchArtifacts(
   manifest: string,
   inputPath: string
 ): Promise<void> {
-  const absolute = path.resolve(directory);
   try {
-    await ensureOutputDirectory(absolute);
+    const absolute = await prepareOutputDirectory(directory);
     const all = [...files, { filename: 'manifest.json', contents: manifest }];
-    await publishBatchFiles(absolute, all, inputPath);
+    await publishBatchFiles(absolute, all, await canonicalInputPath(inputPath));
   } catch (error) {
     if (error instanceof Error && error.message === 'OUTPUT_CLEANUP_FAILED') throw error;
     throw new Error('OUTPUT_WRITE_FAILED');
   }
 }
 
-async function ensureOutputDirectory(directory: string): Promise<void> {
+async function canonicalSystemPath(requested: string): Promise<string> {
+  // Resolve only a verified OS-owned prefix. Resolving the entire path here
+  // would hide caller-created symlinks below the selected output directory.
+  for (const alias of ['/var', '/tmp']) {
+    if ((requested === alias || requested.startsWith(`${alias}${path.sep}`)) &&
+        await safeOutputAlias(alias)) {
+      return `/private${requested}`;
+    }
+  }
+  return requested;
+}
+
+async function canonicalInputPath(inputPath: string): Promise<string> {
+  const absolute = path.resolve(inputPath);
+  return realpath(absolute).catch(() => canonicalSystemPath(absolute));
+}
+
+async function prepareOutputDirectory(directory: string): Promise<string> {
+  const absolute = await canonicalSystemPath(path.resolve(directory));
   const parts: string[] = [];
-  let cursor = directory;
+  let cursor = absolute;
   while (cursor !== path.dirname(cursor)) { parts.unshift(cursor); cursor = path.dirname(cursor); }
   for (const component of parts) {
     const item = await lstat(component).catch((error: NodeJS.ErrnoException) => {
       if (error.code === 'ENOENT') return undefined;
       throw error;
     });
-    if (item && ((!item.isDirectory() && !item.isSymbolicLink()) ||
-        (item.isSymbolicLink() && !await safeOutputAlias(component)))) throw new Error();
+    if (item && !item.isDirectory()) throw new Error('OUTPUT_WRITE_FAILED');
   }
-  await mkdir(directory, { recursive: true });
+  await mkdir(absolute, { recursive: true });
+  return absolute;
 }
 
 async function safeOutputAlias(component: string): Promise<boolean> {
@@ -189,23 +206,9 @@ async function publishBatchFiles(
 type PartialGroup = { files: Array<{ filename: string; contents: string | Uint8Array }> };
 
 async function preparePartialDirectory(directory: string): Promise<string> {
-  const absolute = path.resolve(directory);
-  const parts: string[] = [];
-  let cursor = absolute;
-  while (cursor !== path.dirname(cursor)) { parts.unshift(cursor); cursor = path.dirname(cursor); }
   try {
-    for (const component of parts) {
-      const item = await lstat(component).catch((error: NodeJS.ErrnoException) => {
-        if (error.code === 'ENOENT') return undefined;
-        throw error;
-      });
-      if (item && ((!item.isDirectory() && !item.isSymbolicLink()) ||
-          (item.isSymbolicLink() && !await safeOutputAlias(component)))) throw new Error();
-    }
-
-    await mkdir(absolute, { recursive: true });
+    return await prepareOutputDirectory(directory);
   } catch { throw new Error('OUTPUT_WRITE_FAILED'); }
-  return absolute;
 }
 
 function partialTarget(directory: string, filename: string, inputPath: string): string {
@@ -225,6 +228,7 @@ export async function writePartialBatchArtifacts(
   makeManifest: (failedIndexes: Set<number>) => string
 ): Promise<Set<number>> {
   const absolute = await preparePartialDirectory(directory);
+  const canonicalInput = await canonicalInputPath(inputPath);
   const manifestPath = path.join(absolute, 'manifest.json');
   await snapshot(manifestPath);
   const committed: PreviousOutput[] = [];
@@ -236,7 +240,7 @@ export async function writePartialBatchArtifacts(
       const current: PreviousOutput[] = [];
       try {
         for (const file of groups[index].files) {
-          const target = partialTarget(absolute, file.filename, inputPath);
+          const target = partialTarget(absolute, file.filename, canonicalInput);
           if (names.has(file.filename.toLowerCase())) throw new Error('OUTPUT_WRITE_FAILED');
           names.add(file.filename.toLowerCase());
           previous.push(await snapshot(target));

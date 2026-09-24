@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { chmod, mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, test } from 'vitest';
@@ -165,6 +165,48 @@ describe('batch outputs', () => {
       assert.equal(await readFile(path.join(directory, 'manifest.json'), 'utf8'), 'previous manifest');
     } finally { await rm(directory, { recursive: true, force: true }); }
   });
+});
+
+describe('partial batch path safety', () => {
+  test('rejects user symlink ancestry and targets without changing outside content', async () => {
+    const directory = await mkdtemp(path.join(os.tmpdir(), 'archimate-partial-links-'));
+    try {
+      const output = path.join(directory, 'output');
+      const outside = path.join(directory, 'outside');
+      await mkdir(output);
+      await mkdir(outside);
+      await writeFile(path.join(outside, 'view.svg'), 'outside');
+      await symlink(outside, path.join(directory, 'link'));
+      const groups = [{ files: [{ filename: 'view.svg', contents: 'replacement' }] }];
+      await assert.rejects(writePartialBatchArtifacts(path.join(directory, 'link'), groups,
+        'model.xml', () => '{}'), { message: 'OUTPUT_WRITE_FAILED' });
+      await symlink(path.join(outside, 'view.svg'), path.join(output, 'view.svg'));
+      const failed = await writePartialBatchArtifacts(output, groups, 'model.xml', () => '{}');
+      assert.deepEqual([...failed], [0]);
+      assert.equal(await readFile(path.join(outside, 'view.svg'), 'utf8'), 'outside');
+      assert.equal((await stat(path.join(output, 'manifest.json'))).isFile(), true);
+    } finally { await rm(directory, { recursive: true, force: true }); }
+  });
+
+  test.skipIf(process.platform !== 'darwin')('accepts a verified macOS temporary alias', async () => {
+    const tempRoot = os.tmpdir().startsWith('/var/') ? os.tmpdir() : '/tmp';
+    const directory = await mkdtemp(path.join(tempRoot, 'archimate-partial-macos-'));
+    try {
+      const canonical = await realpath(directory);
+      assert.notEqual(path.resolve(directory), canonical, 'test requires a real macOS system alias');
+      const failed = await writePartialBatchArtifacts(directory,
+        [{ files: [{ filename: 'view.svg', contents: 'view' }] }], 'model.xml', () => '{}');
+      assert.deepEqual([...failed], []);
+      assert.equal(await readFile(path.join(canonical, 'view.svg'), 'utf8'), 'view');
+      await writeFile(path.join(canonical, 'model.xml'), 'input');
+      const againstInput = await writePartialBatchArtifacts(directory,
+        [{ files: [{ filename: 'model.xml', contents: 'overwrite' }] }],
+        path.join(directory, 'model.xml'), () => '{}');
+      assert.deepEqual([...againstInput], [0]);
+      assert.equal(await readFile(path.join(canonical, 'model.xml'), 'utf8'), 'input');
+    } finally { await rm(directory, { recursive: true, force: true }); }
+  });
+
 });
 
 describe('partial batch outputs', () => {
