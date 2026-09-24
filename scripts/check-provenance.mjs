@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync } from 'node:fs';
-import { resolve, sep } from 'node:path';
+import { lstatSync, readFileSync, readdirSync } from 'node:fs';
+import { relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { formatFindings, scanFixtureTree } from '../test/security/scan-fixtures.mjs';
@@ -165,8 +165,19 @@ function requiredStringFields(record, fields) {
 // --- Fixture manifest content hashes -----------------------------------
 //
 // Reuses test/fixtures/manifest.json (the existing fixture inventory,
-// already schema-validated by scanFixtureTree) and only adds an optional
-// content-hash check that scanFixtureTree does not perform.
+// already schema-validated by scanFixtureTree) and requires byte hashes
+// that scanFixtureTree does not verify.
+
+function isRegularFixturePath(fixturesRoot, fixturePath) {
+  let current = fixturesRoot;
+  for (const component of relative(fixturesRoot, fixturePath).split(sep)) {
+    current = resolve(current, component);
+    const stat = lstatSync(current);
+    if (stat.isSymbolicLink()) return false;
+    if (current === fixturePath ? !stat.isFile() : !stat.isDirectory()) return false;
+  }
+  return true;
+}
 
 export function checkFixtureContentHashes(manifestPath, fixturesRoot) {
   let manifest;
@@ -179,24 +190,36 @@ export function checkFixtureContentHashes(manifestPath, fixturesRoot) {
 
   const findings = [];
   const prefix = 'test/fixtures/';
-  for (const entry of manifest) {
-    if (!entry || typeof entry.content_sha256 !== 'string' || typeof entry.path !== 'string') continue;
+  for (const [index, entry] of manifest.entries()) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
+    const finding = rule => ({ rule, manifestIndex: index + 1 });
+    if (!Object.hasOwn(entry, 'content_sha256')) {
+      findings.push(finding('content-hash-missing'));
+      continue;
+    }
+    if (typeof entry.content_sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(entry.content_sha256)) {
+      findings.push(finding('content-hash-invalid'));
+      continue;
+    }
+    if (typeof entry.path !== 'string') continue; // existing manifest validator reports invalid entries
     if (!entry.path.startsWith(prefix)) continue;
 
     const fixturePath = resolve(fixturesRoot, entry.path.slice(prefix.length));
     if (!fixturePath.startsWith(fixturesRoot + sep)) {
-      findings.push({ rule: 'content-hash-path-invalid', id: entry.id });
+      findings.push(finding('content-hash-path-invalid'));
       continue;
     }
     let content;
     try {
+      // The fixture scanner reports symlinks and non-files. Never follow them here.
+      if (!isRegularFixturePath(fixturesRoot, fixturePath)) continue;
       content = readFileSync(fixturePath);
     } catch {
       continue; // missing-file is already reported by scanFixtureTree
     }
     const digest = createHash('sha256').update(content).digest('hex');
-    if (digest !== entry.content_sha256.toLowerCase()) {
-      findings.push({ rule: 'content-hash-mismatch', id: entry.id });
+    if (digest !== entry.content_sha256) {
+      findings.push(finding('content-hash-mismatch'));
     }
   }
   return findings;
@@ -312,7 +335,13 @@ export function checkProvenance(paths = defaultPaths()) {
 
 export function formatProvenanceReport({ fixtures, research }) {
   const sections = [];
-  if (fixtures.length) sections.push(formatFindings(fixtures));
+  const fixtureScanFindings = fixtures.filter(finding => !finding.manifestIndex);
+  const fixtureHashFindings = fixtures.filter(finding => finding.manifestIndex);
+  if (fixtureScanFindings.length) sections.push(formatFindings(fixtureScanFindings));
+  if (fixtureHashFindings.length) {
+    sections.push('Fixture hash check failed with ' + fixtureHashFindings.length + ' finding(s):\n'
+      + fixtureHashFindings.map(finding => '- fixture manifest entry ' + finding.manifestIndex + ': ' + finding.rule).join('\n'));
+  }
   if (research.length) {
     const lines = research.map(finding => {
       const location = finding.file ? finding.file + ': ' : '';

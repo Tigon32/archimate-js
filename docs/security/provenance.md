@@ -30,10 +30,19 @@ Fixtures (reusing the existing manifest and its existing validation in
 
 Added in this phase, on top of the existing manifest checks:
 
-- an optional per-entry `content_sha256` field, when present, is verified
-  against the fixture file's actual SHA-256 digest (`content-hash-mismatch`).
-  No entries currently declare this field; it is available for a contributor
-  or reviewer to opt a specific fixture into hash pinning.
+- every entry requires a lowercase, 64-character `content_sha256` digest of
+  its fixture file's bytes. Missing (`content-hash-missing`), malformed
+  (`content-hash-invalid`), and mismatched (`content-hash-mismatch`) values
+  fail the local provenance check. Findings identify the one-based manifest
+  entry number without printing fixture paths, ids, or contents.
+
+After an intentional fixture edit, review its classification and provenance,
+then calculate its new digest with `sha256sum test/fixtures/path/to/file` (or
+`shasum -a 256 test/fixtures/path/to/file` on macOS). Copy the lowercase
+64-character hex digest into that entry's `content_sha256` field in
+`test/fixtures/manifest.json`, and run `npm run test:provenance`. Hash the
+checked-in bytes directly, including any line endings; do not normalize the
+file before hashing.
 
 Research (`docs/research/sources.yaml`, a flat citation ledger):
 
@@ -62,7 +71,9 @@ Research (`docs/research/okf/*.md`, the OKF concept bundle):
 
 ## Limitations and scope
 
-- **This is not proof of license or public legitimacy.** No automated check
+- **This is not proof of license or public legitimacy.** The digest confirms
+  byte integrity against the manifest value, not source legality or whether
+  the manifest value was independently verified. No automated check
   can confirm that a URL, a claim, or a fixture is actually public, correctly
   licensed, or free of restricted content. It only confirms that the
   inventories are internally consistent, structurally complete, and reference
@@ -79,9 +90,7 @@ Research (`docs/research/okf/*.md`, the OKF concept bundle):
   general YAML implementation; an unsupported shape fails as unreadable
   rather than being silently misparsed, and needs a parser update or a
   documented ADR-level exception rather than a workaround.
-- Content-hash pinning is opt-in per fixture (`content_sha256`), not a
-  required field yet; making it mandatory for every fixture, and extending it
-  to vendored research artifacts, is later-phase scope.
+- Research artifacts are not hash-pinned by this fixture-only check.
 
 ## False positives and exceptions
 
