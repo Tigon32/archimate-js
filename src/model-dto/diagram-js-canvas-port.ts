@@ -3,12 +3,18 @@ import type { StyleDto } from './types.js';
 
 interface CanvasElement {
   id?: string;
+  children?: CanvasElement[];
+  source?: unknown;
+  target?: unknown;
+  waypoints?: unknown[];
 }
 
 interface DiagramJsCanvas {
-  clear(): void;
+  getRootElement(): unknown;
   addShape(shape: unknown, parent?: unknown): unknown;
   addConnection(connection: unknown): unknown;
+  removeShape(shape: unknown): void;
+  removeConnection(connection: unknown): void;
 }
 
 interface DiagramJsElementFactory {
@@ -121,7 +127,19 @@ export class DiagramJsCanvasPort implements CanvasPort {
 
   clear(): void {
     this.services.selection.select([]);
-    this.services.canvas.clear();
+    const root = this.services.canvas.getRootElement();
+    const shapes: unknown[] = [];
+    const connections: unknown[] = [];
+    const collect = (parent: CanvasElement): void => {
+      for (const child of parent.children || []) {
+        if (Array.isArray(child.waypoints) && child.source && child.target) connections.push(child);
+        else shapes.push(child);
+        collect(child);
+      }
+    };
+    if (root && typeof root === 'object') collect(root as CanvasElement);
+    for (const connection of connections) this.services.canvas.removeConnection(connection);
+    for (const shape of shapes.reverse()) this.services.canvas.removeShape(shape);
     this.shapes.clear();
     this.connections.clear();
   }
