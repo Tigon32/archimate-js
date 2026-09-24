@@ -6,6 +6,7 @@ on:
       - CI
       - Automated security analysis
       - MEFF XSD validation
+      - macOS path safety
     types:
       - completed
 

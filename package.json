@@ -32,6 +32,7 @@
     "hooks:install": "node scripts/install-git-hooks.mjs",
     "verify:wip": "run-s check:source-policy lint test:typecheck test:validator-build",
     "verify:local": "run-s check:source-policy lint test compile",
+    "verify:compat-node22": "run-s test:package test:validator-build test:cli test:packed-consumer",
     "pr:finalize": "node scripts/finalize-agent-pr.mjs",
     "prepack": "npm run compile",
     "lint": "eslint --no-eslintrc --config .eslintrc.release.json lib/BaseViewer.js lib/import/Importer.js lib/import/XmlPreflight.js lib/util/SvgExportUtil.mjs test/release/check.mjs test/unit/import-diagnostics.test.mjs",
