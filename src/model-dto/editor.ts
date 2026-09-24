@@ -1,5 +1,6 @@
 import type { ModelDto, PointDto, ViewConnectionDto, ViewNodeDto } from './types.js';
 import { exportModelDtoToMeff } from './meff-export.js';
+import { assessModelDtoEditingEligibility, editingIneligibleError } from './eligibility.js';
 import { invalid, serializeModelDto, validateModelDto } from './validate.js';
 
 /** The canvas receives values and identifiers, never mutable diagram-js objects. */
@@ -172,9 +173,9 @@ export class DiagramAdapter {
   private canvases = new Map<CanvasPort, string>();
 
   constructor(model: unknown) {
-    const validated = validateModelDto(model);
-    if (!sameData(model, validated)) invalid();
-    this.model = validated;
+    const eligibility = assessModelDtoEditingEligibility(model);
+    if (!eligibility.eligible || !sameData(model, eligibility.model)) throw editingIneligibleError();
+    this.model = eligibility.model;
   }
 
   getModel(): ModelDto { return structuredClone(this.model); }
