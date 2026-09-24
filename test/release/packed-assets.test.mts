@@ -34,7 +34,7 @@ function pack(entries: { name: string; content: Buffer; type?: string }[]): Buff
 const content = Buffer.from('synthetic public icon');
 const inventory = {
   schema: 'archimate-js.packaged-assets/v1',
-  sources: { synthetic: { classification: 'SYNTHETIC', origin: 'hand-authored for test',
+  sources: { synthetic: { classification: 'SYNTHETIC' as const, origin: 'hand-authored for test',
     license: 'MIT', reviewer: 'synthetic reviewer', reviewedAt: '2026-09-24' } },
   assets: [{ path: 'assets/icon.svg', gitBlobSha1: gitHash(content), source: 'synthetic' }]
 };
@@ -53,12 +53,12 @@ assert.throws(() => readPackedFiles(pack([{ name: 'package/..\/secret.xml', cont
   /unsafe-tar-entry/);
 assert.throws(() => readPackedFiles(pack([{ ...base, type: '2' }])), /unsafe-tar-entry/);
 const userSupplied = { ...inventory, sources: { synthetic: { ...inventory.sources.synthetic,
-  classification: 'USER_SUPPLIED' } } };
+  classification: 'USER_SUPPLIED' as const } } };
 assert.deepEqual(checkPackedAssets(pack([base]), userSupplied), ['unverified-release-permission']);
 const arbitraryPath = 'package/assets/PRIVATE_SENTINEL.xml';
 assert.throws(() => readPackedFiles(pack([{ name: arbitraryPath, content,
   type: '2' }])), (error: unknown) => {
-  assert.ok(error instanceof Error);
+  if (!(error instanceof Error)) return false;
   assert.ok(!error.message.includes('PRIVATE_SENTINEL'));
   return true;
 });
