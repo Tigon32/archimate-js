@@ -147,6 +147,41 @@ try {
     const redoRestored = editor.redo() && editor.redo() && editor.redo() && editor.serialize() === edited &&
       registry.get('node-component')?.name === 'Updated component';
     editor.undo(); editor.undo(); editor.undo();
+    const beforeTopology = editor.serialize();
+    const createdCanvas = modeling.createConnection(registry.get('node-component'),
+      registry.get('node-service'), { id: 'new-connection', type: 'Serving',
+        waypoints: [{ x: 160, y: 75 }, { x: 220, y: 90 }, { x: 300, y: 75 }] });
+    const added = editor.getModel();
+    const newConnection = added.views[0].connections.find((item) => item.id === 'new-connection');
+    const semantic = added.relationships.find((item) => item.id === newConnection?.relationshipId);
+    const created = createdCanvas?.id === 'new-connection' &&
+      registry.get('new-connection')?.source?.id === 'node-component' &&
+      semantic?.sourceId === 'component-one' && semantic?.targetId === 'service-two' &&
+      newConnection?.waypoints[1].x === 220;
+    modeling.reconnectEnd(registry.get('new-connection'), registry.get('node-service-nested'),
+      { x: 105, y: 175 });
+    const reconnected = editor.getModel().views[0].connections.find((item) => item.id === 'new-connection');
+    const endpointsPreserved = reconnected?.targetId === 'node-service-nested' &&
+      reconnected.waypoints[1].x === 220 && reconnected.waypoints.at(-1).x === 105 &&
+      registry.get('new-connection')?.target?.id === 'node-service-nested';
+    const beforeInvalid = editor.serialize();
+    let invalidUnchanged = false;
+    try {
+      modeling.createConnection(registry.get('node-component'), registry.get('node-service'),
+        { id: 'invalid-connection', type: 'Relationship' });
+    } catch {
+      invalidUnchanged = editor.serialize() === beforeInvalid && !registry.get('invalid-connection');
+    }
+    modeling.removeElements([registry.get('node-service-nested')]);
+    const afterDelete = editor.getModel();
+    const viewDeletedOnly = !afterDelete.views[0].connections.some((item) => item.id === 'new-connection') &&
+      afterDelete.elements.length === added.elements.length &&
+      afterDelete.relationships.length === added.relationships.length;
+    const topologyUndo = editor.undo() && editor.serialize() === beforeInvalid &&
+      editor.undo() && editor.undo() && editor.serialize() === beforeTopology;
+    const topologyRedo = editor.redo() && editor.redo() && editor.redo() &&
+      editor.getModel().views[0].nodes[0].nodes.length === 0;
+    editor.undo(); editor.undo(); editor.undo();
     const untouched = JSON.stringify(supportedEntry.model) === originalSnapshot;
     detach();
     const clearedOnDetach = registry.get('node-component') === undefined;
@@ -186,6 +221,12 @@ try {
       unsupportedUnchanged,
       undoRestored,
       redoRestored,
+      created,
+      endpointsPreserved,
+      invalidUnchanged,
+      viewDeletedOnly,
+      topologyUndo,
+      topologyRedo,
       eventPayloadsArePlain: publicEvents.length >= 5 &&
         publicEvents.every((event) => !/businessObject|\$parent|\$type/.test(event)),
       serializedStateIsPlain: !editor.serialize().includes('businessObject'),
@@ -199,7 +240,9 @@ try {
     supported: true, unsupported: true, canvasIds: true, nested: true, nestedGeometry: true,
     geometry: true, label: true, renderedStyle: true, endpoints: true, styled: true,
     selection: true, selectionEvents: true, gesturesUpdatedDto: true, gesturesUpdatedCanvas: true,
-    unsupportedUnchanged: true, undoRestored: true, redoRestored: true, eventPayloadsArePlain: true,
+    unsupportedUnchanged: true, undoRestored: true, redoRestored: true,
+    created: true, endpointsPreserved: true, invalidUnchanged: true, viewDeletedOnly: true,
+    topologyUndo: true, topologyRedo: true, eventPayloadsArePlain: true,
     serializedStateIsPlain: true, detached: true, switchedViewCleared: true,
     coordinatesRestored: true, sourceUnchanged: true
   });

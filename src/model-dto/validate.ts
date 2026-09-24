@@ -111,19 +111,26 @@ function connection(value: unknown, nodeIds: Set<string>): ViewConnectionDto {
     label: optionalText(data.label), style: style(data.style) };
 }
 
-function view(value: unknown, elementIds: Set<string>, relationshipIds: Set<string>): ViewDto {
+function view(value: unknown, elementIds: Set<string>, relationships: Map<string, RelationshipDto>): ViewDto {
   const data = record(value);
   const nodeIds = new Set<string>();
+  const concepts = new Map<string, string>();
   const nodes = list(data.nodes).map((item) => node(item, nodeIds));
   const visit = (item: ViewNodeDto): void => {
     if (item.kind === 'element' && !elementIds.has(item.elementId!)) invalid();
+    if (item.elementId) concepts.set(item.id, item.elementId);
     item.nodes.forEach(visit);
   };
   nodes.forEach(visit);
   const connections = list(data.connections).map((item) => connection(item, nodeIds));
   const ids = new Set(nodeIds);
   for (const item of connections) {
-    if (ids.has(item.id) || item.relationshipId && !relationshipIds.has(item.relationshipId)) invalid();
+    if (ids.has(item.id)) invalid();
+    if (item.kind === 'relationship') {
+      const relationship = relationships.get(item.relationshipId!);
+      if (!relationship || concepts.get(item.sourceId!) !== relationship.sourceId ||
+          concepts.get(item.targetId!) !== relationship.targetId) invalid();
+    }
     ids.add(item.id);
   }
   return { id: identifier(data.id), name: optionalText(data.name), nodes, connections };
@@ -154,7 +161,8 @@ export function validateModelDto(input: unknown): ModelDto {
   const conceptIds = new Set([...elementIds, ...relationshipIds]);
   if (elements.some((item) => relationshipIds.has(item.id)) || relationships.some((item) =>
     !conceptIds.has(item.sourceId) || !conceptIds.has(item.targetId))) invalid();
-  const views = list(data.views).map((item) => view(item, elementIds, relationshipIds));
+  const relationshipMap = new Map(relationships.map((item) => [item.id, item]));
+  const views = list(data.views).map((item) => view(item, elementIds, relationshipMap));
   unique(views.map((item) => item.id));
   const diagnostics = list(data.diagnostics).map(diagnostic);
   return { schemaVersion: 1, id: identifier(data.id), name: optionalText(data.name),

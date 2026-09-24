@@ -1,4 +1,4 @@
-import type { ModelDto, PointDto, StyleDto, ViewConnectionDto, ViewNodeDto } from './types.js';
+import type { ModelDto, PointDto, RelationshipDto, StyleDto, ViewConnectionDto, ViewNodeDto } from './types.js';
 import { exportModelDtoToMeff } from './meff-export.js';
 import { assessModelDtoEditingEligibility, editingIneligibleError } from './eligibility.js';
 import { invalid, serializeModelDto, validateModelDto } from './validate.js';
@@ -17,7 +17,7 @@ export interface CanvasProjection {
 export type EditorCommand =
   | { type: 'move'; viewId: string; nodeId: string; x: number; y: number }
   | { type: 'resize'; viewId: string; nodeId: string; x: number; y: number; width: number; height: number }
-  | { type: 'connect'; viewId: string; connection: ViewConnectionDto }
+  | { type: 'connect'; viewId: string; connection: ViewConnectionDto; relationship?: RelationshipDto }
   | { type: 'reconnect'; viewId: string; connectionId: string; sourceId?: string; targetId?: string;
       waypoints: PointDto[] }
   | { type: 'delete'; viewId: string; itemId: string }
@@ -113,6 +113,54 @@ function deleteItem(view: ModelDto['views'][number], itemId: string): void {
   view.connections.splice(index, 1);
 }
 
+function conceptAt(view: ModelDto['views'][number], nodeId: string | undefined): string {
+  const node = nodeId && findNode(view.nodes, nodeId);
+  if (!node || node.kind !== 'element' || !node.elementId) invalid();
+  return node.elementId;
+}
+
+function checkEndpoints(model: ModelDto, view: ModelDto['views'][number],
+  connection: ViewConnectionDto): void {
+  if (connection.kind !== 'relationship' || !connection.relationshipId) invalid();
+  const relationship = model.relationships.find((item) => item.id === connection.relationshipId);
+  if (!relationship || relationship.sourceId !== conceptAt(view, connection.sourceId) ||
+      relationship.targetId !== conceptAt(view, connection.targetId)) invalid();
+}
+
+function connect(model: ModelDto, view: ModelDto['views'][number],
+  command: Extract<EditorCommand, { type: 'connect' }>): void {
+  if (view.connections.some((connection) => connection.id === command.connection.id)) invalid();
+  if (command.relationship) {
+    if (command.connection.relationshipId !== command.relationship.id ||
+        model.relationships.some((item) => item.id === command.relationship!.id) ||
+        model.elements.some((item) => item.id === command.relationship!.id)) invalid();
+    model.relationships.push(command.relationship);
+  }
+  if (command.connection.kind === 'relationship') checkEndpoints(model, view, command.connection);
+  else if (command.relationship) invalid();
+  view.connections.push(command.connection);
+}
+
+function reconnect(model: ModelDto, view: ModelDto['views'][number],
+  command: Extract<EditorCommand, { type: 'reconnect' }>): void {
+  const connection = view.connections.find((item) => item.id === command.connectionId);
+  if (!connection) invalid();
+  if (connection.kind === 'relationship') {
+    const relationship = model.relationships.find((item) => item.id === connection.relationshipId);
+    if (!relationship) invalid();
+    const sourceId = conceptAt(view, command.sourceId);
+    const targetId = conceptAt(view, command.targetId);
+    if ((relationship.sourceId !== sourceId || relationship.targetId !== targetId) &&
+        model.views.some((item) => item.connections.some((candidate) =>
+          candidate !== connection && candidate.relationshipId === relationship.id))) invalid();
+    relationship.sourceId = sourceId;
+    relationship.targetId = targetId;
+  }
+  connection.sourceId = command.sourceId;
+  connection.targetId = command.targetId;
+  connection.waypoints = command.waypoints;
+}
+
 /** Reject fields that DTO validation would omit, including nested canvas objects. */
 function sameData(source: unknown, target: unknown): boolean {
   if (Object.is(source, target)) return true;
@@ -139,17 +187,11 @@ function apply(model: ModelDto, command: EditorCommand): ModelDto {
     changeBounds(view, command);
     break;
   case 'connect':
-    if (view.connections.some((connection) => connection.id === command.connection.id)) invalid();
-    view.connections.push(command.connection);
+    connect(next, view, command);
     break;
-  case 'reconnect': {
-    const connection = view.connections.find((item) => item.id === command.connectionId);
-    if (!connection) invalid();
-    connection.sourceId = command.sourceId;
-    connection.targetId = command.targetId;
-    connection.waypoints = command.waypoints;
+  case 'reconnect':
+    reconnect(next, view, command);
     break;
-  }
   case 'delete':
     deleteItem(view, command.itemId);
     break;

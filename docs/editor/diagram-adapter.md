@@ -29,7 +29,8 @@ if (result.eligible) {
 `DiagramJsCanvasPort` adapts a Viewer or Modeler canvas, element factory,
 event bus, selection service, and (for editing) modeling service. Pass the
 modeling service from `instance.get('modeling')` to route native
-`moveElements`, `resizeShape`, and `updateLabel` operations into the adapter
+`moveElements`, `resizeShape`, `updateLabel`, `createConnection`, `reconnect`,
+and single-item removal operations into the adapter
 before diagram-js's command stack runs:
 
 ```ts
@@ -45,7 +46,7 @@ const detach = editor.attach(activeViewId, port);
 
 It draws one active view from plain projection values, maps selection back to
 view IDs, and clears canvas elements and listeners and restores modeling methods
-on detach. Each supported move, resize, or label gesture becomes one DTO
+on detach. Each supported move, resize, label, relationship, or removal gesture becomes one DTO
 command; undo and redo rerender the same active view from DTO history. A move
 is supported for one node within its current parent. Multi-node moves,
 reparenting, and attachment gestures are rejected before diagram-js can mutate
@@ -54,10 +55,17 @@ style; connection projections include relationship type/name, style, and
 endpoints. Renderer-only facades and canvas elements remain private to the
 port. The headless `CanvasPort` contract also supports ID-only commands.
 
+New live relationships require an explicit relationship type accepted by the
+existing ArchiMate rule service. The port stores the semantic relationship and
+view connection in one command. Reconnecting changes semantic endpoints only
+when no other view connection refers to the relationship; shared relationships
+cannot be retargeted through one view. Multi-item deletion is rejected as one
+unsupported gesture. Removing a view node removes attached view connections
+but retains semantic elements and relationships.
+
 The adapter's move, resize, connect, reconnect, delete, and presentation label
 commands use a snapshot-backed undo/redo stack. A node move carries its nested
-children and attached endpoints; deletion removes attached view connections
-but leaves semantic elements and relationships in the model. UI selection is
+children and attached endpoints. UI selection is
 ephemeral. `getModel()`, `project()`, and change events return detached values,
 and `serialize()` saves validated DTO JSON.
 
