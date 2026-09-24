@@ -1,0 +1,68 @@
+name: Research or spike
+description: Reduce uncertainty before an implementation or architectural decision.
+title: "Research: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read the [issue contribution guide](https://github.com/Tigon32/archimate-js/blob/main/docs/contributing/issues.md) first. Search open and closed issues before filing.
+  - type: textarea
+    id: existing_work
+    attributes:
+      label: Existing work and duplicate search
+      description: Link related research, issues, or completed work and explain what uncertainty remains.
+    validations:
+      required: true
+  - type: textarea
+    id: decision
+    attributes:
+      label: Decision to inform
+      description: State the concrete implementation, architecture, or policy decision this research must inform.
+    validations:
+      required: true
+  - type: textarea
+    id: questions
+    attributes:
+      label: Questions and scope
+      description: List the questions to answer and what is explicitly out of scope.
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Public sources
+      description: List original authoritative sources, versions, retrieval dates, and provenance where relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: experiments
+    attributes:
+      label: Experiments or comparisons
+      description: Describe the public or synthetic experiments, fixtures, tools, or comparisons that will produce evidence.
+    validations:
+      required: true
+  - type: textarea
+    id: stopping
+    attributes:
+      label: Stopping criteria
+      description: Define the evidence threshold or conditions that make the research complete.
+    validations:
+      required: true
+  - type: textarea
+    id: durable_output
+    attributes:
+      label: Durable output
+      description: Name the artifact to leave behind, such as a research record, decision, ADR, compatibility matrix, or follow-up issue.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: I searched open and closed issues for duplicates and related work.
+          required: true
+        - label: This research uses only public or synthetic data and contains no private architecture material.
+          required: true
+        - label: External claims, experiments, or copied/adapted material link to original sources and include provenance where relevant.
+          required: true
