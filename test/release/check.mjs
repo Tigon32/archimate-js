@@ -14,9 +14,10 @@ assert.match(version, /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-
   'package version must follow SemVer');
 assert.ok(changelog.split(/\r?\n/).some((line) => line === `## ${version}` || line === `## [${version}]`),
   'CHANGELOG.md must contain a section for the package version');
-assert.deepEqual(Object.keys(packageJson.exports).sort(), ['.', './validator'],
+assert.deepEqual(Object.keys(packageJson.exports).sort(), ['.', './model-dto', './validator'],
   'package exports must match the documented stable import paths');
 assert.match(exportsDoc, /archimate-js\/validator/);
+assert.match(exportsDoc, /archimate-js\/model-dto/);
 
 const ref = process.env.GITHUB_REF || '';
 if (ref.startsWith('refs/tags/')) {

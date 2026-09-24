@@ -19,9 +19,16 @@ are IDs rather than parser or diagram objects. The projection emits a
 including properties, metadata, viewpoints, and authored font overrides.
 Diagnostic messages are content-free to avoid copying model text into logs.
 
-This is an opt-in internal boundary, **not yet a replacement for the public
-import/export path**. Remaining issue #92 work includes migrating the legacy
-public importer and exporter to TypeScript under ADR-0004, wiring both and
+The opt-in `archimate-js/model-dto` subpath exposes the DTO JSON validation,
+serialization, and parsing functions and `importMeffToModelDto(unknown)` for
+the declared MEFF subset. It applies the existing XML preflight byte, depth,
+node, attribute, and DTD limits before either legacy parser runs. Input errors
+use a fixed `MEFF_DTO_IMPORT_INVALID` diagnostic without XML content. The
+package root's viewer and existing MEFF exporter retain their prior behavior.
+
+This is **not yet a replacement for the existing public XML import/export
+path**. Remaining issue #92 work includes migrating the legacy MEFF parsers
+and exporter to TypeScript under ADR-0004, wiring MEFF export and
 editor persistence through this contract, defining lossless representation
 for currently omitted exchange fields and language-version semantics, and
 testing real save/export and reload. Consumers must inspect diagnostics and

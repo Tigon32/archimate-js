@@ -22,6 +22,8 @@ assert.ok(packageJson.files.includes('bin'), 'package publishes bin/');
 assert.equal(packageJson.bin['archimate-js'], 'bin/archimate-js.mjs');
 assert.ok(packageJson.dependencies['playwright-core'], 'headless CLI runtime is declared');
 assert.equal(packageJson.exports['./validator'].import, './dist/validator/index.js');
+assert.equal(packageJson.exports['./model-dto'].import, './dist/model-dto/index.js');
+assert.equal(packageJson.exports['./model-dto'].types, './dist/model-dto/index.d.ts');
 assert.ok(packageJson.scripts['test:unit'].includes('--coverage.enabled'), 'unit tests publish informational coverage');
 
 console.log('package smoke test passed');
