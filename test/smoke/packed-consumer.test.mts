@@ -45,7 +45,8 @@ try {
   const consumerEntry = path.join(consumer, 'consumer-entry.mjs');
   await writeFile(consumerEntry, `
     import Viewer, { mountViewer, renderViewToSvg } from 'archimate-js';
-    import { importMeffToModelDto, exportModelDtoToMeff } from 'archimate-js/model-dto';
+    import { importMeffToModelDto, exportModelDtoToMeff,
+      createAccessibleOutline, formatAccessibleOutline } from 'archimate-js/model-dto';
     import { layoutView } from 'archimate-js/layout';
     export default {
       viewer: typeof Viewer,
@@ -53,6 +54,8 @@ try {
       renderViewToSvg: typeof renderViewToSvg,
       dtoImport: typeof importMeffToModelDto,
       dtoExport: typeof exportModelDtoToMeff,
+      outline: typeof createAccessibleOutline,
+      outlineText: typeof formatAccessibleOutline,
       layoutView: typeof layoutView
     };
   `);
@@ -79,6 +82,7 @@ try {
   const rootApi = require(bundlePath).default;
   assert.deepEqual(rootApi, { viewer: 'function', mountViewer: 'function',
     renderViewToSvg: 'function', dtoImport: 'function', dtoExport: 'function',
+    outline: 'function', outlineText: 'function',
     layoutView: 'function' });
 
   const consumerScript = String.raw`
@@ -107,6 +111,10 @@ try {
         { id: 'two', kind: 'container', x: 15, y: 15, width: 40, height: 30, nodes: [] }
       ], connections: [] }] };
     const laidOut = await layout.layoutView(synthetic, 'view', { strategy: 'builtin' });
+    const outline = dto.createAccessibleOutline(synthetic, 'view');
+    assert.equal(outline.viewId, 'view');
+    assert.deepEqual(outline.nodes.map((node) => node.id), ['one', 'two']);
+    assert.match(dto.formatAccessibleOutline(outline), /view/);
     assert.equal(laidOut.status, 'ok');
     assert.equal(laidOut.metrics.overlapCountBefore, 1);
     assert.equal(laidOut.metrics.overlapCountAfter, 0);
