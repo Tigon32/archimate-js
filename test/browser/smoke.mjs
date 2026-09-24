@@ -20,6 +20,9 @@ const routes = new Map([
   ]],
   ['/test/fixtures/synthetic/directed-association.xml', [
     'test/fixtures/synthetic/directed-association.xml', 'application/xml; charset=utf-8'
+  ]],
+  ['/test/fixtures/meff-schema/valid-view-diagram.xml', [
+    'test/fixtures/meff-schema/valid-view-diagram.xml', 'application/xml; charset=utf-8'
   ]]
 ]);
 
@@ -179,23 +182,52 @@ try {
   assert.equal(report.missingViewDiagnostic?.code, 'VIEW_NOT_FOUND');
   assert.equal(report.missingViewDiagnostic?.message, 'The requested ArchiMate view was not found.');
 
-  stage = 'import and export a directed Association';
+  stage = 'import and export named and unnamed connections';
   const directedAssociation = await page.evaluate(async () => {
     const xml = await (await fetch('/test/fixtures/synthetic/directed-association.xml')).text();
-    const svg = await window.ArchimateJS.renderViewToSvg({
+    const api = window.ArchimateJS;
+    const svg = await api.renderViewToSvg({
       xml,
       viewId: 'view-directed-association',
       title: 'Synthetic directed Association'
     });
     const parsed = new DOMParser().parseFromString(svg, 'image/svg+xml');
     const path = parsed.querySelector('.djs-connection .djs-visual path');
+    const unnamedXml = xml.replace(' name="Directed Association"', '');
+    const unnamedSvg = await api.renderViewToSvg({
+      xml: unnamedXml,
+      viewId: 'view-directed-association',
+      title: 'Synthetic unnamed Association'
+    });
+    const unnamed = new DOMParser().parseFromString(unnamedSvg, 'image/svg+xml');
+
     return {
       markerStyle: path?.getAttribute('style'),
-      markerShape: parsed.querySelector('defs marker path')?.getAttribute('d')
+      markerShape: parsed.querySelector('defs marker path')?.getAttribute('d'),
+      labelTexts: [...parsed.querySelectorAll('.djs-label')].map((label) => label.textContent),
+      unnamedLabels: [...unnamed.querySelectorAll('.djs-label')].map((label) => label.textContent)
     };
   });
-  assert.match(directedAssociation.markerStyle || '', /marker-end:\s*url\(['"]?#archimate-export-id-\d+/);
+  assert.match(directedAssociation.markerStyle || '', /marker-end:\\s*url\\(['"]?#archimate-export-id-\\d+/);
   assert.equal(directedAssociation.markerShape, 'M 1 5 L 11 10');
+  assert.ok(directedAssociation.labelTexts.some((label) => label?.includes('Directed Association')),
+    'named imported relationship should render a visible SVG label');
+  assert.deepEqual(directedAssociation.unnamedLabels, [],
+    'unnamed imported relationship should not create a visible SVG label');
+
+  stage = 'render imported MEFF connection width';
+  const meffConnectionWidth = await page.evaluate(async () => {
+    const xml = await (await fetch('/test/fixtures/meff-schema/valid-view-diagram.xml')).text();
+    const svg = await window.ArchimateJS.renderViewToSvg({
+      xml,
+      viewId: 'view-synthetic-one',
+      title: 'Synthetic MEFF connection width'
+    });
+    const parsed = new DOMParser().parseFromString(svg, 'image/svg+xml');
+    return parsed.querySelector('.djs-connection .djs-visual path')?.getAttribute('stroke-width');
+  });
+  assert.equal(meffConnectionWidth, '9',
+    'SVG export should preserve an explicitly imported MEFF connection width');
 
   stage = 'assert malformed input returns content-free diagnostic';
   assert.equal(report.malformedDiagnostic?.code, 'MODEL_IMPORT_FAILED');
