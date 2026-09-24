@@ -7,6 +7,8 @@ import { parseMeffViews } from '../../lib/import/MeffView.js';
 import ArchimateModdle from '../../lib/moddle/Moddle';
 import ArchimateDescriptors from '../../lib/moddle/resources/archimate.json';
 import { preflightImportXml } from '../../lib/import/XmlPreflight.js';
+import ArchimateImporter from '../../lib/import/ArchimateImporter';
+import ElementFactory from '../../lib/features/modeling/ElementFactory';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fixturePath = path.resolve(here, '../fixtures/meff-schema/valid-view-diagram.xml');
@@ -169,4 +171,70 @@ describe('MEFF View and Diagram import', () => {
     expect(JSON.stringify(parsed.diagnostics)).not.toContain('node-component-one');
   });
 
+
+  it('keeps diagram coordinates reversible and applies supported styles without inventing source styles', async () => {
+    const xml = await readFile(fixturePath, 'utf8');
+    const component = {
+      id: 'component-one',
+      type: 'archimate:ApplicationComponent',
+      conceptType: 'archimate:ApplicationComponent'
+    };
+    const service = {
+      id: 'service-two',
+      type: 'archimate:ApplicationService',
+      conceptType: 'archimate:ApplicationService'
+    };
+    const relationship = {
+      id: 'serving-one-two',
+      type: 'archimate:Serving',
+      conceptType: 'archimate:Serving'
+    };
+    const parsed = parseMeffViews(xml, {
+      elementsById: new Map([[component.id, component], [service.id, service]]),
+      relationshipsById: new Map([[relationship.id, relationship]])
+    });
+    const [componentNode] = parsed.views.diagrams.viewsList[0].viewElements;
+    const nestedNode = componentNode.nodes[0];
+    const factory = new ElementFactory({ create: () => ({}) }, {}, (message) => message);
+    factory.baseCreate = (type, attrs) => ({ ...attrs, factoryType: type });
+    const importer = new ArchimateImporter(
+      { fire() {} },
+      { addShape(shape, parent) { shape.parent = parent; return shape; } },
+      factory,
+      { get() {} },
+      (message) => message,
+      {}
+    );
+    const root = { type: 'root', x: 0, y: 0 };
+    const parentShape = importer.addElement(componentNode, root);
+    const nestedShape = importer.addElement(nestedNode, parentShape);
+
+    expect(parentShape.x).toBe(20);
+    expect(parentShape.y).toBe(40);
+    expect(nestedShape.x).toBe(-10);
+    expect(nestedShape.y).toBe(80);
+    expect(nestedShape.x + parentShape.x).toBe(nestedNode.meffGeometry.x);
+    expect(nestedShape.y + parentShape.y).toBe(nestedNode.meffGeometry.y);
+    expect(nestedNode.style).toBeUndefined();
+    expect(nestedShape.style.fillColor).toBe('#B5FFFF');
+
+    const styledShape = factory.createShape({
+      type: componentNode.type,
+      businessObject: componentNode,
+      x: componentNode.x,
+      y: componentNode.y,
+      width: componentNode.w,
+      height: componentNode.h
+    });
+    expect(styledShape.style).toMatchObject({
+      lineWidth: 7,
+      lineColor: '#14283C80',
+      fillColor: '#B4D2F000',
+      fontName: 'Synthetic Sans',
+      fontSize: 10.5,
+      fontStyle: 'bold italic',
+      fontColor: '#0B1621BF'
+    });
+    expect(componentNode.meffGeometry.coordinateSpace).toBe('diagram');
+  });
 });
