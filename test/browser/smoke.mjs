@@ -74,6 +74,8 @@ try {
   assert.equal(await page.locator('#status').textContent(), 'Loaded the public synthetic service delivery example.');
   assert.ok(await page.locator('#diagram svg text').count() >= 5, 'HTML embed should render the multi-layer synthetic view');
   const embeddedDiagramText = await page.locator('#diagram svg').textContent();
+  assert.ok(embeddedDiagramText.includes('Assigns request'),
+    'viewer should render the named imported relationship label');
   const diagramBounds = await page.locator('#diagram svg').boundingBox();
   assert.ok(diagramBounds && diagramBounds.width > 0 && diagramBounds.height > 0,
     'HTML embed should have visible diagram dimensions');
