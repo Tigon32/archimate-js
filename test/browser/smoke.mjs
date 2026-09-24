@@ -71,6 +71,8 @@ try {
   assert.equal(await page.locator('#status').textContent(), 'Loaded the public synthetic service delivery example.');
   assert.ok(await page.locator('#diagram svg text').count() >= 5, 'HTML embed should render the multi-layer synthetic view');
   const embeddedDiagramText = await page.locator('#diagram svg').textContent();
+  assert.ok(embeddedDiagramText.includes('Assigns request'),
+    'viewer should render the named imported relationship label');
   const diagramBounds = await page.locator('#diagram svg').boundingBox();
   assert.ok(diagramBounds && diagramBounds.width > 0 && diagramBounds.height > 0,
     'HTML embed should have visible diagram dimensions');
@@ -179,23 +181,57 @@ try {
   assert.equal(report.missingViewDiagnostic?.code, 'VIEW_NOT_FOUND');
   assert.equal(report.missingViewDiagnostic?.message, 'The requested ArchiMate view was not found.');
 
-  stage = 'import and export a directed Association';
+  stage = 'import and export named and unnamed connections';
   const directedAssociation = await page.evaluate(async () => {
     const xml = await (await fetch('/test/fixtures/synthetic/directed-association.xml')).text();
-    const svg = await window.ArchimateJS.renderViewToSvg({
+    const api = window.ArchimateJS;
+    const svg = await api.renderViewToSvg({
       xml,
       viewId: 'view-directed-association',
       title: 'Synthetic directed Association'
     });
     const parsed = new DOMParser().parseFromString(svg, 'image/svg+xml');
     const path = parsed.querySelector('.djs-connection .djs-visual path');
+    const unnamedXml = xml.replace(' name="Directed Association"', '');
+    const unnamedSvg = await api.renderViewToSvg({
+      xml: unnamedXml,
+      viewId: 'view-directed-association',
+      title: 'Synthetic unnamed Association'
+    });
+    const unnamed = new DOMParser().parseFromString(unnamedSvg, 'image/svg+xml');
+
     return {
       markerStyle: path?.getAttribute('style'),
-      markerShape: parsed.querySelector('defs marker path')?.getAttribute('d')
+      markerShape: parsed.querySelector('defs marker path')?.getAttribute('d'),
+      labelTexts: [...parsed.querySelectorAll('[data-element-id$="_label"] .djs-label')].map((label) => label.textContent),
+      unnamedLabels: [...unnamed.querySelectorAll('[data-element-id$="_label"] .djs-label')].map((label) => label.textContent)
     };
   });
   assert.match(directedAssociation.markerStyle || '', /marker-end:\s*url\(['"]?#archimate-export-id-\d+/);
   assert.equal(directedAssociation.markerShape, 'M 1 5 L 11 10');
+  assert.ok(directedAssociation.labelTexts.some((label) => label?.includes('Directed Association')),
+    'named imported relationship should render a visible SVG label');
+  assert.deepEqual(directedAssociation.unnamedLabels, [],
+    'unnamed imported relationship should not create a visible SVG label');
+
+  stage = 'render an explicitly styled imported connection width';
+  const importedConnectionWidth = await page.evaluate(async () => {
+    const xml = await (await fetch('/test/fixtures/synthetic/directed-association.xml')).text();
+    const styledXml = xml.replace(
+      '<archimate:Waypoints>',
+      '<archimate:Style lineWidth="9" /><archimate:Waypoints>'
+    );
+    const svg = await window.ArchimateJS.renderViewToSvg({
+      xml: styledXml,
+      viewId: 'view-directed-association',
+      title: 'Synthetic imported connection width'
+    });
+    const parsed = new DOMParser().parseFromString(svg, 'image/svg+xml');
+    const path = parsed.querySelector('.djs-connection .djs-visual path');
+    return Number.parseFloat(path?.style.strokeWidth || path?.getAttribute('stroke-width') || 'NaN');
+  });
+  assert.equal(importedConnectionWidth, 9,
+    'SVG export should preserve an explicitly imported connection width');
 
   stage = 'assert malformed input returns content-free diagnostic';
   assert.equal(report.malformedDiagnostic?.code, 'MODEL_IMPORT_FAILED');

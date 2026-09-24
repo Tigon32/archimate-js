@@ -23,7 +23,45 @@ describe('Association direction rendering', () => {
 
     expect(graphics.querySelector('path')?.hasAttribute('marker-end')).toBe(false);
   });
+
+  it('renders an imported positive line width and keeps the default for missing or invalid widths', () => {
+    const explicit = createRenderer();
+    explicit.renderer.drawConnection(explicit.graphics, directedAssociation({
+      typeOption: false,
+      isDirected: false,
+      lineWidth: 3
+    }));
+    expect(getRenderedStrokeWidth(explicit.graphics)).toBe(3);
+
+    const numericStringWidth = createRenderer();
+    numericStringWidth.renderer.drawConnection(numericStringWidth.graphics, directedAssociation({
+      typeOption: false,
+      isDirected: false,
+      lineWidth: '3'
+    }));
+    expect(getRenderedStrokeWidth(numericStringWidth.graphics)).toBe(3);
+
+    const defaultWidth = createRenderer();
+    defaultWidth.renderer.drawConnection(defaultWidth.graphics, directedAssociation({
+      typeOption: false,
+      isDirected: false
+    }));
+    expect(getRenderedStrokeWidth(defaultWidth.graphics)).toBe(1);
+
+    const invalidWidth = createRenderer();
+    invalidWidth.renderer.drawConnection(invalidWidth.graphics, directedAssociation({
+      typeOption: false,
+      isDirected: false,
+      lineWidth: 0
+    }));
+    expect(getRenderedStrokeWidth(invalidWidth.graphics)).toBe(1);
+  });
 });
+
+function getRenderedStrokeWidth(graphics) {
+  const path = graphics.querySelector('path');
+  return Number.parseFloat(path?.style.strokeWidth || path?.getAttribute('stroke-width') || 'NaN');
+}
 
 function createRenderer() {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -41,12 +79,12 @@ function createRenderer() {
   return { renderer, graphics };
 }
 
-function directedAssociation({ typeOption, isDirected }) {
+function directedAssociation({ typeOption, isDirected, lineWidth = 1 }) {
   return {
     type: 'Association',
     typeOption,
     businessObject: { relationshipRef: { isDirected } },
-    style: { lineColor: '#000000' },
+    style: { lineColor: '#000000', lineWidth },
     waypoints: [ { x: 0, y: 0 }, { x: 120, y: 0 } ]
   };
 }
