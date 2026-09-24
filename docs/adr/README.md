@@ -16,6 +16,7 @@ ADRs record consequential decisions for this fork. They should be short, dated, 
 | 0001 | Public clean-room boundary | Proposed |
 | 0002 | Standard-first interoperability | Proposed |
 | 0003 | Deterministic report rendering | Proposed |
+| 0004 | TypeScript-first incremental migration and module size | Accepted |
 
 ## Template
 
