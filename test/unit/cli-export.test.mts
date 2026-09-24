@@ -18,8 +18,8 @@ import type { ExportOptions } from '../../src/cli/types.mjs';
 describe('export arguments', () => {
   test('parses formats and options', () => {
     assert.deepEqual(parseArguments([
-      'export', 'model.xml', '--view-name', 'View', '--format', 'svg,png',
-      '--format', 'pdf', '--output-dir', 'out', '--basename', 'Résumé / Q4',
+      'export', 'model.xml', '--view-name', 'View', '--format', 'pdf,png',
+      '--format', 'svg', '--output-dir', 'out', '--basename', 'Résumé / Q4',
       '--scale', '4', '--background', '#102030', '--pdf-page-size', 'Letter',
       '--pdf-orientation', 'landscape', '--fit', 'contain', '--padding', '24',
       '--pdf-title', 'Quarterly report', '--pdf-footer', 'Synthetic fixture'
@@ -233,13 +233,13 @@ describe('batch path safety', () => {
   test('manifest records canonical dimensions and per-format content hashes', () => {
     const views = [{ id: 'view-a', name: 'Synthetic', basename: 'Synthetic' }];
     const svg = '<svg width="20" height="10" viewBox="2 3 20 10"></svg>';
-    const result = prepareBatch(views, [{ svg, png: Uint8Array.of(1, 2) }], ['svg', 'png']);
+    const result = prepareBatch(views, [{ canonicalSvg: svg, png: Uint8Array.of(1, 2) }], ['png']);
     const manifest = JSON.parse(result.manifest);
     assert.equal(manifest.schemaVersion, 1);
     assert.deepEqual(manifest.entries[0].outputs.map((item: { path: string }) => item.path),
-      ['Synthetic.svg', 'Synthetic.png']);
+      ['Synthetic.png']);
     assert.deepEqual(manifest.entries[0].outputs[0].dimensions, { width: 20, height: 10 });
-    assert.match(manifest.entries[0].outputs[1].sha256, /^[a-f0-9]{64}$/);
+    assert.match(manifest.entries[0].outputs[0].sha256, /^[a-f0-9]{64}$/);
   });
 });
 

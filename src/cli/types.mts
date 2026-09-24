@@ -67,4 +67,6 @@ export type CliResult = {
   formats?: ExportFormat[];
 };
 
-export type ExportArtifacts = Partial<Record<ExportFormat, string | Uint8Array>>;
+export type ExportArtifacts = Partial<Record<ExportFormat, string | Uint8Array>> & {
+  canonicalSvg?: string;
+};

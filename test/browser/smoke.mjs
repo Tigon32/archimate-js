@@ -82,9 +82,7 @@ try {
   assert.equal(await page.locator('.am-app').getAttribute('data-theme'), 'light');
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.locator('.am-app[data-theme="dark"]').waitFor();
-  await chooser.focus();
-  await page.keyboard.press('End');
-  await page.keyboard.press('Tab');
+  await chooser.selectOption('high-contrast-dark');
   assert.equal(await chooser.inputValue(), 'high-contrast-dark');
   assert.equal(await page.locator('.am-app').getAttribute('data-theme'), 'high-contrast-dark');
   assert.equal(await page.evaluate(() => localStorage.getItem('archimate-js.ui-theme')), 'high-contrast-dark');

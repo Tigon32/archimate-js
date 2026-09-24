@@ -9,6 +9,7 @@ export type BatchEntry = {
   outputs: Array<{ format: ExportFormat; path: string; dimensions: { width: number; height: number }; sha256: string }>;
   diagnostics: Array<{ code: string }>;
 };
+const CANONICAL_FORMATS: readonly ExportFormat[] = ['svg', 'png', 'pdf'];
 
 function dimensions(svg: string): { width: number; height: number } {
   const opening = svg.match(/^<svg\b[^>]*>/)?.[0] ?? '';
@@ -23,13 +24,14 @@ function dimensions(svg: string): { width: number; height: number } {
 export function prepareBatch(
   views: BatchView[], artifacts: ExportArtifacts[], formats: ExportFormat[]
 ): { files: BatchFile[]; manifest: string } {
+  const requested = CANONICAL_FORMATS.filter((format) => formats.includes(format));
   const files: BatchFile[] = [];
   const entries = views.map((view, index) => {
     const contents = artifacts[index];
-    // Canonical bounds are available even when SVG is not a requested output.
-    if (typeof contents.svg !== 'string') throw new Error('VIEW_RENDER_FAILED');
-    const size = dimensions(contents.svg);
-    const outputs = formats.map((format) => {
+    const canonical = typeof contents.svg === 'string' ? contents.svg : contents.canonicalSvg;
+    if (typeof canonical !== 'string') throw new Error('VIEW_RENDER_FAILED');
+    const size = dimensions(canonical);
+    const outputs = requested.map((format) => {
       const value = contents[format];
       if (value === undefined) throw new Error('VIEW_RENDER_FAILED');
       const filename = `${view.basename}.${format}`;

@@ -87,6 +87,11 @@ setup and browser startup failures likewise fail the request before the
 partial manifest is published. Existing directory components and targets
 must not be symlinks, and output paths must not change concurrently.
 
+For `--all-views`, the service renders views sequentially in one browser
+session. SVG is retained internally as the canonical geometry source for the
+manifest even when only PNG or PDF was requested; unrequested SVG files are not
+published.
+
 The command validates the model before starting Chrome. It opens one browser
 context, blocks every network route, renders the selected view once, applies
 the shared fit/padding layout, waits for `document.fonts.ready` before raster
@@ -114,10 +119,13 @@ mode treats a partial batch as successful.
 
 ## Programmatic API boundary
 
-Multi-format export remains inside the CLI. Browser consumers continue to
-use the named `renderViewToSvg` API, which is the canonical single-view render
-operation. A separate issue defines the Node/browser ownership and option
-contracts for a future programmatic multi-format API.
+The CLI and Node consumers share the versioned `archimate-js/export` service.
+It accepts bounded XML and one selected view, uses an existing local
+Chrome/Chromium, blocks network access, and can return in-memory artifacts or
+publish them atomically. Browser consumers continue to use the named
+`renderViewToSvg` API for SVG. DTO-backed editor state and batch export remain
+out of this contract; see
+[`programmatic-export.md`](programmatic-export.md).
 
 The existing `render` command remains supported and keeps its original syntax:
 
