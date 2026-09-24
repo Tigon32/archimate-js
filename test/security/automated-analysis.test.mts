@@ -6,9 +6,9 @@ import { load } from 'js-yaml';
 
 const ACTIONS = Object.freeze({
   'actions/checkout': '3d3c42e5aac5ba805825da76410c181273ba90b1',
-  'github/codeql-action/init': 'eaec7bdd3f18a9ef62b9f0d85d410932cf58c886',
-  'github/codeql-action/analyze': 'eaec7bdd3f18a9ef62b9f0d85d410932cf58c886',
-  'actions/dependency-review-action': '05fe4576374b728f0c523d6a13d64c25081e0803'
+  'github/codeql-action/init': '1190a975f95ce23525efb6a3fc21ea29567c1b52',
+  'github/codeql-action/analyze': '1190a975f95ce23525efb6a3fc21ea29567c1b52',
+  'actions/dependency-review-action': 'a1d282b36b6f3519aa1f3fc636f609c47dddb294'
 });
 
 function isRecord(value: unknown): value is Record<string, unknown> {
