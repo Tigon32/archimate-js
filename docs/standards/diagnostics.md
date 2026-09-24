@@ -40,8 +40,8 @@ lexicographically, so the same input yields the same ordered list.
 
 | Code | Trigger | Current behavior |
 |---|---|---|
-| `MEFF_ELEMENTS_UNSUPPORTED` | An `elements/element` record | Model element records are not reconstructed. |
-| `MEFF_RELATIONSHIPS_UNSUPPORTED` | A `relationships/relationship` record | Relationship records are not fully reconstructed. |
+| `MEFF_ELEMENTS_UNSUPPORTED` | Legacy/parser-probe element records outside the supported MEFF Model-core path | Schema-valid Model-core element records are reconstructed; unsupported element forms remain warnings. |
+| `MEFF_RELATIONSHIPS_UNSUPPORTED` | Legacy/parser-probe relationship records outside the supported MEFF Model-core path | Schema-valid Model-core relationship records are reconstructed with endpoint references; unsupported relationship forms remain warnings. |
 | `MEFF_MODEL_METADATA_UNSUPPORTED` | Model `metadata`, `organizations`, `properties`, or `propertyDefinitions` | These model-level records are not reconstructed. |
 | `MEFF_VIEWS_UNSUPPORTED` | A View/Viewpoint structure outside the supported Diagram subset, or unreadable View data | That view data is skipped. |
 | `MEFF_DIAGRAMS_UNSUPPORTED` | A non-Element node, non-Relationship connection, or unsupported style/label/documentation/drill-down field | That record or field is skipped; supported records in the same Diagram remain importable. |
@@ -50,13 +50,18 @@ lexicographically, so the same input yields the same ordered list.
 All are `warning` diagnostics at stage `parse`. Messages do not include source
 XML, model names, identifiers, extension namespace URIs, or parser text. These
 checks recognize a bounded set of common MEFF structures; they are not schema
-validation and do not prove every unknown record has been detected. The initial supported
-View/Diagram subset maps named Diagram views, nested Element nodes, and Relationship
-connections to the existing view tree. Geometry is used where required by the renderer;
-styles, labels, and full Diagram fidelity remain outside this subset. The package
-does not currently provide a MEFF XML exporter, so no export-omission diagnostic
-is emitted. Add those diagnostics with the supported-subset exporter tracked by
-[#59](https://github.com/Tigon32/archimate-js/issues/59).
+validation and do not prove every unknown record has been detected. The current
+supported View/Diagram subset maps named Diagram views, nested Element nodes,
+Relationship connections, diagram-space geometry, source/target attachments,
+bendpoints, supported style fields, relationship labels, and connection line
+width to the existing view tree and renderer. Full Diagram fidelity remains
+outside this subset; local Diagram annotations are tracked by
+[#75](https://github.com/Tigon32/archimate-js/issues/75), additional
+presentation records by [#76](https://github.com/Tigon32/archimate-js/issues/76),
+and Viewpoint metadata by [#77](https://github.com/Tigon32/archimate-js/issues/77).
+The package does not currently provide a MEFF XML exporter, so no
+export-omission diagnostic is emitted. Add those diagnostics with the
+supported-subset exporter tracked by [#59](https://github.com/Tigon32/archimate-js/issues/59).
 
 ## Related issues
 

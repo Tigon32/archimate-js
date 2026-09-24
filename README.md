@@ -70,9 +70,29 @@ and recorded there.
 
 ## Exchange-format status
 
-The repository is testing its XML handling against synthetic inputs, but it does **not** yet claim full ArchiMate Model Exchange File Format (MEFF) conformance or cross-tool portability. The hand-authored candidate is not XSD-validated and uses `id` where the official Model schema requires `identifier`; its model ID/name round-trip is parser-only evidence. The importer reports unmapped element records and generic relationships with unresolved endpoints through stable `MEFF_ELEMENTS_UNSUPPORTED` and `MEFF_RELATIONSHIPS_UNSUPPORTED` warnings. See the [P08 alignment notes](docs/standards/model-exchange-alignment.md).
+The repository is testing its XML handling against synthetic, schema-validated
+MEFF 3.1 fixtures, but it does **not** yet claim full ArchiMate Model Exchange
+File Format conformance, tool certification, or cross-tool portability.
 
-Until those gaps are closed and tested with schema-valid, safe fixtures, treat import/export as incomplete for interchange workflows. See [the exchange-format alignment notes](docs/standards/model-exchange-alignment.md) and [fixture provenance rules](test/fixtures/README.md).
+Current supported import evidence covers a bounded subset:
+
+- Model identity, localized names, elements, relationships, documentation, and
+  relationship endpoint references from a synthetic fixture validated against
+  the official MEFF 3.1 Model XSD.
+- Diagram views, nested Element nodes, Relationship connections, diagram-space
+  geometry, connection attachments/bendpoints, supported style fields, imported
+  relationship labels, and rendered connection line width from a synthetic
+  fixture validated against the official MEFF 3.1 Diagram XSD.
+- Stable, content-free diagnostics for unsupported records and unresolved
+  references.
+
+MEFF XML export and import -> export -> import equivalence remain open in
+[#59](https://github.com/Tigon32/archimate-js/issues/59). Model metadata,
+organizations, property definitions/properties, viewpoint definitions, local
+diagram annotations/drill-down references, and non-Element/non-Relationship
+presentation records are tracked as follow-up gaps from the P08 review. See the
+[exchange-format alignment notes](docs/standards/model-exchange-alignment.md)
+and [fixture provenance rules](test/fixtures/README.md).
 
 ### Report a suspected conformance or exchange-format gap
 

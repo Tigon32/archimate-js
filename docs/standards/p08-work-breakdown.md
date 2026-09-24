@@ -12,6 +12,11 @@ P08 remains the umbrella for ArchiMate Model Exchange File Format compatibility.
 | [#57: Import View records](https://github.com/Tigon32/archimate-js/issues/57) | P2 | Preserve view identifiers, names, membership, and semantic references. | #54, #55 |
 | [#58: Import Diagram presentation](https://github.com/Tigon32/archimate-js/issues/58) | P2 | Preserve supported geometry, waypoints, and styles as presentation data. | #57 |
 | [#59: Export and round-trip the supported subset](https://github.com/Tigon32/archimate-js/issues/59) | P2 | Emit deterministic schema-valid XML and demonstrate semantic import/export/import equivalence. | #55–#58 |
+| [#74: Import Model metadata, organizations, and properties](https://github.com/Tigon32/archimate-js/issues/74) | P2 | Preserve Model schema records outside the current core import subset. | #55, #56 |
+| [#75: Preserve Diagram annotations and drill-down refs](https://github.com/Tigon32/archimate-js/issues/75) | P2 | Preserve local diagram labels, documentation, properties, and view references. | #57, #58 |
+| [#76: Import additional Diagram presentation records](https://github.com/Tigon32/archimate-js/issues/76) | P2 | Preserve containers, labels, and presentation-only lines without inventing semantics. | #57, #58 |
+| [#77: Preserve Viewpoint definitions and references](https://github.com/Tigon32/archimate-js/issues/77) | P2 | Preserve View schema viewpoint definitions and references. | #57, #58 |
+| [#81: Refresh MEFF support documentation](https://github.com/Tigon32/archimate-js/issues/81) | P1 | Keep README, diagnostics, and P08 docs aligned with closed import work. | #54–#58 |
 
 ## Closure rule
 
@@ -19,7 +24,18 @@ Close each child when its acceptance criteria and tests pass. Keep #12 open unti
 
 ## Current evidence boundary
 
-The current `meff-core-candidate.xml` is synthetic and not XSD-validated. The Model schema documentation requires root `identifier` and relationship source/target ID references, while the candidate uses `id`; its model identity round trip is therefore parser-only evidence. PR #53 adds stable warnings for the element and relationship records the importer does not reconstruct. Full Model, View, Diagram, and export support remain unverified.[^meff-model]
+#54, #55, #56, #57, and #58 have closed for the currently declared import
+scope. `meff-schema/valid-model.xml` and `meff-schema/valid-view-diagram.xml`
+are synthetic fixtures validated through the pinned MEFF 3.1 schema route. They
+exercise Model-core import, supported View records, and supported Diagram
+geometry/style presentation data.
+
+This evidence does not establish full MEFF support, ArchiMate semantic validity,
+tool certification, or cross-tool portability. MEFF XML export and
+import/export/import equivalence remain open in #59. Model metadata,
+organizations, property records, local Diagram annotations, presentation-only
+Diagram records, and Viewpoint metadata are tracked separately in #74, #75, #76,
+and #77. Unsupported content must keep using stable, content-free diagnostics.
 
 [^meff-resources]: [Open Group MEFF resource directory](https://www.opengroup.org/xsd/archimate/), 3.1 Model, View, and Diagram XSDs.
 [^meff-model]: [Open Group MEFF 3.1 Model schema documentation](https://www.opengroup.org/xsd/archimate/3.1/html-model/), schema version 3.1 with the `/3.0/` namespace.
