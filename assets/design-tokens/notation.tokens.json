@@ -1,0 +1,353 @@
+{
+  "$description": "ArchiMate notation decisions derived from the unchanged supplied kit.",
+  "$extensions": {
+    "org.archimatejs.notation": {
+      "source": "assets/archimate-4-kit/tokens/tokens.json",
+      "sourceSha256": "e46901ad4ad1fe0aa28f47d385c68cb5beb4483cede3fee1feb3dec314bd67f2",
+      "rules": {
+        "corner": {
+          "rounded": [
+            "Capability",
+            "CourseOfAction",
+            "Event",
+            "Function",
+            "Process",
+            "Service",
+            "ValueStream",
+            "WorkPackage"
+          ],
+          "chamfer": [
+            "Assessment",
+            "Driver",
+            "Goal",
+            "Meaning",
+            "Outcome",
+            "Principle",
+            "Requirement",
+            "Stakeholder",
+            "Value"
+          ],
+          "square": "all other elements"
+        },
+        "linePatterns": {
+          "dotted": "1 1 (x strokeWidth)",
+          "dashed": "4 1 (x strokeWidth)"
+        },
+        "relationship": {
+          "composition": {
+            "line": "solid",
+            "source": "diamond-filled",
+            "target": null
+          },
+          "aggregation": {
+            "line": "solid",
+            "source": "diamond-open",
+            "target": null
+          },
+          "assignment": {
+            "line": "solid",
+            "source": "dot",
+            "target": "triangle-filled-small"
+          },
+          "realization": {
+            "line": "dotted",
+            "source": null,
+            "target": "triangle-open"
+          },
+          "serving": {
+            "line": "solid",
+            "source": null,
+            "target": "arrow-open"
+          },
+          "access": {
+            "line": "dotted",
+            "source": null,
+            "target": "arrow-open-small",
+            "variants": {
+              "access": "no heads",
+              "read": "head at accessor side is absent; head points to accessor",
+              "write": "head points to the passive object",
+              "readwrite": "heads at both ends"
+            }
+          },
+          "influence": {
+            "line": "dashed",
+            "source": null,
+            "target": "arrow-open",
+            "label": "+/- or text optional"
+          },
+          "association": {
+            "line": "solid",
+            "source": null,
+            "target": null,
+            "directed_target": "half-arrow"
+          },
+          "triggering": {
+            "line": "solid",
+            "source": null,
+            "target": "triangle-filled"
+          },
+          "flow": {
+            "line": "dashed",
+            "source": null,
+            "target": "triangle-filled"
+          },
+          "specialization": {
+            "line": "solid",
+            "source": null,
+            "target": "triangle-open-large"
+          }
+        },
+        "labelAlign": "center",
+        "measurements": {
+          "boxImagePx": [
+            475,
+            192
+          ],
+          "strokePx": 3,
+          "roundedCornerPx": 21,
+          "chamferPx": 23,
+          "cornerIconPx": [
+            50,
+            40
+          ],
+          "cornerIconMarginPx": 11,
+          "relationshipDotOnOff": "1:1 of line width",
+          "relationshipDashOnOff": "4:1 of line width"
+        }
+      }
+    }
+  },
+  "color": {
+    "domain": {
+      "common": {
+        "fill": {
+          "$type": "color",
+          "$value": {
+            "colorSpace": "srgb",
+            "components": [
+              0.8980392156862745,
+              0.8745098039215686,
+              0.8274509803921568
+            ],
+            "hex": "#e5dfd3"
+          }
+        }
+      },
+      "strategy": {
+        "fill": {
+          "$type": "color",
+          "$value": {
+            "colorSpace": "srgb",
+            "components": [
+              0.9372549019607843,
+              0.7411764705882353,
+              0.36470588235294116
+            ],
+            "hex": "#efbd5d"
+          }
+        }
+      },
+      "business": {
+        "fill": {
+          "$type": "color",
+          "$value": {
+            "colorSpace": "srgb",
+            "components": [
+              0.9294117647058824,
+              0.8431372549019608,
+              0.4745098039215686
+            ],
+            "hex": "#edd779"
+          }
+        }
+      },
+      "application": {
+        "fill": {
+          "$type": "color",
+          "$value": {
+            "colorSpace": "srgb",
+            "components": [
+              0.6901960784313725,
+              0.8156862745098039,
+              0.8509803921568627
+            ],
+            "hex": "#b0d0d9"
+          }
+        }
+      },
+      "technology": {
+        "fill": {
+          "$type": "color",
+          "$value": {
+            "colorSpace": "srgb",
+            "components": [
+              0.7372549019607844,
+              0.8509803921568627,
+              0.6823529411764706
+            ],
+            "hex": "#bcd9ae"
+          }
+        }
+      },
+      "motivation": {
+        "fill": {
+          "$type": "color",
+          "$value": {
+            "colorSpace": "srgb",
+            "components": [
+              0.8196078431372549,
+              0.7294117647058823,
+              0.8627450980392157
+            ],
+            "hex": "#d1badc"
+          }
+        }
+      },
+      "implementation": {
+        "fill": {
+          "$type": "color",
+          "$value": {
+            "colorSpace": "srgb",
+            "components": [
+              0.9450980392156862,
+              0.7333333333333333,
+              0.7176470588235294
+            ],
+            "hex": "#f1bbb7"
+          }
+        }
+      }
+    },
+    "stroke": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0,
+          0,
+          0
+        ],
+        "hex": "#000000"
+      }
+    },
+    "grouping": {
+      "fill": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [
+            1,
+            1,
+            1
+          ],
+          "hex": "#ffffff"
+        }
+      },
+      "stroke": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [
+            0.34509803921568627,
+            0.34509803921568627,
+            0.34509803921568627
+          ],
+          "hex": "#585858"
+        }
+      }
+    },
+    "label": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0,
+          0,
+          0
+        ],
+        "hex": "#000000"
+      }
+    },
+    "canvas": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          1,
+          1,
+          1
+        ],
+        "hex": "#ffffff"
+      }
+    }
+  },
+  "box": {
+    "width": {
+      "$type": "dimension",
+      "$value": {
+        "value": 120,
+        "unit": "px"
+      }
+    },
+    "height": {
+      "$type": "dimension",
+      "$value": {
+        "value": 55,
+        "unit": "px"
+      }
+    },
+    "ratio_measured": {
+      "$type": "number",
+      "$value": 2.474
+    },
+    "stroke_ratio_of_height": {
+      "$type": "number",
+      "$value": 0.0156
+    },
+    "rounded_radius_ratio_of_height": {
+      "$type": "number",
+      "$value": 0.1094
+    },
+    "chamfer_ratio_of_height": {
+      "$type": "number",
+      "$value": 0.1198
+    },
+    "icon_width_ratio_of_height": {
+      "$type": "number",
+      "$value": 0.2604
+    },
+    "icon_margin_ratio_of_height": {
+      "$type": "number",
+      "$value": 0.0573
+    }
+  },
+  "line": {
+    "strokeWidth": {
+      "$type": "dimension",
+      "$value": {
+        "value": 1,
+        "unit": "px"
+      }
+    }
+  },
+  "typography": {
+    "family": {
+      "$type": "fontFamily",
+      "$value": [
+        "Arial",
+        "Helvetica",
+        "Liberation Sans",
+        "sans-serif"
+      ]
+    },
+    "labelSizeRatioOfBoxHeight": {
+      "$type": "number",
+      "$value": 0.25
+    },
+    "maxLines": {
+      "$type": "number",
+      "$value": 3
+    }
+  }
+}

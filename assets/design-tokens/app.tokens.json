@@ -1,0 +1,22 @@
+{
+  "$description": "Application shell semantic tokens; intentionally separate from ArchiMate notation.",
+  "theme": {
+    "light": {
+      "surface": { "$type": "color", "$value": { "colorSpace": "srgb", "components": [1, 1, 1], "hex": "#ffffff" } },
+      "text": { "$type": "color", "$value": { "colorSpace": "srgb", "components": [0.12549019607843137, 0.1411764705882353, 0.16862745098039217], "hex": "#20242b" } },
+      "focus": { "$type": "color", "$value": { "colorSpace": "srgb", "components": [0.08627450980392157, 0.36470588235294116, 0.8], "hex": "#165dcc" } },
+      "error": { "$type": "color", "$value": { "colorSpace": "srgb", "components": [0.7019607843137254, 0.14901960784313725, 0.11764705882352941], "hex": "#b3261e" } }
+    },
+    "dark": {
+      "surface": { "$type": "color", "$value": { "colorSpace": "srgb", "components": [0.11764705882352941, 0.12156862745098039, 0.13333333333333333], "hex": "#1e1f22" } },
+      "text": { "$type": "color", "$value": { "colorSpace": "srgb", "components": [0.9529411764705882, 0.9568627450980393, 0.9647058823529412], "hex": "#f3f4f6" } },
+      "focus": { "$type": "color", "$value": { "colorSpace": "srgb", "components": [0.5019607843137255, 0.7058823529411765, 1], "hex": "#80b4ff" } },
+      "error": { "$type": "color", "$value": { "colorSpace": "srgb", "components": [1, 0.5411764705882353, 0.5019607843137255], "hex": "#ff8a80" } }
+    }
+  },
+  "spacing": {
+    "sm": { "$type": "dimension", "$value": { "value": 4, "unit": "px" } },
+    "md": { "$type": "dimension", "$value": { "value": 8, "unit": "px" } },
+    "lg": { "$type": "dimension", "$value": { "value": 16, "unit": "px" } }
+  }
+}
