@@ -39,6 +39,21 @@ function modelFor(viewElements) {
 }
 
 describe('safe importer diagnostics', () => {
+  it('renders plain MEFF connection projections and skips unsourced presentation lines precisely', async () => {
+    const viewElements = [
+      { $type: 'archimate:Node', id: 'synthetic-node', nodes: [] },
+      { $type: 'archimate:Connection', id: 'synthetic-line', meffType: 'Line', source: { id: 'synthetic-node' }, target: { id: 'synthetic-node' } },
+      { $type: 'archimate:Connection', id: 'synthetic-free-line', meffType: 'Line' }
+    ];
+    const { importer, ...viewer } = fakeViewer();
+    const { view, ...model } = modelFor(viewElements);
+    const result = await displayGraphicalView(viewer, model, view);
+    expect(importer.addElement).toHaveBeenCalledTimes(1);
+    expect(importer.addConnection).toHaveBeenCalledTimes(1);
+    expect(importer.addConnection.mock.calls[0][0]).toBe(viewElements[1]);
+    expect(result.diagnostics.map(({ code }) => code)).toEqual(['IMPORT_PRESENTATION_LINE_UNRENDERED']);
+  });
+
   it('returns deterministic content-free diagnostics when view objects or relationships are skipped', async () => {
     const privateData = 'PrivateCustomerSystem';
     const loggerLogSpy = vi.spyOn(logger, 'log').mockImplementation(() => {});
@@ -199,7 +214,7 @@ describe('safe importer diagnostics', () => {
 
     expect(first).toEqual(second);
     expect(first.map(({ code }) => code)).toEqual([
-      'MEFF_DIAGRAMS_UNSUPPORTED',
+      'MEFF_DIAGRAM_NODE_TYPE_UNSUPPORTED',
       'MEFF_ELEMENTS_UNSUPPORTED',
       'MEFF_EXTENSIONS_UNSUPPORTED',
       'MEFF_MODEL_METADATA_UNSUPPORTED',
