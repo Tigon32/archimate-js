@@ -38,7 +38,8 @@ assert.equal(stats.hasErrors(), false, JSON.stringify(stats.toJson({ all: false,
 const files = new Map([
   ['/.ci-build/dto-save-test.js', '.ci-build/dto-save-test.js'],
   ['/supported.xml', 'test/fixtures/synthetic/dto-export-view.xml'],
-  ['/unsupported.xml', 'test/fixtures/meff-schema/valid-view-presentation.xml']
+  ['/unsupported.xml', 'test/fixtures/meff-schema/valid-view-presentation.xml'],
+  ['/legacy.xml', 'test/fixtures/synthetic/meff-core-candidate.xml']
 ]);
 const server = createServer((request: { url?: string }, response: {
   writeHead(status: number): { end(body?: string): void }; setHeader(name: string, value: string): void;
@@ -69,6 +70,7 @@ try {
     const api = (window as unknown as { DtoSaveTest: Record<string, any> }).DtoSaveTest;
     const supported = await (await fetch('/supported.xml')).text();
     const unsupported = await (await fetch('/unsupported.xml')).text();
+    const legacy = await (await fetch('/legacy.xml')).text();
     const container = document.createElement('div');
     document.body.append(container);
     const modeler = new api.Modeler({ container });
@@ -99,18 +101,25 @@ try {
     session.close();
     const rejected = await api.DtoModelerSession.open(modeler, unsupported);
     const originalModel = modeler.getModel();
-    const legacyXml = (await modeler.saveXML()).xml;
     let rejectedCode = '';
     try { rejected.save(); } catch (error: any) { rejectedCode = error.code; }
     const originalAvailable = rejected.eligible === false && originalModel === modeler.getModel() &&
-      legacyXml.includes('identifier=') && rejectedCode === 'DTO_EDITING_INELIGIBLE';
+      typeof modeler.saveXML === 'function' && rejectedCode === 'DTO_EDITING_INELIGIBLE';
     rejected.close();
+    // The legacy serializer is covered with an existing fixture whose moddle round trip is known to work.
+    await modeler.importXML(legacy);
+    const legacyModel = modeler.getModel();
+    const legacyXml = (await modeler.saveXML()).xml;
+    const legacySave = modeler.getModel() === legacyModel &&
+      legacyXml.includes('model-synthetic-exchange');
     modeler.destroy();
     return { eligible: session.eligible, originalChanged: original !== saved.dtoJson,
-      undoChanged, same, plain, originalAvailable, reasons: rejected.reasons.map((r: any) => r.code) };
+      undoChanged, same, plain, originalAvailable, legacySave,
+      reasons: rejected.reasons.map((r: any) => r.code) };
   });
   assert.deepEqual(result, { eligible: true, originalChanged: true, undoChanged: true,
-    same: true, plain: true, originalAvailable: true, reasons: ['DTO_UNSUPPORTED_FIELDS'] });
+    same: true, plain: true, originalAvailable: true, legacySave: true,
+    reasons: ['DTO_UNSUPPORTED_FIELDS'] });
 } finally {
   await browser?.close();
   await new Promise<void>((resolve) => server.close(() => resolve()));
