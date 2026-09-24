@@ -94,6 +94,21 @@
     "review_after": "2026-12-23"
   },
   {
+    "id": "synthetic-application-integration-semantics",
+    "path": "test/fixtures/synthetic/application-integration-semantics.json",
+    "classification": "SYNTHETIC",
+    "purpose": "Table-driven application and integration semantic decisions with generated synthetic XML validator cases.",
+    "provenance": "Hand-authored generic type triples interpreted from The Open Group public ArchiMate 3.2 reference-card relationship and element definitions; no model or normative relationship table copied.",
+    "contains_private_data": false,
+    "expected_coverage": [
+      "flow and triggering application behaviors",
+      "application service and technology support",
+      "access, assignment, realization, and deployment directions",
+      "explicit reversed structural relationship diagnostics"
+    ],
+    "review_after": "2026-12-23"
+  },
+  {
     "id": "synthetic-invalid-relationship-semantics",
     "path": "test/fixtures/synthetic/invalid-relationship-semantics.xml",
     "classification": "SYNTHETIC",
@@ -194,7 +209,13 @@
     "purpose": "Positive MEFF 3.1 fixture for diagram-local labels, documentation, drill-down references, and view properties.",
     "provenance": "Adapted from the repository-authored synthetic Diagram fixture using the public 3.1 Diagram and View XSD descriptions; contains no third-party XML.",
     "contains_private_data": false,
-    "expected_coverage": ["local node and connection labels", "diagram documentation", "viewRef resolution", "view-level properties", "MEFF 3.1 Diagram XSD validation"],
+    "expected_coverage": [
+      "local node and connection labels",
+      "diagram documentation",
+      "viewRef resolution",
+      "view-level properties",
+      "MEFF 3.1 Diagram XSD validation"
+    ],
     "review_after": "2026-12-23"
   },
   {
@@ -204,7 +225,13 @@
     "purpose": "Positive MEFF 3.1 fixture for Container and Label nodes, routed Line, and unsourced Line.",
     "provenance": "Adapted from the repository-authored synthetic Diagram fixture using the public 3.1 Diagram XSD descriptions; contains no third-party XML.",
     "contains_private_data": false,
-    "expected_coverage": ["presentation container nesting", "presentation label bounds", "semantic-free line route and style", "unsourced line", "MEFF 3.1 Diagram XSD validation"],
+    "expected_coverage": [
+      "presentation container nesting",
+      "presentation label bounds",
+      "semantic-free line route and style",
+      "unsourced line",
+      "MEFF 3.1 Diagram XSD validation"
+    ],
     "review_after": "2026-12-23"
   },
   {
@@ -214,7 +241,13 @@
     "purpose": "Positive MEFF 3.1 viewpoint catalog fixture with a Diagram referencing its viewpoint.",
     "provenance": "Adapted from the repository-authored synthetic Diagram fixture using the public 3.1 View XSD descriptions; contains no third-party XML.",
     "contains_private_data": false,
-    "expected_coverage": ["viewpoint identity, names and documentation", "allowed element and relationship type names", "viewpoint purpose and content", "Diagram viewpoint and viewpointRef", "MEFF 3.1 Diagram XSD validation"],
+    "expected_coverage": [
+      "viewpoint identity, names and documentation",
+      "allowed element and relationship type names",
+      "viewpoint purpose and content",
+      "Diagram viewpoint and viewpointRef",
+      "MEFF 3.1 Diagram XSD validation"
+    ],
     "review_after": "2026-12-23"
   }
 ]
