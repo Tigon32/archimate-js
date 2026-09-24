@@ -22,12 +22,12 @@
   font: var(--am-ui-font-body-size)/1.5 var(--am-ui-font-family);
 }
 
-.am-app .am-ui-toolbar a,
-.am-app .am-ui-panel a,
-.am-app .am-ui-dialog a,
-.am-app .am-ui-inspector a,
-.am-app .am-ui-status a,
-.am-app .am-ui-overlay a { color: var(--am-ui-link); }
+.am-app .am-ui-toolbar a:not(.am-ui-button),
+.am-app .am-ui-panel a:not(.am-ui-button),
+.am-app .am-ui-dialog a:not(.am-ui-button),
+.am-app .am-ui-inspector a:not(.am-ui-button),
+.am-app .am-ui-status a:not(.am-ui-button),
+.am-app .am-ui-overlay a:not(.am-ui-button) { color: var(--am-ui-link); }
 .am-app .am-ui-icon { color: var(--am-ui-icon); }
 .am-app .am-ui-overlay {
   color: var(--am-ui-overlay-text);
