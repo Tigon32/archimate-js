@@ -210,7 +210,7 @@ try {
       unnamedLabels: [...unnamed.querySelectorAll('.djs-label')].map((label) => label.textContent)
     };
   });
-  assert.match(directedAssociation.markerStyle || '', /marker-end:\\s*url\\(['"]?#archimate-export-id-\\d+/);
+  assert.match(directedAssociation.markerStyle || '', /marker-end:\s*url\(['"]?#archimate-export-id-\d+/);
   assert.equal(directedAssociation.markerShape, 'M 1 5 L 11 10');
   assert.ok(directedAssociation.labelTexts.some((label) => label?.includes('Directed Association')),
     'named imported relationship should render a visible SVG label');
