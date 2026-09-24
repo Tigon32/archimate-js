@@ -31,6 +31,8 @@ The Open Group ArchiMate specification and published exchange/conformance artifa
 ## Work style
 
 - Prefer small reviewed PRs.
+- Run `npm ci` in a fresh checkout so the repository-owned Git hooks are installed, then use `npm run verify:local` as the canonical deterministic local gate.
+- Do not bypass the pre-push gate for agent-generated changes. Keep iterative PRs Draft; mark them ready only after local qualification so remote CI is reserved for the authoritative review/merge boundary.
 - Use the [issue contribution guide](docs/contributing/issues.md) for issue routing and evidence requirements.
 - For shared-account concurrent work, follow the [manual agent coordination runbook](docs/contributing/agent-coordination.md).
 - Keep umbrella/child scope and PR recovery decisions in those canonical guides; do not duplicate their protocol here.

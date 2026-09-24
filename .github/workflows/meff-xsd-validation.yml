@@ -2,6 +2,7 @@ name: MEFF XSD validation
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - ".github/workflows/meff-xsd-validation.yml"
       - "test/fixtures/meff-schema/**"
@@ -21,6 +22,7 @@ permissions:
 
 jobs:
   validate-meff-fixtures:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     name: Validate synthetic MEFF Model and Diagram fixtures
     runs-on: ubuntu-24.04
     timeout-minutes: 10

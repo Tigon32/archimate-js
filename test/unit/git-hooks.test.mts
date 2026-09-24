@@ -1,0 +1,28 @@
+import { readFileSync, statSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+
+const testDirectory = path.dirname(fileURLToPath(import.meta.url));
+const repositoryRoot = path.resolve(testDirectory, '../..');
+
+describe('local verification gate', () => {
+  it('wires the versioned pre-push hook to the canonical local gate', () => {
+    const hookPath = path.join(repositoryRoot, '.githooks/pre-push');
+    const hook = readFileSync(hookPath, 'utf8');
+
+    expect(hook).toContain('npm run verify:local');
+
+    if (process.platform !== 'win32') {
+      expect(statSync(hookPath).mode & 0o111).not.toBe(0);
+    }
+  });
+
+  it('installs hooks and orders deterministic checks before remote escalation', () => {
+    const packageJson = JSON.parse(readFileSync(path.join(repositoryRoot, 'package.json'), 'utf8'));
+
+    expect(packageJson.scripts.prepare).toBe('node scripts/install-git-hooks.mjs');
+    expect(packageJson.scripts['hooks:install']).toBe('node scripts/install-git-hooks.mjs');
+    expect(packageJson.scripts['verify:local']).toBe('run-s check:source-policy lint test compile');
+  });
+});

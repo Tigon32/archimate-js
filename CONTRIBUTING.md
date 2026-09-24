@@ -17,17 +17,17 @@ This project aims to make `archimate-js` operational as a standards-grounded, em
 
 ## Definition of done
 
-A change is not operationally complete until its relevant checks are defined and passing. The target gate is:
+A change is not operationally complete until its relevant checks are defined and passing. Install dependencies once, which also installs the repository-owned Git hooks, then use the canonical local qualification gate:
 
 ```bash
 npm ci
-npm run lint
-npm test
-npm run build
-npm pack
+npm run verify:local
+npm pack --dry-run
 ```
 
-The current fork does not yet satisfy this gate. Closing that gap is part of the roadmap.
+`npm run verify:local` runs the source policy, lint, tests, and compile steps serially and stops at the first failure. The versioned `.githooks/pre-push` hook invokes the same command before every push. If hooks were intentionally cleared, restore them with `npm run hooks:install`.
+
+Do not use `git push --no-verify` to make agent-generated work appear qualified. Local hooks are a cheap, bypassable development boundary; GitHub Actions remains the independent merge/security boundary. Keep iterative PRs in Draft while working locally, and mark them ready for review only after the local gate passes so the expensive PR workflows run at the review boundary.
 
 ## Priority order
 

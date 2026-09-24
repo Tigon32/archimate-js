@@ -19,6 +19,7 @@ ADRs record consequential decisions for this fork. They should be short, dated, 
 | 0004 | TypeScript-first incremental migration and module size | Accepted |
 | 0005 | Coordinate concurrent agent development with expiring issue claims | Accepted |
 | 0006 | Limit release attestation authority to a tag-only job | Accepted |
+| 0007 | Use local deterministic verification before remote CI escalation | Accepted |
 
 ## Template
 
