@@ -49,6 +49,7 @@ Revisit if commit-time checks become noticeable, WIP pushes are still too slow, 
 ## References
 
 - Implementation task: https://github.com/Tigon32/archimate-js/issues/212
+- Single-flight background verifier follow-up: https://github.com/Tigon32/archimate-js/issues/214
 - Agent Stack deterministic-first pattern: https://github.com/Tigon32/agent-stack/blob/main/governance/patterns/AGP-deterministic-first.md
 - Agent Stack capability-cost routing pattern: https://github.com/Tigon32/agent-stack/blob/main/governance/patterns/AGP-capability-cost-routing%401.md
 - Agent Stack engineering gauntlet: https://github.com/Tigon32/agent-stack/blob/main/governance/patterns/AGP-engineering-gauntlet.md
