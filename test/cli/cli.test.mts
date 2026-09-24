@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,6 +25,14 @@ function runCli(executable: string, args: string[], expectedStatus: number, env 
 
 function codes(result: RunResult): string[] {
   return (result.json.diagnostics as Array<{ code: string }>).map(({ code }) => code);
+}
+
+function pngDimensions(bytes: Buffer): { width: number; height: number } {
+  assert.deepEqual([...bytes.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+  return {
+    width: bytes.readUInt32BE(16),
+    height: bytes.readUInt32BE(20)
+  };
 }
 
 async function validationTests(): Promise<void> {
@@ -78,6 +86,23 @@ async function validationTests(): Promise<void> {
 async function browserTests(): Promise<void> {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'archimate-cli-browser-'));
   try {
+    await runBrowserScenarios(directory);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}
+
+async function runBrowserScenarios(directory: string): Promise<void> {
+  await legacyRenderTest(directory);
+  await defaultExportTest(directory);
+  await reportExportTest(directory);
+  await transparentExportTest(directory);
+  await invalidLayoutTest(directory);
+  await missingViewTest(directory);
+  await batchBrowserTests(directory);
+}
+
+async function legacyRenderTest(directory: string): Promise<void> {
     const legacyPath = path.join(directory, 'legacy.svg');
     const render = runCli(cli, [
       'render', validFixture, '--view-id', 'view-synthetic-minimal', '--output', legacyPath
@@ -85,7 +110,9 @@ async function browserTests(): Promise<void> {
     assert.equal(render.json.command, 'render');
     assert.equal(render.json.valid, true);
     assert.match(await readFile(legacyPath, 'utf8'), /^<svg[^>]+role="img"/);
+}
 
+async function defaultExportTest(directory: string): Promise<void> {
     const exported = runCli(cli, [
       'export', validFixture, '--view-name', 'Synthetic Minimal View',
       '--format', 'svg,png,pdf', '--output-dir', directory, '--basename', 'Quarter / View',
@@ -98,9 +125,49 @@ async function browserTests(): Promise<void> {
     const pdf = await readFile(path.join(directory, 'Quarter-View.pdf'));
     assert.match(svg, /^<svg[^>]+role="img"/);
     assert.ok(svg.includes('<rect width="100%" height="100%" fill="#ffffff"/>'));
-    assert.deepEqual([...png.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+    assert.deepEqual(pngDimensions(png), { width: 1020, height: 340 });
     assert.equal(pdf.subarray(0, 5).toString('ascii'), '%PDF-');
+}
 
+async function reportExportTest(directory: string): Promise<void> {
+    const report = runCli(cli, [
+      'export', validFixture, '--view-id', 'view-synthetic-minimal',
+      '--format', 'svg,png,pdf', '--output-dir', directory, '--basename', 'report',
+      '--scale', '2', '--background', 'white', '--fit', 'contain', '--padding', '12',
+      '--pdf-title', 'Synthetic report', '--pdf-footer', 'Page 1'
+    ], 0);
+    assert.deepEqual(report.json.formats, ['svg', 'png', 'pdf']);
+    const reportSvg = await readFile(path.join(directory, 'report.svg'), 'utf8');
+    const reportPng = await readFile(path.join(directory, 'report.png'));
+    const reportPdf = await readFile(path.join(directory, 'report.pdf'));
+    assert.match(reportSvg, /viewBox="3 3 534 194"/);
+    assert.match(reportSvg, /preserveAspectRatio="xMidYMid meet"/);
+    assert.deepEqual(pngDimensions(reportPng), { width: 1068, height: 388 });
+    assert.equal(reportPdf.subarray(0, 5).toString('ascii'), '%PDF-');
+}
+
+async function transparentExportTest(directory: string): Promise<void> {
+    const transparent = runCli(cli, [
+      'export', validFixture, '--view-id', 'view-synthetic-minimal',
+      '--format', 'png', '--output-dir', directory, '--basename', 'transparent',
+      '--background', 'transparent'
+    ], 0);
+    assert.deepEqual(transparent.json.formats, ['png']);
+    assert.deepEqual(pngDimensions(await readFile(path.join(directory, 'transparent.png'))),
+      { width: 510, height: 170 });
+}
+
+async function invalidLayoutTest(directory: string): Promise<void> {
+    const invalidLayout = runCli(cli, [
+      'export', validFixture, '--view-id', 'view-synthetic-minimal',
+      '--format', 'png', '--output-dir', directory, '--basename', 'invalid',
+      '--padding', '1025'
+    ], 2);
+    assert.deepEqual(codes(invalidLayout), ['CLI_USAGE']);
+    await assert.rejects(stat(path.join(directory, 'invalid.png')));
+}
+
+async function missingViewTest(directory: string): Promise<void> {
     const missingPath = path.join(directory, 'missing');
     const missing = runCli(cli, [
       'export', validFixture, '--view-id', 'private-view-id', '--format', 'svg,png',
@@ -109,11 +176,6 @@ async function browserTests(): Promise<void> {
     assert.deepEqual(codes(missing), ['VIEW_NOT_FOUND']);
     assert.equal(missing.output.includes('private-view-id'), false);
     await assert.rejects(readdir(missingPath));
-
-    await batchBrowserTests(directory);
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
 }
 
 async function batchBrowserTests(directory: string): Promise<void> {

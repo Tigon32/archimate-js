@@ -6,12 +6,15 @@ import type {
   ExportOptions,
   PdfOrientation,
   PdfPageSize,
+  FitMode,
   RenderOptions
 } from './types.mjs';
+import { MAX_PADDING } from './layout.mjs';
 
 const FORMATS = new Set<ExportFormat>(['svg', 'png', 'pdf']);
 const PAGE_SIZES = new Set<PdfPageSize>(['A3', 'A4', 'A5', 'Legal', 'Letter']);
 const ORIENTATIONS = new Set<PdfOrientation>(['portrait', 'landscape']);
+const FITS = new Set<FitMode>(['none', 'contain', 'cover']);
 const BACKGROUND = /^(?:transparent|white|black|#[0-9a-fA-F]{6})$/;
 
 function requireValue(arguments_: string[], index: number): string {
@@ -56,7 +59,9 @@ function exportDefaults(input: string): Partial<ExportOptions> {
     scale: 1,
     background: 'white',
     pdfPageSize: 'A4',
-    pdfOrientation: 'portrait'
+    pdfOrientation: 'portrait',
+    fit: 'none',
+    padding: 0
   };
 }
 
@@ -69,7 +74,8 @@ function assignExportOption(
   const keys: Record<string, keyof ExportOptions> = {
     '--view-id': 'viewId', '--view-name': 'viewName', '--output-dir': 'outputDirectory',
     '--basename': 'basename', '--background': 'background', '--pdf-page-size': 'pdfPageSize',
-    '--pdf-orientation': 'pdfOrientation', '--chrome': 'chrome'
+    '--pdf-orientation': 'pdfOrientation', '--fit': 'fit', '--padding': 'padding',
+    '--pdf-title': 'pdfTitle', '--pdf-footer': 'pdfFooter', '--chrome': 'chrome'
   };
   const key = keys[option];
   if (!key || seen.has(option)) throw new Error('CLI_USAGE');
@@ -85,7 +91,13 @@ function validateExport(parsed: Partial<ExportOptions>, formats: Set<ExportForma
   }
   if (!Number.isInteger(parsed.scale) || parsed.scale! < 1 || parsed.scale! > 4) throw new Error('CLI_USAGE');
   if (!BACKGROUND.test(parsed.background!) || !PAGE_SIZES.has(parsed.pdfPageSize as PdfPageSize) ||
-      !ORIENTATIONS.has(parsed.pdfOrientation as PdfOrientation)) throw new Error('CLI_USAGE');
+      !ORIENTATIONS.has(parsed.pdfOrientation as PdfOrientation) ||
+      !FITS.has(parsed.fit as FitMode) || !Number.isFinite(parsed.padding) ||
+      parsed.padding! < 0 || parsed.padding! > MAX_PADDING) throw new Error('CLI_USAGE');
+  if (parsed.pdfTitle && parsed.pdfTitle.length > 200 || parsed.pdfFooter && parsed.pdfFooter.length > 200) {
+    throw new Error('CLI_USAGE');
+  }
+  if ((parsed.pdfTitle || parsed.pdfFooter) && !formats.has('pdf')) throw new Error('CLI_USAGE');
   if (formats.has('pdf') && parsed.background === 'transparent') {
     throw new Error('PDF_TRANSPARENT_BACKGROUND');
   }
@@ -115,6 +127,10 @@ function parseExport(input: string, rest: string[]): ExportOptions {
       if (seen.has(option)) throw new Error('CLI_USAGE');
       seen.add(option);
       parsed.scale = Number(value);
+    } else if (option === '--padding') {
+      if (seen.has(option)) throw new Error('CLI_USAGE');
+      seen.add(option);
+      parsed.padding = Number(value);
     } else assignExportOption(parsed, seen, option, value);
   }
   if (parsed.allViews && seen.has('--basename')) throw new Error('CLI_USAGE');

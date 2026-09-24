@@ -7,9 +7,12 @@ import type { BrowserContext } from 'playwright-core';
 
 import { parseArguments, sanitizeBasename } from '../../src/cli/arguments.mjs';
 import { blockNetwork } from '../../src/cli/browser.mjs';
-import { writeArtifacts, writeAtomic, writeBatchArtifacts } from '../../src/cli/io.mjs';
+import { writeArtifacts, writeAtomic } from '../../src/cli/io.mjs';
+import { writeBatchArtifacts } from '../../src/cli/io.mjs';
 import { listBatchViews } from '../../src/cli/views.mjs';
 import { prepareBatch } from '../../src/cli/batch.mjs';
+import { applyLayout, validateLayout } from '../../src/cli/layout.mjs';
+import type { ExportOptions } from '../../src/cli/types.mjs';
 
 describe('export arguments', () => {
   test('parses formats and options', () => {
@@ -17,11 +20,13 @@ describe('export arguments', () => {
       'export', 'model.xml', '--view-name', 'View', '--format', 'svg,png',
       '--format', 'pdf', '--output-dir', 'out', '--basename', 'Résumé / Q4',
       '--scale', '4', '--background', '#102030', '--pdf-page-size', 'Letter',
-      '--pdf-orientation', 'landscape'
+      '--pdf-orientation', 'landscape', '--fit', 'contain', '--padding', '24',
+      '--pdf-title', 'Quarterly report', '--pdf-footer', 'Synthetic fixture'
     ]), {
       command: 'export', input: 'model.xml', viewName: 'View', formats: ['svg', 'png', 'pdf'],
       outputDirectory: 'out', basename: 'Resume-Q4', scale: 4, background: '#102030',
-      pdfPageSize: 'Letter', pdfOrientation: 'landscape'
+      pdfPageSize: 'Letter', pdfOrientation: 'landscape', fit: 'contain', padding: 24,
+      pdfTitle: 'Quarterly report', pdfFooter: 'Synthetic fixture'
     });
   });
 
@@ -35,13 +40,24 @@ describe('export arguments', () => {
     assert.throws(() => parseArguments([
       ...common, '--format', 'pdf', '--background', 'transparent'
     ]), { message: 'PDF_TRANSPARENT_BACKGROUND' });
+    assert.throws(() => parseArguments([
+      ...common, '--format', 'png', '--padding', '-1'
+    ]), { message: 'CLI_USAGE' });
+    assert.throws(() => parseArguments([
+      ...common, '--format', 'svg', '--pdf-title', 'not allowed'
+    ]), { message: 'CLI_USAGE' });
+    assert.throws(() => parseArguments([
+      ...common, '--format', 'pdf', '--padding', '2000'
+    ]), { message: 'CLI_USAGE' });
   });
 
   test('sanitizes stable output basenames', () => {
     assert.equal(sanitizeBasename('  ../../Quarter: 4 Résumé  '), 'Quarter-4-Resume');
     assert.throws(() => sanitizeBasename('...'), { message: 'CLI_USAGE' });
   });
+});
 
+describe('batch selection', () => {
   test('accepts exclusive all-view selection and sorts sanitized collisions by ID', async () => {
     const fixture = await readFile(path.join(process.cwd(), 'test/fixtures/synthetic/batch-collisions.xml'), 'utf8');
     assert.equal((parseArguments(['export', 'model.xml', '--all-views', '--format', 'svg',
@@ -62,6 +78,36 @@ describe('export arguments', () => {
     assert.ok(longName.every(({ basename }) => basename.length <= 80));
     assert.throws(() => listBatchViews(fixture.replace('id="view-b"', 'id="view-a"')),
       { message: 'BATCH_VIEWS_INVALID' });
+  });
+});
+
+describe('report layout', () => {
+  const svg = '<svg width="100" height="50" viewBox="10 20 100 50"><rect/></svg>';
+
+  test('expands canonical bounds by symmetric padding and preserves aspect ratio', () => {
+    assert.match(applyLayout(svg, 5, 'contain'),
+      /viewBox="5 15 110 60"/);
+    assert.match(applyLayout(svg, 5, 'contain'),
+      /preserveAspectRatio="xMidYMid meet"/);
+    assert.match(applyLayout(svg, 5, 'cover'),
+      /preserveAspectRatio="xMidYMid slice"/);
+    assert.doesNotMatch(applyLayout(svg, 5, 'none'), /preserveAspectRatio/);
+  });
+
+  test('rejects invalid and overflowing dimensions before publication', () => {
+    const parsed = parseArguments([
+      'export', 'model.xml', '--view-id', 'view', '--format', 'png',
+      '--output-dir', 'out', '--scale', '4', '--padding', '10'
+    ]);
+    if (parsed.command !== 'export') throw new Error('test setup');
+    const options: ExportOptions = parsed;
+    assert.doesNotThrow(() => validateLayout(svg, options));
+    assert.throws(() => validateLayout(
+      '<svg width="100000" height="50" viewBox="0 0 100000 50"/>', options
+    ), { message: 'EXPORT_DIMENSIONS_EXCEEDED' });
+    assert.throws(() => validateLayout(
+      '<svg width="NaN" height="50" viewBox="0 0 NaN 50"/>', options
+    ), { message: 'EXPORT_DIMENSIONS_INVALID' });
   });
 });
 

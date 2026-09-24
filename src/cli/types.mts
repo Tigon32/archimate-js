@@ -1,6 +1,7 @@
 export type ExportFormat = 'svg' | 'png' | 'pdf';
 export type PdfOrientation = 'portrait' | 'landscape';
 export type PdfPageSize = 'A3' | 'A4' | 'A5' | 'Legal' | 'Letter';
+export type FitMode = 'none' | 'contain' | 'cover';
 
 export type ViewSelection = {
   viewId?: string;
@@ -29,6 +30,10 @@ export type ExportOptions = ViewSelection & {
   background: string;
   pdfPageSize: PdfPageSize;
   pdfOrientation: PdfOrientation;
+  fit: FitMode;
+  padding: number;
+  pdfTitle?: string;
+  pdfFooter?: string;
   chrome?: string;
   allViews?: boolean;
 };
