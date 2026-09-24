@@ -3,6 +3,8 @@ export { importMeffToModelDto } from './meff-import.js';
 export { exportModelDtoToMeff } from './meff-export.js';
 export { validateModelDto, serializeModelDto, parseModelDto } from './validate.js';
 export { createAccessibleOutline, formatAccessibleOutline } from './accessible-outline.js';
+export { searchAccessibleOutline } from './outline-search.js';
+export type { AccessibleOutlineSearchResult } from './outline-search.js';
 export type { AccessibleOutline, AccessibleOutlineNode, AccessibleOutlineRelationship,
   AccessibleOutlineOptions } from './accessible-outline.js';
 export { DiagramAdapter } from './editor.js';
