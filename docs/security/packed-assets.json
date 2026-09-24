@@ -1,0 +1,637 @@
+{
+  "schema": "archimate-js.packaged-assets/v1",
+  "sources": {
+    "project": {
+      "classification": "PUBLIC",
+      "origin": "https://github.com/Tigon32/archimate-js (project-authored source files)",
+      "license": "MIT: LICENSE",
+      "reviewer": "codex-work-e7aae1323a6b-20260924T203125Z",
+      "reviewedAt": "2026-09-24"
+    },
+    "upstream": {
+      "classification": "PUBLIC",
+      "origin": "https://github.com/archimodel/archimate-js (public upstream fork)",
+      "license": "MIT: LICENSE and UPSTREAM.md",
+      "reviewer": "codex-work-e7aae1323a6b-20260924T203125Z",
+      "reviewedAt": "2026-09-24"
+    },
+    "kit": {
+      "classification": "USER_SUPPLIED",
+      "origin": "User-provided archimate-4-kit.zip styling extract; source subset and excluded paths documented in assets/archimate-4-kit/README.md",
+      "license": "Unverified for npm redistribution; user instructed inclusion of the three styling source files in this public repository",
+      "reviewer": "codex-work-e7aae1323a6b-20260924T203125Z",
+      "reviewedAt": "2026-09-24"
+    },
+    "ibm-plex": {
+      "classification": "PUBLIC",
+      "origin": "https://github.com/IBM/plex",
+      "license": "SIL OFL 1.1: assets/ibm-plex-font/OFL.txt; THIRD_PARTY_NOTICES.md",
+      "reviewer": "codex-work-e7aae1323a6b-20260924T203125Z",
+      "reviewedAt": "2026-09-24"
+    },
+    "font-awesome": {
+      "classification": "PUBLIC",
+      "origin": "https://fontawesome.com/license/free (exact bundled patch version unknown)",
+      "license": "SIL OFL 1.1: assets/font-awesome-5/OFL.txt; THIRD_PARTY_NOTICES.md",
+      "reviewer": "codex-work-e7aae1323a6b-20260924T203125Z",
+      "reviewedAt": "2026-09-24"
+    },
+    "archimate-font": {
+      "classification": "PUBLIC",
+      "origin": "https://github.com/archimodel/archimate-font",
+      "license": "SIL OFL 1.1: assets/archimate-font/OFL.txt; THIRD_PARTY_NOTICES.md",
+      "reviewer": "codex-work-e7aae1323a6b-20260924T203125Z",
+      "reviewedAt": "2026-09-24"
+    },
+    "icons": {
+      "classification": "PUBLIC",
+      "origin": "https://github.com/archimodel/archimate-js/tree/main/assets/icons",
+      "license": "MIT: LICENSE; THIRD_PARTY_NOTICES.md",
+      "reviewer": "codex-work-e7aae1323a6b-20260924T203125Z",
+      "reviewedAt": "2026-09-24"
+    },
+    "generated-tokens": {
+      "classification": "USER_SUPPLIED",
+      "origin": "assets/archimate-4-kit/tokens/tokens.json and assets/design-tokens/app.tokens.json",
+      "license": "Unverified for npm redistribution because derived from the user-supplied styling extract",
+      "reviewer": "codex-work-e7aae1323a6b-20260924T203125Z",
+      "reviewedAt": "2026-09-24",
+      "generator": "scripts/build-notation-assets.mjs"
+    },
+    "generated-esm": {
+      "classification": "PUBLIC",
+      "origin": "scripts/mark-model-dto-esm.mjs and scripts/mark-layout-esm.mjs",
+      "license": "MIT: LICENSE",
+      "reviewer": "codex-work-e7aae1323a6b-20260924T203125Z",
+      "reviewedAt": "2026-09-24",
+      "generator": "npm run compile:model-dto and npm run compile:layout"
+    }
+  },
+  "assets": [
+    {
+      "path": "archimate-font/lib/css/archimate-font.css",
+      "gitBlobSha1": "1ba1fc4bb6f0e8b7c9154d3b8498dee215ca987d",
+      "source": "archimate-font"
+    },
+    {
+      "path": "archimate-font/lib/font/archimate-font.eot",
+      "gitBlobSha1": "076548947f28a64483da1ebd1b9080f395b3350b",
+      "source": "archimate-font"
+    },
+    {
+      "path": "archimate-font/lib/font/archimate-font.svg",
+      "gitBlobSha1": "d9de029b6b9c4a65d8d409b01c8a11f9c9dd9fa2",
+      "source": "archimate-font"
+    },
+    {
+      "path": "archimate-font/lib/font/archimate-font.ttf",
+      "gitBlobSha1": "1128d214d05855c67a6b8a68717ecf43b40e0922",
+      "source": "archimate-font"
+    },
+    {
+      "path": "archimate-font/lib/font/archimate-font.woff",
+      "gitBlobSha1": "776ce06be5e734f8d11113325eb74ccce36ae974",
+      "source": "archimate-font"
+    },
+    {
+      "path": "archimate-font/lib/font/archimate-font.woff2",
+      "gitBlobSha1": "835429ede70797b90d2d726c95269a3888dcb8c8",
+      "source": "archimate-font"
+    },
+    {
+      "path": "archimate-font/LICENSE",
+      "gitBlobSha1": "71a7db2252cbcb9b9e3afea1eb52b1dda47a6d17",
+      "source": "archimate-font"
+    },
+    {
+      "path": "archimate-font/package.json",
+      "gitBlobSha1": "00181d5587107bed62c87123a0f6d7aa3e50e22a",
+      "source": "archimate-font"
+    },
+    {
+      "path": "assets/archimate-4-kit/css/archimate.css",
+      "gitBlobSha1": "ca029f89e904ab82ef8784927e77b2adcf355104",
+      "source": "kit"
+    },
+    {
+      "path": "assets/archimate-4-kit/README.md",
+      "gitBlobSha1": "d9d3d67fbc8ad02eef8a8ec9d0d1717335ce560a",
+      "source": "kit"
+    },
+    {
+      "path": "assets/archimate-4-kit/svg/archimate-symbols.svg",
+      "gitBlobSha1": "217b19aa18808b0f5a44b8df51317721885e0068",
+      "source": "kit"
+    },
+    {
+      "path": "assets/archimate-4-kit/tokens/tokens.json",
+      "gitBlobSha1": "3d55265801b41af3947222387ec8c0c99508ef70",
+      "source": "kit"
+    },
+    {
+      "path": "assets/archimate-font/OFL.txt",
+      "gitBlobSha1": "71a7db2252cbcb9b9e3afea1eb52b1dda47a6d17",
+      "source": "archimate-font"
+    },
+    {
+      "path": "assets/archimate-js.css",
+      "gitBlobSha1": "fcb8f20ffa22ca6a4c5cb2a55b9fa2556691553b",
+      "source": "upstream"
+    },
+    {
+      "path": "assets/design-tokens/app-shell.css",
+      "gitBlobSha1": "e039cb2e9dff6ec2123705e440018728f710c451",
+      "source": "project"
+    },
+    {
+      "path": "assets/design-tokens/app.generated.css",
+      "gitBlobSha1": "7eaa928567f3f140bf0f1de4e707a40c37393935",
+      "source": "generated-tokens"
+    },
+    {
+      "path": "assets/design-tokens/app.tokens.json",
+      "gitBlobSha1": "ffa394757b66020bcd766fcbda9eb9c1f13f087f",
+      "source": "project"
+    },
+    {
+      "path": "assets/design-tokens/notation.tokens.json",
+      "gitBlobSha1": "c57f4de11d4313fd99a74544e6c159a6681dc031",
+      "source": "generated-tokens"
+    },
+    {
+      "path": "assets/font-awesome-5/29f589f173dcc69ef6c805b711894998.eot",
+      "gitBlobSha1": "08a4fc2ed4e9aa2eaa749751aa9f6189810ce608",
+      "source": "font-awesome"
+    },
+    {
+      "path": "assets/font-awesome-5/29f589f173dcc69ef6c805b711894998.svg",
+      "gitBlobSha1": "0cc55cf0213491b963984f9a47beedc4a6605e63",
+      "source": "font-awesome"
+    },
+    {
+      "path": "assets/font-awesome-5/29f589f173dcc69ef6c805b711894998.ttf",
+      "gitBlobSha1": "e953a8e5adf6485b512bc5601354a8a975d74a12",
+      "source": "font-awesome"
+    },
+    {
+      "path": "assets/font-awesome-5/29f589f173dcc69ef6c805b711894998.woff",
+      "gitBlobSha1": "1bacb1fdf05d4520e0ffbc1a199e417e5534a090",
+      "source": "font-awesome"
+    },
+    {
+      "path": "assets/font-awesome-5/29f589f173dcc69ef6c805b711894998.woff2",
+      "gitBlobSha1": "722acd269b70d40b9b0f46fade9727c3db08bc2d",
+      "source": "font-awesome"
+    },
+    {
+      "path": "assets/font-awesome-5/OFL.txt",
+      "gitBlobSha1": "a170a1df9f0168fde4e4035bba58a3d2a201a207",
+      "source": "font-awesome"
+    },
+    {
+      "path": "assets/ibm-plex-font/IBMPlexSans-Bold.ttf",
+      "gitBlobSha1": "94717b8b8f46983930fb0a7ee978e4baa962fb94",
+      "source": "ibm-plex"
+    },
+    {
+      "path": "assets/ibm-plex-font/IBMPlexSans-BoldItalic.ttf",
+      "gitBlobSha1": "6ee81941935825799b08ead0703fedd31ff5542a",
+      "source": "ibm-plex"
+    },
+    {
+      "path": "assets/ibm-plex-font/IBMPlexSans-ExtraLight.ttf",
+      "gitBlobSha1": "3f74ac6af8c2b7a2c482bf5879b457f6a88dfd4b",
+      "source": "ibm-plex"
+    },
+    {
+      "path": "assets/ibm-plex-font/IBMPlexSans-ExtraLightItalic.ttf",
+      "gitBlobSha1": "338468140c47ff5e9c4af4a06d8746d9e3b95f2a",
+      "source": "ibm-plex"
+    },
+    {
+      "path": "assets/ibm-plex-font/IBMPlexSans-Italic.ttf",
+      "gitBlobSha1": "7793bae5f1bcb4472261b46ed3bf32fa8cd42834",
+      "source": "ibm-plex"
+    },
+    {
+      "path": "assets/ibm-plex-font/IBMPlexSans-Light.ttf",
+      "gitBlobSha1": "5c25d874ac86b2e67850aade2342c273294e4dd7",
+      "source": "ibm-plex"
+    },
+    {
+      "path": "assets/ibm-plex-font/IBMPlexSans-LightItalic.ttf",
+      "gitBlobSha1": "8869a9ad7a9a51936493b74b886facf71f1d0cea",
+      "source": "ibm-plex"
+    },
+    {
+      "path": "assets/ibm-plex-font/IBMPlexSans-Medium.ttf",
+      "gitBlobSha1": "4c74ec61dd90f77815b4038db6276ce1ad36a096",
+      "source": "ibm-plex"
+    },
+    {
+      "path": "assets/ibm-plex-font/IBMPlexSans-MediumItalic.ttf",
+      "gitBlobSha1": "110e81949ad0bd6066908a7f8c6cf2e7e286b369",
+      "source": "ibm-plex"
+    },
+    {
+      "path": "assets/ibm-plex-font/IBMPlexSans-Regular.ttf",
+      "gitBlobSha1": "702c637f51ede56c3fbfc5023991068041d19927",
+      "source": "ibm-plex"
+    },
+    {
+      "path": "assets/ibm-plex-font/IBMPlexSans-SemiBold.ttf",
+      "gitBlobSha1": "a0cde8edde60e675ae94877be9f580fa61fe59f5",
+      "source": "ibm-plex"
+    },
+    {
+      "path": "assets/ibm-plex-font/IBMPlexSans-SemiBoldItalic.ttf",
+      "gitBlobSha1": "514306ef181a1736c892f7a1067f1867c2c8c682",
+      "source": "ibm-plex"
+    },
+    {
+      "path": "assets/ibm-plex-font/IBMPlexSans-Thin.ttf",
+      "gitBlobSha1": "1ff8fb0fefb7b2eeb3f093849e9659b958e329ce",
+      "source": "ibm-plex"
+    },
+    {
+      "path": "assets/ibm-plex-font/IBMPlexSans-ThinItalic.ttf",
+      "gitBlobSha1": "17a0812ce5e95a3a86d4226c1d752b9761614183",
+      "source": "ibm-plex"
+    },
+    {
+      "path": "assets/ibm-plex-font/OFL.txt",
+      "gitBlobSha1": "245d5f4083395d6f637a6197af96ef87756712ea",
+      "source": "ibm-plex"
+    },
+    {
+      "path": "assets/icons/application_collaboration.svg",
+      "gitBlobSha1": "ed57f789c35af636772b27a660f6cc6cb37b59a9",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/application_component.svg",
+      "gitBlobSha1": "822eedf450a4f0f0ad0220e8bb4e5fb4abe95750",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/application_data_object.svg",
+      "gitBlobSha1": "e5d7b5ec3f23bbd61c5562f34b6901eca480867b",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/application_event.svg",
+      "gitBlobSha1": "a94fa2a148d7ede6c59fa43fe24d3e2af70c38d8",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/application_function.svg",
+      "gitBlobSha1": "a8f4853229684f3e8aeca62f504e4f3e6caf7223",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/application_interaction.svg",
+      "gitBlobSha1": "2a059a1417b1819033d54af78e87b42bb9f21c7a",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/application_interface.svg",
+      "gitBlobSha1": "2006d58e1234ddedb27040c44b0fba81ce87a458",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/application_process.svg",
+      "gitBlobSha1": "97a27d6de41b76202d5db764647a5554d91e6c5d",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/application_service.svg",
+      "gitBlobSha1": "6dddb52fcba265946c5f6c9d2aa2ae47b27a53a5",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/archive/application_function.svg",
+      "gitBlobSha1": "8e87077f6d35db5d02232a43fea743d5006f0824",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/archive/application_interface.svg",
+      "gitBlobSha1": "a3aaaab6a0c47a315e94b2c53143154d98908a85",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/archive/application_process.svg",
+      "gitBlobSha1": "7ddce71275a8e1e5a6807f42af699c249d8966fd",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/archive/business_actor_1px.svg",
+      "gitBlobSha1": "170924e9ee1d7ff56a91426f7f4a17c0c12a14b4",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/archive/business_actor_nc.svg",
+      "gitBlobSha1": "4d7269a1f5a8b933dcd34933707b04cd5799b430",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/archive/business_actor.old.svg",
+      "gitBlobSha1": "79617ec4a11d0480bcc83ea2e35711a34a3d5f54",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/archive/business_collaboration_nc.svg",
+      "gitBlobSha1": "95a423ce0396a33f7bbc0102f1cc2fc45c95c54c",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/archive/business_collaboration.old.svg",
+      "gitBlobSha1": "ef4d8c62f6e4376ce1169bea9ebdcd64ba53db5a",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/archive/business_function_nc.svg",
+      "gitBlobSha1": "181f324573d4c7b4d48c436506c7248597447692",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/archive/business_function.old.svg",
+      "gitBlobSha1": "42b6807a96efa3ca0dbad076e8eac6368c9d5754",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/archive/business_interaction_nc.svg",
+      "gitBlobSha1": "b9f0e48560438f091181d7a616615a77341fb7b6",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/archive/business_interaction.old.svg",
+      "gitBlobSha1": "bf4aed8f1cbefe7a1f412963b92515743a883464",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/archive/business_interface_nc.svg",
+      "gitBlobSha1": "0dc2a355b79cec9d35aa0a8eba7401a4a5e04f7c",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/archive/business_interface.old.svg",
+      "gitBlobSha1": "59e510afb5a306370a9bad1d24f3a06f380665ea",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/archive/business_process_nc.svg",
+      "gitBlobSha1": "a31808623b52ff7b60bcce3a215ad33d3e84505a",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/archive/business_process.old.svg",
+      "gitBlobSha1": "2a850cbd4141b227ef8fc6fc82037ea8c13e911e",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/business_actor.svg",
+      "gitBlobSha1": "aeccaeaf6c8585e7e76bc46d7a93bdcc63d69830",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/business_collaboration.svg",
+      "gitBlobSha1": "6f6aa4f6db99dfb390fdef73fbbda9c739716060",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/business_contract.svg",
+      "gitBlobSha1": "41ba379408d020888c78605ca93ff41d47a7aa9b",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/business_event.svg",
+      "gitBlobSha1": "edf555509bb6d2b8de145e7d12e39185a8eca756",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/business_function.svg",
+      "gitBlobSha1": "1c4df06834c955c3f9551d95991178950441955e",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/business_interaction.svg",
+      "gitBlobSha1": "dedc5326e189fa47f32e0f104d2fc1d874b33e8b",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/business_interface.svg",
+      "gitBlobSha1": "2a42a572e03d8c4e39c4136ad26fab70d3a21f55",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/business_object.svg",
+      "gitBlobSha1": "f63f7dd1ce3e22b1c38c6277d4d2c7bc8772c800",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/business_process.svg",
+      "gitBlobSha1": "6c5939c749bd55eeecaac401f80b6b8dcac8b7c8",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/business_product.svg",
+      "gitBlobSha1": "cb2d6418726db40298118838a25cdf47e3e1573d",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/business_representation.svg",
+      "gitBlobSha1": "a6079106068e77fee3e34a518c902f02e8c6b5b6",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/business_role.svg",
+      "gitBlobSha1": "a9f6835f630d6e8ed8017d8100cc9099740a75fd",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/business_service.svg",
+      "gitBlobSha1": "3d043c8d96de9aa3b36671eded7b2e3b35f3794b",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/group.svg",
+      "gitBlobSha1": "f14eda7206af49ba233d70d0dcec7fa1dd4136ad",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/image.svg",
+      "gitBlobSha1": "6305b5d1fb4ce09ad6227605e592258522ce75b4",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/note_old.svg",
+      "gitBlobSha1": "24fc340177ddd136d0e8aada7bd8ef0705fde75a",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/note-ok.svg",
+      "gitBlobSha1": "5f4f904694a3ca3be82c6f18e1ada2bc203316bb",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/note.svg",
+      "gitBlobSha1": "f276a8b9d164cbf781e900840b878d9388eadcea",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/relation-aggregation.svg",
+      "gitBlobSha1": "1cb156c44ae8b726926666d40a62ba8b873a0c21",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/strategy_capability.svg",
+      "gitBlobSha1": "aaca4665559246b268edacf625392332fda90508",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/strategy_course_of_action.svg",
+      "gitBlobSha1": "f29390083d590b0ea933c94651e046bbfe1ecfac",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/strategy_resource.svg",
+      "gitBlobSha1": "17cf2d879bd2fc9dd22aff22de55227caa2d7298",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/strategy_value_stream.svg",
+      "gitBlobSha1": "e5c582cf9a30db7ffe072faf24e69090e8d78eae",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/technology_artifact.svg",
+      "gitBlobSha1": "27271dcd53a17b95c7f453d50401f487d6049641",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/technology_collaboration.svg",
+      "gitBlobSha1": "313669c609c719af019a3f1104943725d914fb40",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/technology_communication_network.svg",
+      "gitBlobSha1": "5f33469d210092c519f26effad7ab892b86f1f51",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/technology_device.svg",
+      "gitBlobSha1": "ea4d82cbb05d80477ec479703e2513c54f1d143f",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/technology_event.svg",
+      "gitBlobSha1": "a84ca2aaca4fd733ac296bd446e5d69000750a8d",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/technology_function.svg",
+      "gitBlobSha1": "06f1d3f66247385da26cd616a325d95141964278",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/technology_interaction.svg",
+      "gitBlobSha1": "a2c367f609961136c02b01461e308febd873ce38",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/technology_interface.svg",
+      "gitBlobSha1": "a620ac1a16fd35a761fc18e3274ee0401cd357b6",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/technology_node.svg",
+      "gitBlobSha1": "fca6994fb5bab2cce855f91f85134e4ec752e9c3",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/technology_path.svg",
+      "gitBlobSha1": "e72e6a2891d5717dbf9732f8b59726ade8a24787",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/technology_process.svg",
+      "gitBlobSha1": "b7ce125032ce0be12142d8c40a14c8189405327b",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/technology_service.svg",
+      "gitBlobSha1": "63a4923cc337a89f01dc2a8a6649f5509a6ac542",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/technology_system_software.svg",
+      "gitBlobSha1": "739e3ec40e98cd522ecad7ae764dbe69cb7bb84e",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/tool_hand_r.svg",
+      "gitBlobSha1": "75a96c2b5318151038fbefc6728b8a14d8dba78a",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/tool_hand.svg",
+      "gitBlobSha1": "96d42e0429ae9c998195322b9813472c62ef9d85",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/tool_select_r.svg",
+      "gitBlobSha1": "51963763a12fefefbd22a376fbbaee05b6ad145b",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/tool_select.svg",
+      "gitBlobSha1": "67633acf53d74022ba9d0b156e63b843e9d7a8fa",
+      "source": "icons"
+    },
+    {
+      "path": "assets/icons/tool_space.svg",
+      "gitBlobSha1": "99d7690cd1898b8d6893cc0314be8bb1e8d7924b",
+      "source": "icons"
+    },
+    {
+      "path": "assets/palette-icons.css",
+      "gitBlobSha1": "004037332321795e0bda885ed7cdd5b6a5e30a5d",
+      "source": "upstream"
+    },
+    {
+      "path": "dist/layout/package.json",
+      "gitBlobSha1": "089153bcb5adf57dc25f206a9dad3114c9cff80d",
+      "source": "generated-esm"
+    },
+    {
+      "path": "dist/model-dto/package.json",
+      "gitBlobSha1": "089153bcb5adf57dc25f206a9dad3114c9cff80d",
+      "source": "generated-esm"
+    },
+    {
+      "path": "lib/moddle/resources/archimate.json",
+      "gitBlobSha1": "00898b7ff08ae53173c4299c29ac46bf5d8bcc5e",
+      "source": "upstream"
+    },
+    {
+      "path": "LICENSE",
+      "gitBlobSha1": "3097c440adf93e76b9f056cb1c1361df5afc41d2",
+      "source": "project"
+    },
+    {
+      "path": "package.json",
+      "gitBlobSha1": "7105a1cca861ee577d78a77e9354692ed154f7a2",
+      "source": "project"
+    },
+    {
+      "path": "README.md",
+      "gitBlobSha1": "e3b1214791461b961fadead374157b0d9c41f099",
+      "source": "project"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "gitBlobSha1": "6549f296e38ae8c4f99d64b5b76a699ff0a93b26",
+      "source": "project"
+    }
+  ]
+}
