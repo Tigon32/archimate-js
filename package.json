@@ -123,7 +123,7 @@
     "archimate-font": "file:./archimate-font",
     "bpmn-font": "^0.10.0",
     "css.escape": "^1.5.1",
-    "diagram-js": "^12.1.0",
+    "diagram-js": "^15.26.0",
     "diagram-js-direct-editing": "^3.5.1",
     "hex-and-rgba": "^2.0.0",
     "ids": "^1.0.0",
