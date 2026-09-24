@@ -20,6 +20,7 @@ const run = (command, args, options = {}) => {
 try {
   run(process.execPath, ['test/smoke/compile-validator.mjs'], { cwd: root });
   run('npm', ['run', 'compile:model-dto'], { cwd: root });
+  run('npm', ['run', 'compile:layout'], { cwd: root });
   run(process.execPath, ['test/smoke/compile.mjs'], { cwd: root });
   const packOutput = run('npm', [
     'pack', '--ignore-scripts', '--json', '--pack-destination', temp
@@ -39,12 +40,14 @@ try {
   await writeFile(consumerEntry, `
     import Viewer, { mountViewer, renderViewToSvg } from 'archimate-js';
     import { importMeffToModelDto, exportModelDtoToMeff } from 'archimate-js/model-dto';
+    import { layoutView } from 'archimate-js/layout';
     export default {
       viewer: typeof Viewer,
       mountViewer: typeof mountViewer,
       renderViewToSvg: typeof renderViewToSvg,
       dtoImport: typeof importMeffToModelDto,
-      dtoExport: typeof exportModelDtoToMeff
+      dtoExport: typeof exportModelDtoToMeff,
+      layoutView: typeof layoutView
     };
   `);
   const require = createRequire(path.join(root, 'package.json'));
@@ -69,7 +72,8 @@ try {
   global.document = dom.window.document;
   const rootApi = require(bundlePath).default;
   assert.deepEqual(rootApi, { viewer: 'function', mountViewer: 'function',
-    renderViewToSvg: 'function', dtoImport: 'function', dtoExport: 'function' });
+    renderViewToSvg: 'function', dtoImport: 'function', dtoExport: 'function',
+    layoutView: 'function' });
 
   const consumerScript = String.raw`
     import assert from 'node:assert/strict';
@@ -90,6 +94,18 @@ try {
     assert.equal(typeof dto.validateModelDto, 'function');
     assert.equal(dto.importMeffToModelDto(dto.exportModelDtoToMeff(model)).id, model.id);
 
+    const layout = await import('archimate-js/layout');
+    const synthetic = { schemaVersion: 1, id: 'synthetic', elements: [], relationships: [],
+      diagnostics: [], views: [{ id: 'view', nodes: [
+        { id: 'one', kind: 'container', x: 10, y: 10, width: 40, height: 30, nodes: [] },
+        { id: 'two', kind: 'container', x: 15, y: 15, width: 40, height: 30, nodes: [] }
+      ], connections: [] }] };
+    const laidOut = await layout.layoutView(synthetic, 'view', { strategy: 'builtin' });
+    assert.equal(laidOut.status, 'ok');
+    assert.equal(laidOut.metrics.overlapCountBefore, 1);
+    assert.equal(laidOut.metrics.overlapCountAfter, 0);
+    assert.equal(synthetic.views[0].nodes[1].x, 15);
+
     await assert.rejects(
       import('archimate-js/lib/Viewer'),
       (error) => error.code === 'ERR_PACKAGE_PATH_NOT_EXPORTED'
@@ -101,8 +117,10 @@ try {
   const consumerRequire = createRequire(path.join(consumer, 'package.json'));
   assert.equal(packageJson.exports['./validator'].import, './dist/validator/index.js');
   assert.equal(packageJson.exports['./model-dto'].import, './dist/model-dto/index.js');
+  assert.equal(packageJson.exports['./layout'].import, './dist/layout/index.js');
   assert.equal(packageJson.exports['./app-shell.css'], './assets/design-tokens/app-shell.css');
-  assert.deepEqual(Object.keys(packageJson.exports).sort(), ['.', './app-shell.css', './model-dto', './validator']);
+  assert.deepEqual(Object.keys(packageJson.exports).sort(),
+    ['.', './app-shell.css', './layout', './model-dto', './validator']);
   const stylePath = consumerRequire.resolve('archimate-js/app-shell.css');
   assert.match(await readFile(stylePath, 'utf8'), /\.am-app \.am-ui-status/);
   await readFile(path.join(packageRoot, 'assets/design-tokens/app.generated.css'), 'utf8');

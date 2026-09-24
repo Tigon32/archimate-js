@@ -8,6 +8,7 @@ Consumers should import only the package root or the documented subpaths:
 import Viewer, { mountViewer, renderViewToSvg } from 'archimate-js';
 import { validateArchimateXml, ARCHIMATE_LANGUAGE_VERSION } from 'archimate-js/validator';
 import { importMeffToModelDto, exportModelDtoToMeff, serializeModelDto, parseModelDto } from 'archimate-js/model-dto';
+import { layoutView } from 'archimate-js/layout';
 import 'archimate-js/app-shell.css'; // Optional app control styles for a CSS-capable bundler.
 ```
 
@@ -29,6 +30,9 @@ omitted exchange data. The JSON round trip is deterministic for the supported
 DTO subset; it is not a lossless MEFF round trip for arbitrary exchange files.
 Review
 `diagnostics` before using a projection; see the [DTO boundary scope](roadmap/model-dto-boundary.md).
+The opt-in `layout` subpath accepts a validated DTO model and selected view id;
+it computes a detached view and reversible geometry patch for explicit full
+built-in layout. See [layout facade scope](layout/diagram-optimization.md).
 `package.json` `exports` is the authoritative list; source paths
 such as `archimate-js/lib/...`, `archimate-js/src/...`, and internal dependency
 paths are unsupported and intentionally blocked. There is no promise to keep
@@ -103,9 +107,9 @@ The browser check needs a local Chrome/Chromium binary:
 CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" npm run release:check
 ```
 
-The packed consumer test compiles the validator, model DTO, and browser artifact, packs the
+The packed consumer test compiles the validator, model DTO, layout, and browser artifact, packs the
 actual project archive, and installs that archive into an isolated temporary
 consumer with lifecycle scripts disabled. It invokes the installed CLI, bundles
-the root API as a browser consumer, imports the validator and model DTO subpaths in Node, and
+the root API as a browser consumer, imports the validator, model DTO and layout subpaths in Node, and
 checks blocked deep imports. npm may contact the configured registry to resolve
 the archive's declared runtime dependencies; the test never publishes.
