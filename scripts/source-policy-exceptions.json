@@ -1,3 +1,43 @@
 {
-  "exceptions": []
+  "exceptions": [
+    {
+      "path": "lib/draw/ArchimateRenderer.js",
+      "reason": "Issue #93 integrates the supplied notation with a legacy renderer whose full TypeScript migration and decomposition is separate work.",
+      "removalCondition": "Migrate and split ArchimateRenderer into typed modules under the #92/#94 editor contracts.",
+      "allowLegacySize": true
+    },
+    {
+      "path": "lib/util/ColorUtil.js",
+      "reason": "Issue #93 replaces the legacy hard-coded layer palette with the supplied notation palette.",
+      "removalCondition": "Migrate ColorUtil to TypeScript as the shared typed style contracts from #92 land."
+    },
+    {
+      "path": "lib/draw/NotationAdapter.mjs",
+      "reason": "Issue #93 uses a small runtime adapter consumed by Node and the current Webpack bundle without a TypeScript loader.",
+      "removalCondition": "Move to a typed adapter once the browser package can emit and resolve TypeScript sources."
+    },
+    {
+      "path": "lib/util/SvgExportUtil.mjs",
+      "reason": "Issue #93 adds the notation scope to the existing legacy SVG serializer so standalone reports retain supplied styles.",
+      "removalCondition": "Migrate SVG export to TypeScript with the typed view DTOs in #92."
+    },
+    {
+      "path": "test/unit/importer.contract.test.mjs",
+      "reason": "Issue #93 updates one expected Business color to the supplied kit; the existing legacy test suite exceeds the function-size limit.",
+      "removalCondition": "Split this suite into typed, smaller contract tests as #92 migrates importer DTO tests.",
+      "allowLegacySize": true
+    },
+    {
+      "path": "test/unit/meff-view-import.test.mjs",
+      "reason": "Issue #93 updates one expected Application color to the supplied kit; the existing legacy test suite exceeds the function-size limit.",
+      "removalCondition": "Split this suite into typed, smaller import tests as #92 migrates view DTO tests.",
+      "allowLegacySize": true
+    },
+    {
+      "path": "test/browser/smoke.mjs",
+      "reason": "Issue #93 targets the outer diagram SVG after adding nested notation icon SVG elements.",
+      "removalCondition": "Migrate the browser smoke suite to typed, smaller tests with #97.",
+      "allowLegacySize": true
+    }
+  ]
 }

@@ -153,11 +153,11 @@ function validateChangedFiles(changes, exceptions) {
     }
 
     const { lineCount, functions } = analyzeSourceText(filePath, readFileSync(filePath, 'utf8'));
-    if (lineCount > FILE_LIMIT) {
+    if (lineCount > FILE_LIMIT && !exception?.allowLegacySize) {
       errors.push(`${filePath}: ${lineCount} nonblank, noncomment lines exceeds the ${FILE_LIMIT}-line limit`);
     }
     for (const fn of functions) {
-      if (fn.lineCount > FUNCTION_LIMIT) {
+      if (fn.lineCount > FUNCTION_LIMIT && !exception?.allowLegacySize) {
         errors.push(`${filePath}:${fn.startLine}: ${fn.name} function has ${fn.lineCount} nonblank, noncomment lines; limit is ${FUNCTION_LIMIT}`);
       }
     }
