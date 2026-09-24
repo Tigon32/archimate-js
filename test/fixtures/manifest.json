@@ -94,6 +94,21 @@
     "review_after": "2026-12-23"
   },
   {
+    "id": "synthetic-application-integration-semantics",
+    "path": "test/fixtures/synthetic/application-integration-semantics.json",
+    "classification": "SYNTHETIC",
+    "purpose": "Table-driven application and integration semantic decisions with generated synthetic XML validator cases.",
+    "provenance": "Hand-authored generic type triples interpreted from The Open Group public ArchiMate 3.2 reference-card relationship and element definitions; no model or normative relationship table copied.",
+    "contains_private_data": false,
+    "expected_coverage": [
+      "flow and triggering application behaviors",
+      "application service and technology support",
+      "access, assignment, realization, and deployment directions",
+      "explicit reversed structural relationship diagnostics"
+    ],
+    "review_after": "2026-12-23"
+  },
+  {
     "id": "synthetic-invalid-relationship-semantics",
     "path": "test/fixtures/synthetic/invalid-relationship-semantics.xml",
     "classification": "SYNTHETIC",

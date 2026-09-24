@@ -1,0 +1,17 @@
+[
+  ["ApplicationComponent", "FlowRelationship", "ApplicationComponent", "allowed"],
+  ["ApplicationProcess", "FlowRelationship", "ApplicationProcess", "allowed"],
+  ["ApplicationProcess", "TriggeringRelationship", "ApplicationProcess", "allowed"],
+  ["ApplicationEvent", "TriggeringRelationship", "ApplicationProcess", "allowed"],
+  ["ApplicationComponent", "AssignmentRelationship", "ApplicationProcess", "allowed"],
+  ["ApplicationProcess", "RealizationRelationship", "ApplicationService", "allowed"],
+  ["ApplicationProcess", "AccessRelationship", "DataObject", "allowed"],
+  ["ApplicationService", "ServingRelationship", "ApplicationComponent", "allowed"],
+  ["TechnologyService", "ServingRelationship", "ApplicationComponent", "allowed"],
+  ["Node", "AssignmentRelationship", "Artifact", "allowed"],
+  ["ApplicationProcess", "AssignmentRelationship", "ApplicationComponent", "disallowed"],
+  ["ApplicationService", "RealizationRelationship", "ApplicationProcess", "disallowed"],
+  ["DataObject", "AccessRelationship", "ApplicationProcess", "disallowed"],
+  ["ApplicationComponent", "ServingRelationship", "TechnologyService", "disallowed"],
+  ["Artifact", "AssignmentRelationship", "Node", "disallowed"]
+]
