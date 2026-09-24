@@ -6,17 +6,21 @@ This repository runs two automated checks:
   `main`, a weekly schedule, and manual dispatches. It looks for data-flow and code-pattern
   vulnerabilities in the checked-out source.
 - **Dependency review** runs on pull requests and reports newly introduced
-  dependencies or dependency versions with known vulnerable licenses or
-  advisories. It complements, but does not replace, the dependency review
-  process in [`dependency-policy.md`](dependency-policy.md).
+  dependencies or dependency versions with high/critical advisories or licenses
+  outside the reviewed SPDX set in [`dependency-policy.md`](dependency-policy.md).
+  A lockfile-delta check also rejects changed packages with missing or
+  unapproved license metadata. Failures identify the package. The checks
+  complement the human review process in the dependency policy.
 
 The workflow uses the ordinary `pull_request` event, not
 `pull_request_target`. It does not read repository secrets, publish packages,
 write repository contents, or run release steps. CodeQL analysis still runs
 for pull requests from forks, but its results are not uploaded to the
 repository's code-scanning database because fork workflows receive a
-read-only token. Dependency review also examines the pull request without
-checking out or executing fork-controlled code.
+read-only token. The dependency-review job checks out the pull-request tree and
+runs the repository's license-metadata checker with read-only permissions and
+no secrets. Changes to that checker and its exception ledger require human
+review; #109 owns stronger governance protection.
 
 ## Triage
 

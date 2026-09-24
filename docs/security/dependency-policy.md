@@ -15,6 +15,41 @@ The automated checks are described in
 [`automated-analysis.md`](automated-analysis.md). They are review aids and do
 not prove that a dependency or the repository is free of vulnerabilities.
 
+The pull-request dependency review fails on newly introduced **high** or
+**critical** advisories in runtime and development dependencies. It also fails
+when a new dependency's detected license is outside this reviewed SPDX set:
+MIT, MIT-0, ISC, Apache-2.0, BSD-2-Clause, BSD-3-Clause, MPL-2.0, CC0-1.0,
+OFL-1.1, CC-BY-3.0, CC-BY-4.0, and BlueOak-1.0.0. This is a reviewed approval
+set, not a complete inventory or a legal conclusion about compatibility.
+The upstream action reports undetected licenses without failing. A second,
+read-only check therefore compares added or changed lockfile entries with the
+base commit and rejects missing, unsupported-expression, or unapproved license
+metadata unless an exact, unexpired exception exists. Its conservative SPDX
+expression support accepts the approved identifiers joined by `AND` or `OR`.
+It does not re-evaluate unchanged dependencies in every pull request.
+The action's job summary names the changed package and finding; the workflow
+does not post a pull-request comment or need write permission.
+
+The current lockfile also contains legacy metadata outside this set:
+`argparse` has `Python-2.0`, `bpmn-font` has non-SPDX `SIL`, and `type-fest`
+has `(MIT OR CC0-1.0)`. `archimate-font`, `component-event`, `indexof`, and
+`memorystream` have no lockfile license field. These unchanged entries are
+not blanket approvals; an update to any of them is reviewed like a new entry.
+GitHub's detected license may differ from lockfile metadata, so both checks
+must pass for a changed package.
+
+For a justified exception, add a file-scoped, version-specific entry to
+[`dependency-exceptions.json`](dependency-exceptions.json) with its lockfile
+path, exact version and license metadata (or `null` if missing), reason,
+responsible human reviewer, and UTC expiry date. A human maintainer reviews
+that record and the package's actual license before merging. For a detected
+license rejected by the upstream action, the same reviewed PR must also add
+an exact package purl to `allow-dependencies-licenses`; adding a license to
+the global set would approve unrelated packages. The two exception records
+must be removed or renewed after expiry. High/critical advisory exceptions
+need a separately reviewed, expiring policy change; none are configured.
+This check is an accidental-introduction gate, not proof of license legality.
+
 ## Workflow boundary
 
 CI uses workflow-level `contents: read` permissions. Pull-request workflows do not access repository secrets, write repository contents, publish packages, or run on `pull_request_target`. Workflow actions are pinned to reviewed commit SHAs, and jobs use an explicit GitHub-hosted runner image version. Changes to permissions, action pins, runner images, triggers, or secret access require explicit review.
