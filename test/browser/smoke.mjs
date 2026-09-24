@@ -111,11 +111,13 @@ try {
     const registry = viewer.get('elementRegistry');
     const nestedParent = registry.get('node-service-nested')?.parent?.id;
     const renderedConnection = registry.get('serving-connection');
+    const canvasIdsPresent = Boolean(registry.get('node-component') && renderedConnection);
     const sourceNode = supportedEntry.model.views[0].nodes[0];
     const nestedSource = sourceNode.nodes[0];
     const nestedShape = registry.get('node-service-nested');
     const parentShape = registry.get('node-component');
     const renderedNode = registry.get('node-component');
+    const lineWidth = renderedNode?.style?.lineWidth;
     const visualShape = container.querySelector('[data-element-id="node-component"] .am-shape');
     viewer.get('selection').select([registry.get('node-component')]);
     const selectedIds = editor.project('view-dto-export').selectedIds;
@@ -138,7 +140,7 @@ try {
       unsupported: rejectedEntry.eligible === false &&
         rejectedEntry.reasons[0]?.code === 'DTO_UNSUPPORTED_FIELDS' &&
         !('model' in rejectedEntry) && !('editor' in rejectedEntry),
-      canvasIds: Boolean(registry.get('node-component') && renderedConnection),
+      canvasIds: canvasIdsPresent,
       nested: nestedParent === 'node-component',
       nestedGeometry: nestedShape?.x + parentShape?.x === nestedSource.x &&
         nestedShape?.y + parentShape?.y === nestedSource.y,
@@ -148,7 +150,7 @@ try {
       renderedStyle: Boolean(visualShape && getComputedStyle(visualShape).stroke !== 'none'),
       endpoints: renderedConnection?.source?.id === 'node-component' &&
         renderedConnection?.target?.id === 'node-service',
-      styled: registry.get('node-component')?.style?.lineWidth === 7,
+      styled: lineWidth === 7,
       selection: selectedIds.includes('node-component'),
       selectionEvents: selectionEventCount === 2,
       detached: clearedOnDetach,
