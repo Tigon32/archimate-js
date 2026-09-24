@@ -7,6 +7,8 @@ import { parseMeffViews } from '../../lib/import/MeffView.js';
 import ArchimateModdle from '../../lib/moddle/Moddle';
 import ArchimateDescriptors from '../../lib/moddle/resources/archimate.json';
 import { preflightImportXml } from '../../lib/import/XmlPreflight.js';
+import ArchimateImporter from '../../lib/import/ArchimateImporter';
+import ElementFactory from '../../lib/features/modeling/ElementFactory';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fixturePath = path.resolve(here, '../fixtures/meff-schema/valid-view-diagram.xml');
@@ -63,6 +65,45 @@ describe('MEFF View and Diagram import', () => {
     expect(connection.relationshipRef).toBe(relationship);
     expect(connection.source).toBe(componentNode);
     expect(connection.target).toBe(serviceNode);
+
+    expect(componentNode.meffGeometry).toEqual({
+      x: 20, y: 40, w: 140, h: 70, coordinateSpace: 'diagram'
+    });
+    expect(componentNode.style).toEqual({
+      lineWidth: 7,
+      lineColor: { r: 20, g: 40, b: 60, a: 50 },
+      fillColor: { r: 180, g: 210, b: 240, a: 0 },
+      font: {
+        name: 'Synthetic Sans', size: 10.5, style: 'bold italic',
+        color: { r: 11, g: 22, b: 33, a: 75 }
+      }
+    });
+    expect(componentNode.nodes[0].meffGeometry).toEqual({
+      x: 10, y: 120, w: 130, h: 70, coordinateSpace: 'diagram'
+    });
+    expect(connection.style).toEqual({
+      lineWidth: 9,
+      lineColor: { r: 1, g: 2, b: 3, a: 0 }
+    });
+    expect(connection.meffGeometry).toEqual({
+      sourceAttachment: {
+        x: 160, y: 75, kind: 'sourceAttachment', coordinateSpace: 'diagram'
+      },
+      bendpoints: [
+        { x: 220, y: 80, kind: 'bendpoint', coordinateSpace: 'diagram' },
+        { x: 260, y: 100, kind: 'bendpoint', coordinateSpace: 'diagram' }
+      ],
+      targetAttachment: {
+        x: 300, y: 75, kind: 'targetAttachment', coordinateSpace: 'diagram'
+      },
+      coordinateSpace: 'diagram'
+    });
+    expect(connection.waypointsNode.waypoints.map(({ x, y, kind }) => ({ x, y, kind }))).toEqual([
+      { x: 160, y: 75, kind: 'sourceAttachment' },
+      { x: 220, y: 80, kind: 'bendpoint' },
+      { x: 260, y: 100, kind: 'bendpoint' },
+      { x: 300, y: 75, kind: 'targetAttachment' }
+    ]);
   });
 
 
@@ -79,6 +120,9 @@ describe('MEFF View and Diagram import', () => {
     expect(view.id).toBe('view-synthetic-one');
     expect(view.viewElements[0].elementRef).toBe(component);
     expect(view.viewElements[2].relationshipRef).toBe(relationship);
+    expect(view.viewElements[0].style.font.size).toBe(10.5);
+    expect(view.viewElements[0].style.fillColor.a).toBe(0);
+    expect(view.viewElements[0].style.font.color.a).toBe(75);
   });
 
   it('returns no views for a schema Model without a views section', () => {
@@ -130,4 +174,114 @@ describe('MEFF View and Diagram import', () => {
     expect(JSON.stringify(parsed.diagnostics)).not.toContain('node-component-one');
   });
 
+
+  it('keeps diagram coordinates reversible and applies supported styles without inventing source styles', async () => {
+    const xml = await readFile(fixturePath, 'utf8');
+    const component = {
+      id: 'component-one',
+      type: 'archimate:ApplicationComponent',
+      conceptType: 'archimate:ApplicationComponent'
+    };
+    const service = {
+      id: 'service-two',
+      type: 'archimate:ApplicationService',
+      conceptType: 'archimate:ApplicationService'
+    };
+    const relationship = {
+      id: 'serving-one-two',
+      type: 'archimate:Serving',
+      conceptType: 'archimate:Serving'
+    };
+    const parsed = parseMeffViews(xml, {
+      elementsById: new Map([[component.id, component], [service.id, service]]),
+      relationshipsById: new Map([[relationship.id, relationship]])
+    });
+    const [componentNode, serviceNode, importedConnection] = parsed.views.diagrams.viewsList[0].viewElements;
+    const nestedNode = componentNode.nodes[0];
+    const factory = new ElementFactory({ create: () => ({}) }, {}, (message) => message);
+    factory.baseCreate = (type, attrs) => ({ ...attrs, factoryType: type });
+    const shapesById = new Map();
+    const canvas = {
+      addShape(shape, parent) {
+        shape.parent = parent;
+        shapesById.set(shape.id, shape);
+        return shape;
+      },
+      addConnection(connection) { return connection; }
+    };
+    const importer = new ArchimateImporter(
+      { fire() {} },
+      canvas,
+      factory,
+      { get(id) { return shapesById.get(id); } },
+      (message) => message,
+      {}
+    );
+    const root = { type: 'root', x: 0, y: 0 };
+    const parentShape = importer.addElement(componentNode, root);
+    const nestedShape = importer.addElement(nestedNode, parentShape);
+    const serviceShape = importer.addElement(serviceNode, root);
+    factory.createConnection = (attrs) => attrs;
+    const drawnConnection = importer.addConnection(importedConnection);
+
+    expect(drawnConnection.source).toBe(parentShape);
+    expect(drawnConnection.target).toBe(serviceShape);
+    expect(drawnConnection.waypoints.map(({ x, y, kind }) => ({ x, y, kind }))).toEqual([
+      { x: 160, y: 75, kind: 'sourceAttachment' },
+      { x: 220, y: 80, kind: 'bendpoint' },
+      { x: 260, y: 100, kind: 'bendpoint' },
+      { x: 300, y: 75, kind: 'targetAttachment' }
+    ]);
+
+    expect(parentShape.x).toBe(20);
+    expect(parentShape.y).toBe(40);
+    expect(nestedShape.x).toBe(-10);
+    expect(nestedShape.y).toBe(80);
+    expect(nestedShape.x + parentShape.x).toBe(nestedNode.meffGeometry.x);
+    expect(nestedShape.y + parentShape.y).toBe(nestedNode.meffGeometry.y);
+    expect(nestedNode.style).toBeUndefined();
+    expect(nestedShape.style.fillColor).toBe('#B5FFFF');
+
+    const styledShape = factory.createShape({
+      type: componentNode.type,
+      businessObject: componentNode,
+      x: componentNode.x,
+      y: componentNode.y,
+      width: componentNode.w,
+      height: componentNode.h
+    });
+    expect(styledShape.style).toMatchObject({
+      lineWidth: 7,
+      lineColor: '#14283c7f',
+      fillColor: '#b4d2f000',
+      fontName: 'Synthetic Sans',
+      fontSize: 10.5,
+      fontStyle: 'bold italic',
+      fontColor: '#0b1621bf'
+    });
+    expect(componentNode.meffGeometry.coordinateSpace).toBe('diagram');
+  });
+
+  it('produces the same geometry and diagnostics on repeated imports', async () => {
+    const xml = await readFile(fixturePath, 'utf8');
+    const component = { id: 'component-one', type: 'archimate:ApplicationComponent' };
+    const service = { id: 'service-two', type: 'archimate:ApplicationService' };
+    const relationship = { id: 'serving-one-two', type: 'archimate:Serving' };
+    const rootElement = {
+      elementsById: new Map([[component.id, component], [service.id, service]]),
+      relationshipsById: new Map([[relationship.id, relationship]])
+    };
+    const first = parseMeffViews(xml, rootElement);
+    const second = parseMeffViews(xml, rootElement);
+    const projectGeometry = (result) => result.views.diagrams.viewsList[0].viewElements.map((item) => ({
+      id: item.id,
+      geometry: item.meffGeometry,
+      style: item.style,
+      waypoints: item.waypointsNode && item.waypointsNode.waypoints
+    }));
+
+    expect(first.diagnostics).toEqual(second.diagnostics);
+    expect(projectGeometry(first)).toEqual(projectGeometry(second));
+    expect(first.diagnostics).toEqual([]);
+  });
 });

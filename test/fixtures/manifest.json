@@ -163,6 +163,9 @@
       "Diagram view identifier and localized name",
       "Element node identifiers and nested membership",
       "elementRef links to model elements",
+      "diagram-origin node bounds including nested nodes",
+      "source and target attachments and ordered bendpoints",
+      "line width, RGBA colors, and half-point font size",
       "Relationship connection identifier and endpoints",
       "relationshipRef link to model relationship",
       "MEFF 3.1 Diagram XSD validation"
