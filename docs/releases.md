@@ -7,7 +7,7 @@ Consumers should import only the package root or the documented subpaths:
 ```js
 import Viewer, { mountViewer, renderViewToSvg } from 'archimate-js';
 import { validateArchimateXml, ARCHIMATE_LANGUAGE_VERSION } from 'archimate-js/validator';
-import { importMeffToModelDto, serializeModelDto, parseModelDto } from 'archimate-js/model-dto';
+import { importMeffToModelDto, exportModelDtoToMeff, serializeModelDto, parseModelDto } from 'archimate-js/model-dto';
 ```
 
 The root exports the default `Viewer`, `mountViewer(options)`, and
@@ -16,9 +16,14 @@ entry; its source uses extensionless module specifiers and is not a direct
 Node.js runtime entry. The validator subpath exports its TypeScript
 validator API. The opt-in `model-dto` subpath imports MEFF XML to the supported
 project-owned DTO subset, validates DTO inputs, and serializes/parses DTO JSON.
+`exportModelDtoToMeff(dto)` emits MEFF only for the representable subset of
+semantic element nodes and relationship connections. It rejects diagnostics,
+unknown DTO fields, unsupported presentation records, incompatible geometry or
+colors, and any output that cannot be reimported to an equivalent DTO.
 It applies the existing XML preflight limits and returns diagnostics for detected
 omitted exchange data. The JSON round trip is deterministic for the supported
-DTO subset; it is not a lossless MEFF round trip or a MEFF exporter. Review
+DTO subset; it is not a lossless MEFF round trip for arbitrary exchange files.
+Review
 `diagnostics` before using a projection; see the [DTO boundary scope](roadmap/model-dto-boundary.md).
 `package.json` `exports` is the authoritative list; source paths
 such as `archimate-js/lib/...`, `archimate-js/src/...`, and internal dependency
