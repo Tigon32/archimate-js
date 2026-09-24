@@ -90,6 +90,23 @@ ignore unknown fields. If an invalid record could affect ownership, treat the
 issue as ambiguous and fail closed until a maintainer posts a valid
 `supersede` or release record.
 
+### TypeScript parser boundary
+
+`src/coordination/agent-claim-record.mts` provides a side-effect-free parser for
+one issue comment. It distinguishes unrelated prose, invalid protocol attempts,
+and one valid record. It checks the documented record fields, duplicate JSON
+keys, UTC timestamp syntax, and record-local lease/takeover timing constraints.
+Synthetic deterministic cases live in
+`test/unit/agent-claim-record.fixtures.mts` and
+`test/unit/agent-claim-record.test.mts`.
+
+The parser does not read GitHub, establish which record is the newest valid
+record for a lease, resolve ownership from comment history, verify that an
+acknowledgement comment exists, or decide whether a lease is still live now.
+Callers must apply the complete fail-closed procedure above. It does not
+serialize operations or implement the controller and automatic expiry planned
+for [#140](https://github.com/Tigon32/archimate-js/issues/140).
+
 ## Operator procedure
 
 ### Claim
