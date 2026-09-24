@@ -90,14 +90,91 @@ try {
     const unsupported = await (await fetch('/test/fixtures/meff-schema/valid-view-presentation.xml')).text();
     const supportedEntry = api.createDtoEditorFromMeff(supported);
     const rejectedEntry = api.createDtoEditorFromMeff(unsupported);
+    const container = document.createElement('div');
+    container.style.width = '800px';
+    container.style.height = '600px';
+    document.body.append(container);
+    const viewer = await window.ArchimateJS.mountViewer({ xml: supported, container });
+    const port = new api.DiagramJsCanvasPort({
+      canvas: viewer.get('canvas'),
+      elementFactory: viewer.get('elementFactory'),
+      eventBus: viewer.get('eventBus'),
+      selection: viewer.get('selection')
+    });
+    const editableModel = structuredClone(supportedEntry.model);
+    const originalSnapshot = JSON.stringify(supportedEntry.model);
+    editableModel.views.push({ id: 'view-two', nodes: [], connections: [] });
+    const editor = new api.DiagramAdapter(editableModel);
+    let selectionEvents = 0;
+    const publicEvents = [];
+    editor.subscribe((event) => {
+      if (event.type === 'selection') {
+        selectionEvents++;
+        publicEvents.push(JSON.stringify(event));
+      }
+    });
+    const detach = editor.attach('view-dto-export', port);
+    const registry = viewer.get('elementRegistry');
+    const nestedParent = registry.get('node-service-nested')?.parent?.id;
+    const renderedConnection = registry.get('serving-connection');
+    const canvasIdsPresent = Boolean(registry.get('node-component') && renderedConnection);
+    const sourceNode = supportedEntry.model.views[0].nodes[0];
+    const nestedSource = sourceNode.nodes[0];
+    const nestedShape = registry.get('node-service-nested');
+    const parentShape = registry.get('node-component');
+    const renderedNode = registry.get('node-component');
+    const lineWidth = renderedNode?.style?.lineWidth;
+    const visualShape = container.querySelector('[data-element-id="node-component"] .am-shape');
+    viewer.get('selection').select([registry.get('node-component')]);
+    const selectedIds = editor.project('view-dto-export').selectedIds;
+    const untouched = JSON.stringify(supportedEntry.model) === originalSnapshot;
+    detach();
+    const clearedOnDetach = registry.get('node-component') === undefined;
+    const detachSecondView = editor.attach('view-two', port);
+    const clearedOnSwitch = registry.get('node-component') === undefined;
+    detachSecondView();
+    const detachOriginalView = editor.attach('view-dto-export', port);
+    const coordinatesRestored = registry.get('node-component')?.x === sourceNode.x &&
+      registry.get('node-component')?.y === sourceNode.y;
+    viewer.get('selection').select([registry.get('node-component')]);
+    const selectionEventCount = selectionEvents;
+    detachOriginalView();
+    viewer.destroy();
+    container.remove();
     return {
       supported: supportedEntry.eligible && supportedEntry.editor.getModel().id === 'model-dto-export',
       unsupported: rejectedEntry.eligible === false &&
         rejectedEntry.reasons[0]?.code === 'DTO_UNSUPPORTED_FIELDS' &&
-        !('model' in rejectedEntry) && !('editor' in rejectedEntry)
+        !('model' in rejectedEntry) && !('editor' in rejectedEntry),
+      canvasIds: canvasIdsPresent,
+      nested: nestedParent === 'node-component',
+      nestedGeometry: nestedShape?.x + parentShape?.x === nestedSource.x &&
+        nestedShape?.y + parentShape?.y === nestedSource.y,
+      geometry: renderedNode?.x === sourceNode.x && renderedNode?.y === sourceNode.y &&
+        renderedNode?.width === sourceNode.width && renderedNode?.height === sourceNode.height,
+      label: renderedNode?.name === 'Component One',
+      renderedStyle: Boolean(visualShape && getComputedStyle(visualShape).stroke !== 'none'),
+      endpoints: renderedConnection?.source?.id === 'node-component' &&
+        renderedConnection?.target?.id === 'node-service',
+      styled: lineWidth === 7,
+      selection: selectedIds.includes('node-component'),
+      selectionEvents: selectionEventCount === 2,
+      eventPayloadsArePlain: publicEvents.length === 2 &&
+        publicEvents.every((event) => !/businessObject|\$parent|\$type/.test(event)),
+      serializedStateIsPlain: !editor.serialize().includes('businessObject'),
+      detached: clearedOnDetach,
+      switchedViewCleared: clearedOnSwitch,
+      coordinatesRestored,
+      sourceUnchanged: untouched
     };
   });
-  assert.deepEqual(eligibility, { supported: true, unsupported: true });
+  assert.deepEqual(eligibility, {
+    supported: true, unsupported: true, canvasIds: true, nested: true, nestedGeometry: true,
+    geometry: true, label: true, renderedStyle: true, endpoints: true, styled: true,
+    selection: true, selectionEvents: true, eventPayloadsArePlain: true,
+    serializedStateIsPlain: true, detached: true, switchedViewCleared: true,
+    coordinatesRestored: true, sourceUnchanged: true
+  });
 
   await page.waitForFunction(() => {
     const status = document.querySelector('#status')?.textContent;
