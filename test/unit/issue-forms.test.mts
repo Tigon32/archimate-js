@@ -73,12 +73,12 @@ describe('public issue forms', () => {
     expect(filenames.sort()).toEqual([...categories, 'config.yml'].sort());
     for (const filename of categories) {
       const yaml = readFileSync(new URL(filename, directory), 'utf8');
-      validateForm(filename, load(yaml, { json: true }));
+      validateForm(filename, load(yaml));
     }
   });
 
   it('keeps one canonical guide linked from the issue chooser and contributor policies', () => {
-    const config = mapping(load(readFileSync(new URL('config.yml', directory), 'utf8'), { json: true }));
+    const config = mapping(load(readFileSync(new URL('config.yml', directory), 'utf8')));
     expect(config.blank_issues_enabled).toBe(false);
     expect(JSON.stringify(config.contact_links)).toContain(guidePath);
     for (const filename of [ 'CONTRIBUTING.md', 'AGENTS.md' ]) {
@@ -91,7 +91,7 @@ describe('public issue forms', () => {
   });
 
   it('rejects a form that loses its duplicate-search requirement', () => {
-    const form = mapping(load(readFileSync(new URL('bug.yml', directory), 'utf8'), { json: true }));
+    const form = mapping(load(readFileSync(new URL('bug.yml', directory), 'utf8')));
     form.body = fields(form.body).filter(({ id }) => id !== 'existing_work');
     expect(() => validateForm('bug.yml', form)).toThrow();
   });
