@@ -5,13 +5,13 @@ This phase-1 harness establishes repeatable scaling evidence for the semantic mo
 Build the TypeScript validator once, then run the smoke benchmark:
 
 ```bash
-npm run compile:validator && node test/performance/benchmark.mjs --smoke --assert
+npm run compile:validator && node test/performance/benchmark.mts --smoke --assert
 ```
 
 For the fuller local run, omit `--smoke` or choose a repeat count:
 
 ```bash
-npm run compile:validator && node test/performance/benchmark.mjs --repeats=5 --output=/tmp/archimate-performance.json
+npm run compile:validator && node test/performance/benchmark.mts --repeats=5 --output=/tmp/archimate-performance.json
 ```
 
 The command writes versioned JSON to stdout (and to `--output=...` when supplied). Results include Node/platform/architecture, fixture sizes, semantic element and relationship counts, diagram node and connection counts, route/layout metrics, and medians for fixture generation, validation, routing, and layout over the requested repeats. `--assert` checks deterministic structural safety conditions only; it does not gate on wall-clock time.
