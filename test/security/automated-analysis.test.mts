@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 // @ts-expect-error Node types are intentionally not runtime dependencies.
 import { readFileSync } from 'node:fs';
 import { load } from 'js-yaml';
+import { APPROVED_LICENSES } from '../../scripts/check-dependency-policy.mjs';
 
 const ACTIONS = Object.freeze({
   'actions/checkout': '3d3c42e5aac5ba805825da76410c181273ba90b1',
@@ -42,12 +43,12 @@ function assertExactPermissions(value: unknown, expected: Record<string, string>
 
 function assertPinnedActions(allSteps: Record<string, unknown>[]): void {
   assert.ok(allSteps.length > 0);
-  assert.ok(allSteps.every((step) => !Object.hasOwn(step, 'run')));
-  const references = allSteps.map((step) => step.uses);
+  const references = allSteps.filter((step) => Object.hasOwn(step, 'uses')).map((step) => step.uses);
   assert.ok(references.every((reference) => typeof reference === 'string'));
-  assert.deepEqual(references.sort(), Object.entries(ACTIONS)
-    .map(([action, sha]) => `${action}@${sha}`)
-    .sort());
+  assert.deepEqual(references.sort(), [
+    ...Object.entries(ACTIONS).map(([action, sha]) => `${action}@${sha}`),
+    `actions/checkout@${ACTIONS['actions/checkout']}`
+  ].sort());
 }
 
 const text = readFileSync(new URL('../../.github/workflows/automated-analysis.yml', import.meta.url), 'utf8');
@@ -58,6 +59,8 @@ const codeql = job(jobs.codeql, 'jobs.codeql');
 const dependencyReview = job(jobs['dependency-review'], 'jobs.dependency-review');
 const codeqlSteps = steps(codeql.steps, 'jobs.codeql.steps');
 const dependencySteps = steps(dependencyReview.steps, 'jobs.dependency-review.steps');
+assert.equal(codeqlSteps.length, 3);
+assert.equal(dependencySteps.length, 3);
 
 assert.deepEqual(Object.keys(triggers).sort(), [ 'pull_request', 'push', 'schedule', 'workflow_dispatch' ]);
 assert.deepEqual(triggers.push, { branches: [ 'main' ] });
@@ -67,6 +70,24 @@ assert.deepEqual(Object.keys(jobs).sort(), [ 'codeql', 'dependency-review' ]);
 assertExactPermissions(codeql.permissions, { contents: 'read', 'security-events': 'write' });
 assertExactPermissions(dependencyReview.permissions, { contents: 'read', 'pull-requests': 'read' });
 assert.equal(dependencyReview.if, "github.event_name == 'pull_request'");
+assert.deepEqual(record(dependencySteps[1].with, 'dependency-review.with'), {
+  'fail-on-severity': 'high',
+  'fail-on-scopes': 'runtime, development',
+  'allow-licenses': 'MIT, MIT-0, ISC, Apache-2.0, BSD-2-Clause, BSD-3-Clause, MPL-2.0, CC0-1.0, OFL-1.1, CC-BY-3.0, CC-BY-4.0, BlueOak-1.0.0',
+  'license-check': true,
+  'vulnerability-check': true,
+  'warn-only': false,
+  'comment-summary-in-pr': 'never'
+});
+assert.equal(record(dependencySteps[1].with, 'dependency-review.with')['allow-licenses'],
+  APPROVED_LICENSES.join(', '));
+assert.deepEqual(record(dependencySteps[0].with, 'dependency checkout.with'), { 'fetch-depth': 0 });
+assert.deepEqual(dependencySteps[2], {
+  name: 'Reject unreviewed dependency license metadata',
+  run: 'node scripts/check-dependency-policy.mjs',
+  env: { DEPENDENCY_POLICY_BASE: '${{ github.event.pull_request.base.sha }}' }
+});
+assert.deepEqual(codeqlSteps.filter((step) => Object.hasOwn(step, 'run')), []);
 assert.deepEqual(record(codeqlSteps[0].with ?? {}, 'checkout.with'), {});
 assert.equal(
   record(codeqlSteps.at(-1)?.with, 'analyze.with').upload,
