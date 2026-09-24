@@ -1,4 +1,6 @@
 import { execFileSync, spawnSync } from 'node:child_process';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 function capture(command, args) {
   return execFileSync(command, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -51,4 +53,6 @@ function main() {
   console.log(`PR #${pr.number} is Ready at exact HEAD ${headSha}; repository drain automation owns merge completion.`);
 }
 
-if (process.argv[1]) main();
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  main();
+}
