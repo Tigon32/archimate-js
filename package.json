@@ -28,6 +28,7 @@
     "lint": "eslint --no-eslintrc --config .eslintrc.release.json bin/archimate-js.mjs bin/cli-io.mjs lib/BaseViewer.js lib/import/Importer.js lib/import/XmlPreflight.js test/cli/cli.test.mjs test/release/check.mjs test/security/supply-chain.test.mjs test/smoke/packed-consumer.test.mjs test/unit/import-diagnostics.test.mjs test/unit/svg-export.test.mjs",
     "test": "run-s test:package test:security test:supply-chain test:fixtures test:typecheck test:validator-build test:cli test:packed-consumer test:unit",
     "test:package": "node test/smoke/package.test.mjs",
+    "check:source-policy": "node scripts/check-source-policy.mjs",
     "test:security": "node test/security/logger.test.mjs",
     "test:fixtures": "node test/security/scan-fixtures.mjs",
     "test:typecheck": "tsc --noEmit",
@@ -68,6 +69,7 @@
     }
   },
   "devDependencies": {
+    "@babel/parser": "7.29.9",
     "@vitest/coverage-v8": "5.0.1",
     "eslint": "^7.32.0",
     "eslint-plugin-bpmn-io": "^0.12.0",
