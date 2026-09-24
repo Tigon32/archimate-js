@@ -252,12 +252,12 @@ describe('MEFF View and Diagram import', () => {
     });
     expect(styledShape.style).toMatchObject({
       lineWidth: 7,
-      lineColor: '#14283C80',
-      fillColor: '#B4D2F000',
+      lineColor: '#14283c7f',
+      fillColor: '#b4d2f000',
       fontName: 'Synthetic Sans',
       fontSize: 10.5,
       fontStyle: 'bold italic',
-      fontColor: '#0B1621BF'
+      fontColor: '#0b1621bf'
     });
     expect(componentNode.meffGeometry.coordinateSpace).toBe('diagram');
   });
