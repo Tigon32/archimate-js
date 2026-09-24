@@ -35,7 +35,7 @@
     },
     {
       "path": "test/browser/smoke.mjs",
-      "reason": "Issues #93, #95, and #204 extend the existing Node 22 native ESM browser smoke runner with SVG, scoped UI theme, and reviewed relationship-edit checks; its runner has no TypeScript execution or Node type declarations.",
+      "reason": "Issue #204 changes only the reviewed relationship direction in an existing browser journey. This legacy runner exceeds the module/function limits and a strict TypeScript migration requires splitting several independent journeys; the bounded semantic change uses its existing temporary exception.",
       "removalCondition": "Migrate the browser smoke suite to typed, smaller tests with the browser/Node TypeScript test runner and #97.",
       "allowLegacySize": true
     },

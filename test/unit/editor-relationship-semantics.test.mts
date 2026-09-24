@@ -1,5 +1,6 @@
 // SYNTHETIC provenance: hand-authored DTOs use only public reviewed relationship rows.
 import { expect, it } from 'vitest';
+// @ts-expect-error Node types are excluded from the browser source project.
 import { readFileSync } from 'node:fs';
 import { RELATIONSHIP_SEMANTIC_ROWS } from '../../src/language/relationship-decisions.mjs';
 import { validateRelationshipSemantics } from '../../src/language/relationship-semantics.mjs';
