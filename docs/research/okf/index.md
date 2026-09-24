@@ -13,6 +13,7 @@ okf_version: "0.2"
 * [The Open Group exchange-format resources](opengroup-exchange-format-resources.md) - Official XSD, documentation, examples, snippets, and FAQ directory.
 * [The Open Group MEFF FAQ](opengroup-meff-faq.md) - Purpose, exchange layers, and scope boundaries.
 * [The Open Group MEFF 3.1 Model schema](opengroup-meff-model-schema.md) - Model identity, records, and relationship references.
+* [MEFF View and Diagram implementation research](meff-view-diagram-implementation-research.md) - Diagram coordinate/style schema notes and reviewed GitHub implementations for P08-E.
 * [The Open Group ArchiMate certification](opengroup-archimate-certification.md) - Certification and restricted test-model boundary.
 * [The Open Group ArchiMate 4 specification](archimate4-spec.md) - Relationship semantics relevant to Association direction.
 * [Open Knowledge Format specification](open-knowledge-format.md) - Format authority for this bundle.
