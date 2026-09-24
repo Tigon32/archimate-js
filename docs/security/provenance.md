@@ -33,7 +33,8 @@ Added in this phase, on top of the existing manifest checks:
 - every entry requires a lowercase, 64-character `content_sha256` digest of
   its fixture file's bytes. Missing (`content-hash-missing`), malformed
   (`content-hash-invalid`), and mismatched (`content-hash-mismatch`) values
-  fail the local provenance check. Findings do not print fixture contents.
+  fail the local provenance check. Findings identify the one-based manifest
+  entry number without printing fixture paths, ids, or contents.
 
 After an intentional fixture edit, review its classification and provenance,
 then calculate its new digest with `sha256sum test/fixtures/path/to/file` (or

@@ -1,5 +1,5 @@
 // @ts-expect-error Node types are not part of the browser package dependencies.
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 // @ts-expect-error Node types are not part of the browser package dependencies.
 import { tmpdir } from 'node:os';
 // @ts-expect-error Node types are not part of the browser package dependencies.
@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 // @ts-expect-error Provenance tooling stays plain ESM under scripts/ per ADR-0004's build-tooling exception.
-import { checkFixtureContentHashes, checkOkfBundleProvenance, checkSourcesYamlProvenance, parseYamlDocument } from '../../scripts/check-provenance.mjs';
+import { checkFixtureContentHashes, checkOkfBundleProvenance, checkSourcesYamlProvenance, formatProvenanceReport, parseYamlDocument } from '../../scripts/check-provenance.mjs';
 
 const VALID_SOURCE_ENTRY = [
   'sources:',
@@ -163,7 +163,7 @@ describe('fixture manifest content hashes', () => {
       }]));
 
       const findings = checkFixtureContentHashes(manifestPath, root);
-      expect(findings).toEqual([{ rule: 'content-hash-mismatch', id: 'synthetic-hash-mismatch' }]);
+      expect(findings).toEqual([{ rule: 'content-hash-mismatch', manifestIndex: 1 }]);
       expect(JSON.stringify(findings)).not.toContain('changed');
     });
   });
@@ -176,7 +176,7 @@ describe('required fixture manifest hashes', () => {
       writeFileSync(join(root, 'model.xml'), '<Model/>');
       writeFileSync(manifestPath, JSON.stringify([{ id: 'missing-hash', path: 'test/fixtures/model.xml' }]));
       expect(checkFixtureContentHashes(manifestPath, root)).toEqual([
-        { rule: 'content-hash-missing', id: 'missing-hash' }
+        { rule: 'content-hash-missing', manifestIndex: 1 }
       ]);
     });
   });
@@ -190,10 +190,34 @@ describe('required fixture manifest hashes', () => {
         { id: 'null-hash', path: 'test/fixtures/missing.xml', content_sha256: null }
       ]));
       expect(checkFixtureContentHashes(manifestPath, root)).toEqual([
-        { rule: 'content-hash-invalid', id: 'uppercase-hash' },
-        { rule: 'content-hash-invalid', id: 'short-hash' },
-        { rule: 'content-hash-invalid', id: 'null-hash' }
+        { rule: 'content-hash-invalid', manifestIndex: 1 },
+        { rule: 'content-hash-invalid', manifestIndex: 2 },
+        { rule: 'content-hash-invalid', manifestIndex: 3 }
       ]);
     });
+  });
+
+  it('does not read through a symlinked fixture directory', () => {
+    withTempDir((root: string) => {
+      mkdirSync(join(root, 'target'));
+      writeFileSync(join(root, 'target', 'model.xml'), '<Model name="outside"/>');
+      symlinkSync(join(root, 'target'), join(root, 'link'), 'dir');
+      const manifestPath = join(root, 'manifest.json');
+      writeFileSync(manifestPath, JSON.stringify([{
+        id: 'symlink-path', path: 'test/fixtures/link/model.xml', content_sha256: '0'.repeat(64)
+      }]));
+      expect(checkFixtureContentHashes(manifestPath, root)).toEqual([]);
+    });
+  });
+});
+
+describe('fixture hash diagnostics', () => {
+  it('identifies manifest position without printing untrusted id, path, or content', () => {
+    const report = formatProvenanceReport({
+      fixtures: [{ rule: 'content-hash-mismatch', id: 'untrusted-fixture-id', manifestIndex: 2 }],
+      research: []
+    });
+    expect(report).toContain('fixture manifest entry 2: content-hash-mismatch');
+    expect(report).not.toContain('untrusted-fixture-id');
   });
 });
