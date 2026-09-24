@@ -144,6 +144,10 @@ try {
     import assert from 'node:assert/strict';
     const validator = await import('archimate-js/validator');
     assert.equal(validator.ARCHIMATE_LANGUAGE_VERSION, '3.2');
+    assert.equal(validator.RELATIONSHIP_SEMANTIC_ROWS.length, 23);
+    assert.equal(validator.validateRelationshipSemantics({
+      sourceType: 'ApplicationFunction', relationshipType: 'AccessRelationship', targetType: 'DataObject'
+    }).decision, 'allowed');
     assert.equal(typeof validator.validateArchimateXml, 'function');
     const result = validator.validateArchimateXml(
       '<model xmlns="http://www.opengroup.org/xsd/archimate/3.0/" id="synthetic-model"><name>Synthetic</name></model>'

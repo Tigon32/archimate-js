@@ -7,10 +7,10 @@
     "declaration": true,
     "declarationMap": false,
     "sourceMap": false,
-    "outDir": "dist/validator",
-    "rootDir": "src/validator",
+    "outDir": "dist",
+    "rootDir": "src",
     "lib": ["ES2022", "DOM"],
     "skipLibCheck": true
   },
-  "include": ["src/validator/**/*.ts"]
+  "include": ["src/validator/**/*.ts", "src/language/relationship-decisions.mts"]
 }
