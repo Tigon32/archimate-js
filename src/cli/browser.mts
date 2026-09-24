@@ -1,0 +1,136 @@
+import { constants } from 'node:fs';
+import { access } from 'node:fs/promises';
+import path from 'node:path';
+
+import { chromium, type BrowserContext, type Page } from 'playwright-core';
+
+import { findChrome } from './io.mjs';
+import type { ExportArtifacts, ExportOptions, RenderOptions } from './types.mjs';
+
+const RENDER_CODES = new Set([
+  'INVALID_OPTIONS', 'MODEL_TOO_LARGE', 'MODEL_IMPORT_FAILED', 'VIEW_NOT_FOUND',
+  'VIEW_NAME_AMBIGUOUS', 'VIEW_RENDER_FAILED', 'VIEW_SELECTION_FAILED', 'VIEWER_FAILURE'
+]);
+
+export async function blockNetwork(context: BrowserContext): Promise<void> {
+  await context.route('**/*', (route) => route.abort());
+}
+
+function withBackground(svg: string, background: string): string {
+  if (background === 'transparent') return svg;
+  return svg.replace(/^(<svg\b[^>]*>)/, `$1<rect width="100%" height="100%" fill="${background}"/>`);
+}
+
+async function renderSvg(page: Page, xml: string, options: RenderOptions | ExportOptions): Promise<string> {
+  const result = await page.evaluate(async ({ model, viewId, viewName }) => {
+    try {
+      const svg = await window.ArchimateJS.renderViewToSvg({
+        xml: model, viewId, viewName, width: 1024, height: 768
+      });
+      return { ok: true as const, svg };
+    } catch (error) {
+      return { ok: false as const, code: error instanceof Error && 'code' in error ? String(error.code) : '' };
+    }
+  }, { model: xml, viewId: options.viewId, viewName: options.viewName });
+  if (!result.ok) throw new Error(RENDER_CODES.has(result.code) ? result.code : 'VIEW_RENDER_FAILED');
+  return result.svg;
+}
+
+async function installSvg(page: Page, svg: string, background: string): Promise<void> {
+  await page.setContent('<!doctype html><html><head></head><body></body></html>');
+  await page.evaluate(({ markup, color }) => {
+    document.documentElement.style.background = color;
+    document.body.style.cssText = 'margin:0;display:inline-block;background:inherit';
+    document.body.innerHTML = markup;
+  }, { markup: svg, color: background === 'transparent' ? 'transparent' : background });
+}
+
+async function pngArtifact(page: Page, transparent: boolean): Promise<Uint8Array> {
+  const svg = page.locator('svg.am-diagram');
+  await svg.waitFor({ state: 'visible' });
+  return svg.screenshot({ type: 'png', omitBackground: transparent });
+}
+
+async function pdfArtifact(page: Page, options: ExportOptions): Promise<Uint8Array> {
+  await page.evaluate(() => {
+    document.documentElement.style.width = '100%';
+    document.documentElement.style.height = '100%';
+    document.body.style.cssText =
+      'margin:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:inherit';
+    const svg = document.querySelector('svg');
+    if (svg) svg.setAttribute('style', 'max-width:100%;max-height:100%;width:100%;height:100%');
+  });
+  return page.pdf({
+    format: options.pdfPageSize,
+    landscape: options.pdfOrientation === 'landscape',
+    margin: { top: '0', right: '0', bottom: '0', left: '0' },
+    printBackground: true
+  });
+}
+
+async function ensureRenderer(bundlePath: string): Promise<void> {
+  try {
+    await access(bundlePath, constants.R_OK);
+  } catch {
+    throw new Error('RENDER_BUILD_MISSING');
+  }
+}
+
+export async function renderArtifacts(
+  packageRoot: string,
+  xml: string,
+  options: RenderOptions | ExportOptions
+): Promise<ExportArtifacts> {
+  const bundlePath = path.join(packageRoot, 'dist/browser/archimate-js.js');
+  await ensureRenderer(bundlePath);
+  const executablePath = await findChrome(options.chrome);
+  let browser;
+  try {
+    browser = await chromium.launch({ executablePath, headless: true, chromiumSandbox: true });
+  } catch {
+    throw new Error('BROWSER_LAUNCH_FAILED');
+  }
+  try {
+    const scale = options.command === 'export' ? options.scale : 1;
+    const context = await browser.newContext({
+      locale: 'en-US', timezoneId: 'UTC', viewport: { width: 1024, height: 768 },
+      deviceScaleFactor: scale
+    });
+    await blockNetwork(context);
+    const page = await context.newPage();
+    await page.addScriptTag({ path: bundlePath });
+    const svg = await renderSvg(page, xml, options);
+    if (options.command === 'render') return { svg };
+    const decorated = withBackground(svg, options.background);
+    const artifacts: ExportArtifacts = {};
+    if (options.formats.includes('svg')) artifacts.svg = decorated;
+    if (options.formats.some((format) => format !== 'svg')) {
+      await installSvg(page, decorated, options.background);
+    }
+    if (options.formats.includes('png')) {
+      artifacts.png = await pngArtifact(page, options.background === 'transparent');
+    }
+    if (options.formats.includes('pdf')) artifacts.pdf = await pdfArtifact(page, options);
+    return artifacts;
+  } catch (error) {
+    const code = error instanceof Error && RENDER_CODES.has(error.message)
+      ? error.message : 'VIEW_RENDER_FAILED';
+    throw new Error(code);
+  } finally {
+    await browser.close().catch(() => {});
+  }
+}
+
+declare global {
+  interface Window {
+    ArchimateJS: {
+      renderViewToSvg(options: {
+        xml: string;
+        viewId?: string;
+        viewName?: string;
+        width: number;
+        height: number;
+      }): Promise<string>;
+    };
+  }
+}

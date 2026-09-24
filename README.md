@@ -14,7 +14,7 @@ The package entry point exports the default `Viewer` class, the named `mountView
 | --- | --- | --- |
 | Import and render | Use `Viewer.importXML(xml, view?)` or mount selected views with `mountViewer({ xml, viewId/viewName, container })`. | XML/MEFF support is still being characterized; see the exchange-format status below. |
 | Save model | Serialize the currently loaded model with `saveXML()`. | Do not assume complete cross-tool round-trip fidelity yet. |
-| Export diagram | Export the current view with `saveSVG()` or render an accessible SVG string with `renderViewToSvg({ xml, viewId/viewName })`. | SVG rendering requires a browser DOM; it is not a Node/server renderer or whole-model export. |
+| Export diagram | Export the current view with `saveSVG()`, render an accessible SVG string with `renderViewToSvg({ xml, viewId/viewName })`, or use the CLI for single-view SVG/PNG/PDF files. | Rendering requires a browser DOM; it is not a Node/server renderer or whole-model export. |
 | Viewer navigation | Selection, canvas movement, zoom, touch, and keyboard navigation are included in the Viewer modules. | This is a diagram viewer API, not a claim that every editor workflow is exposed. |
 | Read-only embedding | A locally served HTML example mounts the public Viewer API and loads a repository-owned synthetic fixture. | The example disables pointer input for presentation only; that is not an authorization or security boundary. |
 
@@ -34,6 +34,7 @@ flowchart LR
   XML --> Q["Conservative validator"]
   XML --> CLI["Validate / render CLI"]
   CLI --> SVG
+  SVG --> PNG["PNG / PDF"]
 ```
 
 The public package surface is intentionally small. Browser consumers mount a
@@ -126,9 +127,29 @@ CHROME_BIN=/usr/bin/chromium npx archimate-js render ./model.xml \
   --output ./view.svg
 ```
 
-Use `--view-name` in place of `--view-id` when names are unique, or `--chrome /path/to/chrome` in place of `CHROME_BIN`. The CLI does not download a browser or make model requests. Its browser context blocks network traffic, and its JSON output omits model XML, model summaries, identifiers, local paths, parser details, and browser console output. Rendering writes the SVG atomically after validation succeeds.
+Export the same selected view to one or more formats in a single browser
+session and render:
 
-From a source checkout, run `npm run compile` first and replace `npx archimate-js` with `node ./bin/archimate-js.mjs` in these examples.
+```sh
+CHROME_BIN=/usr/bin/chromium npx archimate-js export ./model.xml \
+  --view-name "Application landscape" \
+  --format svg,png,pdf \
+  --output-dir ./exports \
+  --basename application-landscape \
+  --scale 2 \
+  --background '#ffffff' \
+  --pdf-page-size A4 \
+  --pdf-orientation landscape
+```
+
+Use `--view-name` in place of `--view-id` when names are unique, or `--chrome /path/to/chrome` in place of `CHROME_BIN`. The CLI does not download a browser or make model requests. Its browser context blocks all network traffic, and its JSON output omits model XML, model summaries, identifiers, local paths, parser details, browser exception text, and stacks. Models are validated before rendering. Text and binary outputs are written atomically, and a failed multi-format request restores or removes any files it changed.
+
+PDF export requires an opaque background. The default is `white`; an explicit
+`--background transparent` is rejected when PDF is requested. See
+[single-view CLI export](docs/rendering/cli-export.md) for the complete option,
+filename, diagnostic, and Phase 1 API contract.
+
+From a source checkout, run `npm run compile` first and replace `npx archimate-js` with `node ./dist/cli/main.mjs` in these examples.
 
 ## Run and test locally
 

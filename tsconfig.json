@@ -30,5 +30,16 @@
     "index.cts",
     "index.tsx"
   ],
-  "exclude": ["node_modules", "dist", "coverage", "test/fixtures", "test-results"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "coverage",
+    "src/cli",
+    "test/cli",
+    "test/smoke/package.test.mts",
+    "test/smoke/packed-consumer.test.mts",
+    "test/unit/cli-export.test.mts",
+    "test/fixtures",
+    "test-results"
+  ]
 }

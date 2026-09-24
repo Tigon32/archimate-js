@@ -5,10 +5,15 @@ import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { Stats, WebpackError } from 'webpack';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const temp = await mkdtemp(path.join(os.tmpdir(), 'archimate-release-consumer-'));
-const run = (command, args, options = {}) => {
+const run = (
+  command: string,
+  args: string[],
+  options: { cwd?: string; env?: NodeJS.ProcessEnv } = {}
+): string => {
   const result = spawnSync(command, args, { encoding: 'utf8', ...options });
   if (result.error || result.status !== 0) {
     const detail = (result.stderr || result.error?.message || '').trim().split('\n').slice(-8).join('\n');
@@ -22,6 +27,7 @@ try {
   run('npm', ['run', 'compile:model-dto'], { cwd: root });
   run('npm', ['run', 'compile:layout'], { cwd: root });
   run(process.execPath, ['test/smoke/compile.mjs'], { cwd: root });
+  run('npm', ['run', 'compile:cli'], { cwd: root });
   const packOutput = run('npm', [
     'pack', '--ignore-scripts', '--json', '--pack-destination', temp
   ], { cwd: root });
@@ -53,14 +59,14 @@ try {
   const require = createRequire(path.join(root, 'package.json'));
   const webpack = require('webpack');
   const bundlePath = path.join(consumer, 'consumer.cjs');
-  await new Promise((resolve, reject) => webpack({
+  await new Promise<void>((resolve, reject) => webpack({
     mode: 'production',
     target: 'node',
     entry: consumerEntry,
     output: { path: consumer, filename: path.basename(bundlePath), library: { type: 'commonjs2' } },
     resolve: { modules: [ path.join(consumer, 'node_modules') ] }
-  }, (error, stats) => {
-    if (error || stats.hasErrors()) {
+  }, (error: WebpackError | null, stats?: Stats) => {
+    if (error || !stats || stats.hasErrors()) {
       reject(new Error('Bundler could not resolve the packed root API.'));
       return;
     }
@@ -113,11 +119,19 @@ try {
   `;
   run(process.execPath, ['--input-type=module', '-e', consumerScript], { cwd: consumer });
 
-  const packageJson = JSON.parse(await readFile(path.join(packageRoot, 'package.json'), 'utf8'));
+  const packageJson = JSON.parse(await readFile(path.join(packageRoot, 'package.json'), 'utf8')) as {
+    bin: Record<string, string>;
+    exports: Record<string, { import?: string } | string>;
+  };
+  const exportEntry = (name: string): { import?: string } => {
+    const entry = packageJson.exports[name];
+    if (typeof entry !== 'object') throw new TypeError(`${name} must be a conditional export`);
+    return entry;
+  };
   const consumerRequire = createRequire(path.join(consumer, 'package.json'));
-  assert.equal(packageJson.exports['./validator'].import, './dist/validator/index.js');
-  assert.equal(packageJson.exports['./model-dto'].import, './dist/model-dto/index.js');
-  assert.equal(packageJson.exports['./layout'].import, './dist/layout/index.js');
+  assert.equal(exportEntry('./validator').import, './dist/validator/index.js');
+  assert.equal(exportEntry('./model-dto').import, './dist/model-dto/index.js');
+  assert.equal(exportEntry('./layout').import, './dist/layout/index.js');
   assert.equal(packageJson.exports['./app-shell.css'], './assets/design-tokens/app-shell.css');
   assert.deepEqual(Object.keys(packageJson.exports).sort(),
     ['.', './app-shell.css', './layout', './model-dto', './validator']);
@@ -125,7 +139,7 @@ try {
   assert.match(await readFile(stylePath, 'utf8'), /\.am-app \.am-ui-status/);
   await readFile(path.join(packageRoot, 'assets/design-tokens/app.generated.css'), 'utf8');
   await readFile(path.join(packageRoot, 'assets/ibm-plex-font/IBMPlexSans-Regular.ttf'));
-  assert.equal(packageJson.bin['archimate-js'], 'bin/archimate-js.mjs');
+  assert.equal(packageJson.bin['archimate-js'], 'dist/cli/main.mjs');
   await readFile(path.join(packageRoot, 'dist/browser/archimate-js.js'), 'utf8');
   const installedBin = process.platform === 'win32'
     ? path.join(consumer, 'node_modules/.bin/archimate-js.cmd')
@@ -146,7 +160,8 @@ try {
   ), 'utf8'));
   console.log('packed package consumer smoke test passed');
 } catch (error) {
-  throw new Error(`Packed package consumer smoke test failed: ${error.message}`);
+  const message = error instanceof Error ? error.message : 'Unknown packed consumer failure.';
+  throw new Error(`Packed package consumer smoke test failed: ${message}`);
 } finally {
   await rm(temp, { recursive: true, force: true });
 }
