@@ -3,7 +3,15 @@ import { readFile } from 'node:fs/promises';
 
 const packageJson = JSON.parse(
   await readFile(new URL('../../package.json', import.meta.url), 'utf8')
-);
+) as {
+  name: string;
+  license: string;
+  dependencies: Record<string, string>;
+  files: string[];
+  bin: Record<string, string>;
+  exports: Record<string, { import?: string; types?: string } | string>;
+  scripts: Record<string, string>;
+};
 
 assert.equal(packageJson.name, 'archimate-js');
 assert.equal(packageJson.license, 'MIT');
@@ -18,8 +26,8 @@ assert.ok(packageJson.files.includes('archimate-font/package.json'), 'package pu
 assert.ok(packageJson.files.includes('archimate-font/LICENSE'), 'package publishes the local font OFL license');
 assert.ok(packageJson.files.includes('archimate-font/lib/css/archimate-font.css'), 'package publishes only the runtime font CSS');
 assert.ok(!packageJson.files.includes('archimate-font/lib/css'), 'package does not publish the full legacy font CSS directory');
-assert.ok(packageJson.files.includes('bin'), 'package publishes bin/');
-assert.equal(packageJson.bin['archimate-js'], 'bin/archimate-js.mjs');
+assert.ok(packageJson.files.includes('dist'), 'package publishes compiled distributions');
+assert.equal(packageJson.bin['archimate-js'], 'dist/cli/main.mjs');
 assert.ok(packageJson.dependencies['playwright-core'], 'headless CLI runtime is declared');
 assert.equal(packageJson.exports['./validator'].import, './dist/validator/index.js');
 assert.equal(packageJson.exports['./model-dto'].import, './dist/model-dto/index.js');
