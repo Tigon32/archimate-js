@@ -134,6 +134,7 @@ try {
     const edited = editor.serialize();
     const changedNode = editor.project('view-dto-export').nodes.find((node) => node.id === 'node-component');
     const changedCanvas = registry.get('node-component');
+    const changedServiceWidth = registry.get('node-service')?.width;
     let unsupportedUnchanged = false;
     try {
       modeling.moveElements([changedCanvas], { x: 1, y: 1 }, registry.get('node-service'));
@@ -181,7 +182,7 @@ try {
       gesturesUpdatedDto: changedNode?.x === sourceNode.x + 12 && changedNode?.y === sourceNode.y - 5 &&
         changedNode?.label === 'Updated component',
       gesturesUpdatedCanvas: changedCanvas?.x === sourceNode.x + 12 && changedCanvas?.y === sourceNode.y - 5 &&
-        changedCanvas?.name === 'Updated component' && registry.get('node-service')?.width === 150,
+        changedCanvas?.name === 'Updated component' && changedServiceWidth === 150,
       unsupportedUnchanged,
       undoRestored,
       redoRestored,
