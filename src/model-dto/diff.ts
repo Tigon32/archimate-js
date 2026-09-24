@@ -29,7 +29,7 @@ function canonical(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonical);
   if (value && typeof value === 'object') {
     return Object.fromEntries(Object.entries(value).filter(([, item]) =>
-      item !== undefined).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) =>
+      item !== undefined).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([key, item]) =>
       [key, canonical(item)]));
   }
   return value;
@@ -108,9 +108,11 @@ function flattenNodes(nodes: ViewNodeDto[], viewId: string, parentId?: string): 
 }
 
 function viewsForConcept(model: ModelDto, id: string, entity: ModelDiffEntity): string[] {
-  return model.views.filter((view) => entity === 'element'
-    ? flattenNodes(view.nodes, view.id).some((node) => node.elementId === id)
-    : view.connections.some((edge) => edge.relationshipId === id)).map((view) => view.id);
+  return model.views.filter((view) =>
+    flattenNodes(view.nodes, view.id).some((node) =>
+      node.conceptRef === id || entity === 'element' && node.elementId === id) ||
+    entity === 'relationship' && view.connections.some((edge) =>
+      edge.relationshipId === id)).map((view) => view.id);
 }
 
 function impactedViews(
@@ -155,7 +157,10 @@ export function diffModelDto(beforeInput: unknown, afterInput: unknown): ModelDt
       (old?.connections ?? []).map(record), (next?.connections ?? []).map(record),
       changes, viewId);
   }
-  changes.sort((a, b) => stable([a.area, a.entity, a.viewId ?? '', a.id]).localeCompare(
-    stable([b.area, b.entity, b.viewId ?? '', b.id])));
+  changes.sort((a, b) => {
+    const left = stable([a.area, a.entity, a.viewId ?? '', a.id]);
+    const right = stable([b.area, b.entity, b.viewId ?? '', b.id]);
+    return left < right ? -1 : left > right ? 1 : 0;
+  });
   return { schemaVersion: 1, changes, impactedViewIds: impactedViews(changes, before, after) };
 }
