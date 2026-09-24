@@ -23,9 +23,10 @@ This decision composes Agent Stack's existing `AGP-deterministic-first@1`, `AGP-
 5. A completed background verification result is reusable only when its receipt is bound to the exact current subject and relevant environment identity, including at minimum the commit SHA, verification profile, supported runtime/toolchain identity, and dependency/lock state where those can change the result. A stale or mismatched receipt does not qualify a newer commit.
 6. Before changing a Draft PR to Ready for review, require a successful `verify:local` result for the exact current `HEAD`. A matching completed receipt may satisfy that requirement; otherwise run `npm run verify:local` synchronously. Agent-generated work must not use `git push --no-verify` to make an unverified snapshot appear qualified. A repository owner can still bypass a client-side hook; bypass is an exception, not evidence.
 7. GitHub Actions remains authoritative for the review/merge boundary. Normal PR CI, automated security analysis, and path-scoped MEFF XSD validation do not run for Draft PRs. They run when a PR is non-draft, including the `ready_for_review` transition. CI on `main`, scheduled security analysis, manual dispatches, and tag/release workflows remain unchanged.
-8. Checks whose value depends on an independent or remote environment stay remote. Current examples include the Node 22/24 matrix, macOS path behavior, CodeQL/dependency review, official MEFF XSD retrieval/validation, retained CI artifacts, and release attestation.
-9. Local and remote gates may overlap intentionally. The local tiers reject cheap reproducible defects and protect WIP durability; the remote tier establishes independent evidence on controlled runners.
-10. Do not claim a fixed percentage of failures caught locally without measurements. Track WIP-gate failures, full-local failures, cancelled superseded background runs, reusable exact-HEAD verification receipts, remote failures that were locally reproducible, Actions consumption, and repeated push/CI cycles when the data is available.
+8. To prevent a backlog of already-qualified PRs waiting for manual merge, repository maintainers SHOULD enable repository-level auto-merge. After exact-HEAD local qualification succeeds and a PR is marked Ready, the author/agent SHOULD enable auto-merge for that PR. Required remote checks remain the authority: success drains the PR automatically; failure leaves it open for repair. Auto-merge must not be used to bypass required checks or branch-protection policy.
+9. Checks whose value depends on an independent or remote environment stay remote. Current examples include the Node 22/24 matrix, macOS path behavior, CodeQL/dependency review, official MEFF XSD retrieval/validation, retained CI artifacts, and release attestation.
+10. Local and remote gates may overlap intentionally. The local tiers reject cheap reproducible defects and protect WIP durability; the remote tier establishes independent evidence on controlled runners.
+11. Do not claim a fixed percentage of failures caught locally without measurements. Track WIP-gate failures, full-local failures, cancelled superseded background runs, reusable exact-HEAD verification receipts, remote failures that were locally reproducible, Actions consumption, and repeated push/CI cycles when the data is available.
 
 ## Consequences
 
@@ -35,6 +36,7 @@ This decision composes Agent Stack's existing `AGP-deterministic-first@1`, `AGP-
 - Optional background verification can hide qualification latency, but it cannot silently become a gate; obsolete runs are cancelled and only exact-subject receipts are reusable.
 - Full deterministic qualification moves to the Draft → Ready transition. Bypassing that transition discipline can still waste remote CI, so repository instructions and branch protection remain part of the control.
 - Draft PRs are the normal collaboration surface; Ready means the author/agent claims the full local qualification gate has passed and requests authoritative remote verification.
+- With repository-level auto-merge enabled, a green Ready PR drains automatically after required checks complete, avoiding a manual queue of already-qualified work.
 - The local hook is not tamper-proof. Branch protection and required GitHub checks remain necessary because a client can alter hooks or use Git's native bypass.
 - Remote-only platform, security, standards, and release checks continue to consume CI because reproducing them locally would either weaken trust or increase local setup cost.
 
@@ -57,4 +59,5 @@ Revisit if commit-time checks become noticeable, WIP pushes are still too slow, 
 - Git hooks: https://git-scm.com/docs/githooks
 - Git `core.hooksPath`: https://git-scm.com/docs/git-config#Documentation/git-config.txt-corehooksPath
 - GitHub pull request draft state: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-pull-requests/changing-the-stage-of-a-pull-request
+- GitHub auto-merge: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/automatically-merging-a-pull-request
 - GitHub Actions pull_request activity types: https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#pull_request
