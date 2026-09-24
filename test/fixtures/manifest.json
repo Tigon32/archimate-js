@@ -11,7 +11,8 @@
       "target half-arrowhead",
       "browser SVG export"
     ],
-    "review_after": "2026-12-23"
+    "review_after": "2026-12-23",
+    "content_sha256": "3d939a476807271bbe47e2037d6e3e50d4a3fa3434d1bd825d3ed94e11cfe4bf"
   },
   {
     "id": "synthetic-read-only-showcase",
@@ -27,7 +28,8 @@
       "assignment, realization, and serving relationships",
       "multi-element diagram rendering"
     ],
-    "review_after": "2026-12-23"
+    "review_after": "2026-12-23",
+    "content_sha256": "caffbfc6c9d51dc67c79802cbd5c27458866a534095749f58d846f5042b5d630"
   },
   {
     "id": "synthetic-minimal-application-view",
@@ -47,7 +49,8 @@
       "view labels",
       "connection waypoints"
     ],
-    "review_after": "2026-12-23"
+    "review_after": "2026-12-23",
+    "content_sha256": "308e7f24fb3fad0db8f886105ed1b000c8c7af87af637c7c6d6cc440c3292b01"
   },
   {
     "id": "synthetic-invalid-reference",
@@ -61,7 +64,8 @@
       "diagram node element reference",
       "stable unresolved-reference diagnostic"
     ],
-    "review_after": "2026-12-23"
+    "review_after": "2026-12-23",
+    "content_sha256": "8b1e4edd7f2d0ff0c1d1a9d3436b0379604dfd1cccd1ba423af56af7432ff2d4"
   },
   {
     "id": "synthetic-meff-core-candidate",
@@ -77,7 +81,8 @@
       "relationship ID and endpoints",
       "parse serialize parse preservation of supported fields"
     ],
-    "review_after": "2026-12-23"
+    "review_after": "2026-12-23",
+    "content_sha256": "22ba975260d86a0787d010d838ebedcf7ad53e54ccf22fdec3166e7b4a5f4146"
   },
   {
     "id": "synthetic-valid-relationship-semantics",
@@ -91,7 +96,8 @@
       "pure relationship semantics service",
       "XML validator integration"
     ],
-    "review_after": "2026-12-23"
+    "review_after": "2026-12-23",
+    "content_sha256": "121858efa332d4e776a22c4573fec886535e6b5b5ba6c93d1e7d5e846ce04618"
   },
   {
     "id": "synthetic-application-integration-semantics",
@@ -106,7 +112,8 @@
       "access, assignment, realization, and deployment directions",
       "explicit reversed structural relationship diagnostics"
     ],
-    "review_after": "2026-12-23"
+    "review_after": "2026-12-23",
+    "content_sha256": "b72dd4f17a9a23aa50be60d49a7b6b2a989cb74bfdf5132a8b07d24c13036d95"
   },
   {
     "id": "synthetic-invalid-relationship-semantics",
@@ -120,7 +127,8 @@
       "stable semantic diagnostic",
       "no source mutation"
     ],
-    "review_after": "2026-12-23"
+    "review_after": "2026-12-23",
+    "content_sha256": "036f3ec08a15f9863da726746e4cbfae4c784e8334e65430a10f8a7f718abb24"
   },
   {
     "id": "synthetic-meff-unsupported-categories",
@@ -135,7 +143,8 @@
       "foreign-namespace extensions",
       "stable ordered content-free warnings"
     ],
-    "review_after": "2026-12-23"
+    "review_after": "2026-12-23",
+    "content_sha256": "3053e34f52fcfd824b460aa28d6040b10d4c832645c5f57ff21d7183f9de9312"
   },
   {
     "id": "synthetic-meff-dto-export-model",
@@ -149,7 +158,8 @@
       "semantic source and target references",
       "DTO export and reimport"
     ],
-    "review_after": "2026-12-23"
+    "review_after": "2026-12-23",
+    "content_sha256": "5b757d80e83088bdedda36de8d146b4c42c9754b9052323c5007d9b53510f84a"
   },
   {
     "id": "synthetic-meff-dto-export-view",
@@ -163,7 +173,8 @@
       "relationship connection attachment and bendpoint",
       "DTO export and reimport"
     ],
-    "review_after": "2026-12-23"
+    "review_after": "2026-12-23",
+    "content_sha256": "46e1280b9b67fac2fa7d6fe69d5e36035367f1390af2b95e8d06c872eeedd206"
   },
   {
     "id": "synthetic-meff-xsd-valid-model",
@@ -180,7 +191,8 @@
       "internal Model-core import contract",
       "element documentation"
     ],
-    "review_after": "2026-12-23"
+    "review_after": "2026-12-23",
+    "content_sha256": "cb7e096eff5de9cdc946809ac525c551299968d5cd64643d0c80fa250733b1d5"
   },
   {
     "id": "synthetic-meff-xsd-valid-model-records",
@@ -195,7 +207,8 @@
       "nested organizations and canonical concept references",
       "MEFF 3.1 Model XSD validation"
     ],
-    "review_after": "2026-12-23"
+    "review_after": "2026-12-23",
+    "content_sha256": "ca80dcc226d337a3c9e205b4487de8981556ebe9421853f301b1561cd431df62"
   },
   {
     "id": "synthetic-meff-xsd-invalid-model",
@@ -208,7 +221,8 @@
       "required model identifier rejection",
       "expected XSD validation failure"
     ],
-    "review_after": "2026-12-23"
+    "review_after": "2026-12-23",
+    "content_sha256": "2b03e2be62c37c3a5909d2d05922b7ddfee925d1bc3bf0d7302a01ae1026bcfe"
   },
   {
     "id": "synthetic-meff-xsd-valid-view-diagram",
@@ -228,7 +242,8 @@
       "relationshipRef link to model relationship",
       "MEFF 3.1 Diagram XSD validation"
     ],
-    "review_after": "2026-12-23"
+    "review_after": "2026-12-23",
+    "content_sha256": "35af1ffd23f6ccb277f81571d39825153678e7dc98831af7e868c69c173ca26e"
   },
   {
     "id": "synthetic-meff-xsd-valid-view-annotations",
@@ -244,7 +259,8 @@
       "view-level properties",
       "MEFF 3.1 Diagram XSD validation"
     ],
-    "review_after": "2026-12-23"
+    "review_after": "2026-12-23",
+    "content_sha256": "283c5abae042f11cd2d048b7014b1dba562e5870c4fefdd3c72552a0085efd69"
   },
   {
     "id": "synthetic-meff-xsd-valid-view-presentation",
@@ -260,7 +276,8 @@
       "unsourced line",
       "MEFF 3.1 Diagram XSD validation"
     ],
-    "review_after": "2026-12-23"
+    "review_after": "2026-12-23",
+    "content_sha256": "0dceff84913079b9461a72b5834fa8f95ff4394229457a6e518d896f16f1b613"
   },
   {
     "id": "synthetic-meff-xsd-valid-view-viewpoint",
@@ -276,7 +293,8 @@
       "Diagram viewpoint and viewpointRef",
       "MEFF 3.1 Diagram XSD validation"
     ],
-    "review_after": "2026-12-23"
+    "review_after": "2026-12-23",
+    "content_sha256": "86b1e36f07a0b7257c30111ff3af8b379144196bb7e40d5760396579e2b6fe0c"
   },
   {
     "id": "synthetic-batch-collisions",
@@ -291,6 +309,7 @@
       "unsafe characters",
       "batch SVG PNG PDF export"
     ],
-    "review_after": "2026-12-23"
+    "review_after": "2026-12-23",
+    "content_sha256": "e9f7455ab7226803d185e2b8ae6e29893ef0519d02d09e913041dba232bfb086"
   }
 ]

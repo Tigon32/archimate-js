@@ -165,8 +165,8 @@ function requiredStringFields(record, fields) {
 // --- Fixture manifest content hashes -----------------------------------
 //
 // Reuses test/fixtures/manifest.json (the existing fixture inventory,
-// already schema-validated by scanFixtureTree) and only adds an optional
-// content-hash check that scanFixtureTree does not perform.
+// already schema-validated by scanFixtureTree) and requires byte hashes
+// that scanFixtureTree does not verify.
 
 export function checkFixtureContentHashes(manifestPath, fixturesRoot) {
   let manifest;
@@ -180,12 +180,22 @@ export function checkFixtureContentHashes(manifestPath, fixturesRoot) {
   const findings = [];
   const prefix = 'test/fixtures/';
   for (const entry of manifest) {
-    if (!entry || typeof entry.content_sha256 !== 'string' || typeof entry.path !== 'string') continue;
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
+    const id = typeof entry.id === 'string' ? entry.id : undefined;
+    if (!Object.hasOwn(entry, 'content_sha256')) {
+      findings.push({ rule: 'content-hash-missing', id });
+      continue;
+    }
+    if (typeof entry.content_sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(entry.content_sha256)) {
+      findings.push({ rule: 'content-hash-invalid', id });
+      continue;
+    }
+    if (typeof entry.path !== 'string') continue; // existing manifest validator reports invalid entries
     if (!entry.path.startsWith(prefix)) continue;
 
     const fixturePath = resolve(fixturesRoot, entry.path.slice(prefix.length));
     if (!fixturePath.startsWith(fixturesRoot + sep)) {
-      findings.push({ rule: 'content-hash-path-invalid', id: entry.id });
+      findings.push({ rule: 'content-hash-path-invalid', id });
       continue;
     }
     let content;
@@ -195,8 +205,8 @@ export function checkFixtureContentHashes(manifestPath, fixturesRoot) {
       continue; // missing-file is already reported by scanFixtureTree
     }
     const digest = createHash('sha256').update(content).digest('hex');
-    if (digest !== entry.content_sha256.toLowerCase()) {
-      findings.push({ rule: 'content-hash-mismatch', id: entry.id });
+    if (digest !== entry.content_sha256) {
+      findings.push({ rule: 'content-hash-mismatch', id });
     }
   }
   return findings;

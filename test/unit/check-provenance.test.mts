@@ -168,3 +168,32 @@ describe('fixture manifest content hashes', () => {
     });
   });
 });
+
+describe('required fixture manifest hashes', () => {
+  it('requires a hash for every manifest entry', () => {
+    withTempDir((root: string) => {
+      const manifestPath = join(root, 'manifest.json');
+      writeFileSync(join(root, 'model.xml'), '<Model/>');
+      writeFileSync(manifestPath, JSON.stringify([{ id: 'missing-hash', path: 'test/fixtures/model.xml' }]));
+      expect(checkFixtureContentHashes(manifestPath, root)).toEqual([
+        { rule: 'content-hash-missing', id: 'missing-hash' }
+      ]);
+    });
+  });
+
+  it('rejects uppercase, short, and non-string hash values before reading fixture bytes', () => {
+    withTempDir((root: string) => {
+      const manifestPath = join(root, 'manifest.json');
+      writeFileSync(manifestPath, JSON.stringify([
+        { id: 'uppercase-hash', path: 'test/fixtures/missing.xml', content_sha256: 'A'.repeat(64) },
+        { id: 'short-hash', path: 'test/fixtures/missing.xml', content_sha256: 'a'.repeat(63) },
+        { id: 'null-hash', path: 'test/fixtures/missing.xml', content_sha256: null }
+      ]));
+      expect(checkFixtureContentHashes(manifestPath, root)).toEqual([
+        { rule: 'content-hash-invalid', id: 'uppercase-hash' },
+        { rule: 'content-hash-invalid', id: 'short-hash' },
+        { rule: 'content-hash-invalid', id: 'null-hash' }
+      ]);
+    });
+  });
+});
