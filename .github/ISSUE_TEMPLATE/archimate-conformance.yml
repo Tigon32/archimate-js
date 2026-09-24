@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Search [existing issues](https://github.com/Tigon32/archimate-js/issues) first. Use only `PUBLIC` or `SYNTHETIC` reproductions. **Do not include private models, customer data, screenshots, names, hosts, credentials, or confidential architecture details.**
+        Read the [issue contribution guide](https://github.com/Tigon32/archimate-js/blob/main/docs/contributing/issues.md) and search [existing issues](https://github.com/Tigon32/archimate-js/issues) first. Use only `PUBLIC` or `SYNTHETIC` reproductions. **Do not include private models, customer data, screenshots, names, hosts, credentials, or confidential architecture details.**
   - type: dropdown
     id: category
     attributes:
