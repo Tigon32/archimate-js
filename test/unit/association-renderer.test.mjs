@@ -33,6 +33,14 @@ describe('Association direction rendering', () => {
     }));
     expect(explicit.graphics.querySelector('path')?.getAttribute('stroke-width')).toBe('3');
 
+    const numericStringWidth = createRenderer();
+    numericStringWidth.renderer.drawConnection(numericStringWidth.graphics, directedAssociation({
+      typeOption: false,
+      isDirected: false,
+      lineWidth: '3'
+    }));
+    expect(numericStringWidth.graphics.querySelector('path')?.getAttribute('stroke-width')).toBe('3');
+
     const defaultWidth = createRenderer();
     defaultWidth.renderer.drawConnection(defaultWidth.graphics, directedAssociation({
       typeOption: false,
