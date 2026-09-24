@@ -31,6 +31,7 @@ The Open Group ArchiMate specification and published exchange/conformance artifa
 ## Work style
 
 - Prefer small reviewed PRs.
+- Use the [issue contribution guide](docs/contributing/issues.md) for issue routing and evidence requirements.
 - Keep research claims in `docs/research/` with public citations.
 - When a behavior is verified to conflict with a normative ArchiMate specification or official exchange/conformance artifact, require a public GitHub issue with a source citation and minimal `PUBLIC` or `SYNTHETIC` reproduction. Search for duplicates first. Record the tested package version and runtime, expected and actual behavior, and keep private architecture data out of reports. Treat documented unsupported scope as a limitation unless new evidence changes the boundary; treat consumer preferences as feature requests. The Open Group is normative; other tools are interoperability references only.
 - Record consequential decisions as ADRs under `docs/adr/`.

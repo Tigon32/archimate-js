@@ -1,0 +1,66 @@
+name: Feature or gap
+description: Propose a new capability or address a documented product gap.
+title: "Feature: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read the [issue contribution guide](https://github.com/Tigon32/archimate-js/blob/main/docs/contributing/issues.md) first. Search open and closed issues before filing.
+  - type: textarea
+    id: existing_work
+    attributes:
+      label: Existing work and duplicate search
+      description: Link related open or closed issues and explain why this request is not already covered.
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and desired outcome
+      description: Who is affected, what is difficult or missing, and what outcome should change?
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_direction
+    attributes:
+      label: Proposed direction
+      description: Describe the preferred direction, why it fits, and meaningful alternatives considered. If this is an investigation, define its questions, evidence, and criteria for a follow-up implementation issue.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance boundary
+      description: State the observable result that would make this issue complete and what is explicitly out of scope.
+    validations:
+      required: true
+  - type: textarea
+    id: blockers
+    attributes:
+      label: Strict blockers
+      description: List prerequisites or constraints that must be resolved before this issue can be accepted or safely implemented. Write “None” if there are none.
+    validations:
+      required: true
+  - type: textarea
+    id: related_work
+    attributes:
+      label: Related work
+      description: Link context or possible follow-ups that are not required for this issue.
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and original sources
+      description: Link relevant public sources, versions, and provenance. Use only PUBLIC or SYNTHETIC examples.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: I searched open and closed issues for duplicates and related work.
+          required: true
+        - label: This issue uses only public or synthetic data and contains no private architecture material.
+          required: true
+        - label: External claims or copied/adapted material link to the original source and include provenance where relevant.
+          required: true

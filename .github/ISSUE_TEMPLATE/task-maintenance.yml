@@ -1,0 +1,59 @@
+name: Task or maintenance
+description: Propose bounded engineering, documentation, tooling, release, or maintenance work.
+title: "Task: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read the [issue contribution guide](https://github.com/Tigon32/archimate-js/blob/main/docs/contributing/issues.md) first. Search open and closed issues before filing.
+  - type: textarea
+    id: existing_work
+    attributes:
+      label: Existing work and duplicate search
+      description: Link related open or closed issues and explain why this task is still needed.
+    validations:
+      required: true
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective and deliverable
+      description: State the bounded outcome and how it can be verified.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and non-goals
+      description: Define the smallest useful scope and what is explicitly excluded.
+    validations:
+      required: true
+  - type: textarea
+    id: blockers
+    attributes:
+      label: Strict blockers
+      description: List prerequisites or constraints that must be resolved before this task can proceed or be accepted. Write “None” if there are none.
+    validations:
+      required: true
+  - type: textarea
+    id: related_work
+    attributes:
+      label: Related work
+      description: Link context or possible follow-ups that are not required for this task.
+  - type: textarea
+    id: sources
+    attributes:
+      label: Evidence and original sources
+      description: Link relevant public sources, versions, and provenance. Use only PUBLIC or SYNTHETIC examples.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: I searched open and closed issues for duplicates and related work.
+          required: true
+        - label: This issue uses only public or synthetic data and contains no private architecture material.
+          required: true
+        - label: External claims or copied/adapted material link to the original source and include provenance where relevant.
+          required: true

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Issue contribution guide
+    url: https://github.com/Tigon32/archimate-js/blob/main/docs/contributing/issues.md
+    about: Read the evidence, scope, and issue-type rules before opening an issue.

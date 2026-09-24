@@ -1,0 +1,65 @@
+name: Bug report
+description: Report incorrect, reproducible, or regressed behavior.
+title: "Bug: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read the [issue contribution guide](https://github.com/Tigon32/archimate-js/blob/main/docs/contributing/issues.md) first. A diagnosis or proposed fix is optional.
+  - type: textarea
+    id: existing_work
+    attributes:
+      label: Existing work and duplicate search
+      description: Link similar open or closed issues, or state that none were found.
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the incorrect, unexpected, or regressed behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal PUBLIC or SYNTHETIC reproduction
+      description: Provide the smallest fixture or steps that reproduce the behavior. State fixture provenance.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: input
+    id: version_runtime
+    attributes:
+      label: Version and runtime
+      description: Include package version and relevant Node.js, browser, OS, or build details.
+      placeholder: archimate-js 0.0.4; Node.js 22; Chromium ...
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Original sources
+      description: Link relevant public specifications, issue references, or source material when the report relies on them.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: I searched open and closed issues for duplicates and related work.
+          required: true
+        - label: This report uses only public or synthetic data and contains no private architecture material.
+          required: true
+        - label: External claims or copied/adapted material link to the original source where relevant.
+          required: true
