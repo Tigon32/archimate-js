@@ -246,6 +246,28 @@ try {
   assert.deepEqual(await page.locator('#diagram .djs-shape .djs-visual rect').evaluateAll((items) =>
     items.map((item) => getComputedStyle(item).fill)), beforeTheme,
   'dark UI theme must not recolor diagram shapes');
+  stage = 'check scoped palette and status styles';
+  const paletteTheme = await page.evaluate(() => {
+    const app = document.querySelector('.am-app');
+    const palette = document.createElement('div');
+    palette.className = 'djs-palette';
+    palette.innerHTML = '<div class="entry" title="Synthetic palette entry"></div>';
+    app.append(palette);
+    const colors = () => ({
+      palette: getComputedStyle(palette).backgroundColor,
+      entry: getComputedStyle(palette.querySelector('.entry')).color,
+      status: getComputedStyle(document.querySelector('#status')).backgroundColor
+    });
+    const dark = colors();
+    app.dataset.theme = 'light';
+    const light = colors();
+    palette.remove();
+    return { dark, light };
+  });
+  assert.notEqual(paletteTheme.dark.palette, paletteTheme.light.palette);
+  assert.notEqual(paletteTheme.dark.entry, paletteTheme.light.entry);
+  assert.notEqual(paletteTheme.dark.status, paletteTheme.light.status);
+  assert.equal(offOriginRequestCount.value, 0, 'app shell and local fonts must stay offline');
   await mkdir(resultsDirectory, { recursive: true });
   await page.screenshot({ path: path.join(resultsDirectory, 'read-only-showcase.png'), fullPage: true });
 
