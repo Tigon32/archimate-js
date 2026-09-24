@@ -40,7 +40,7 @@ jobs:
         uses: github/codeql-action/analyze@1190a975f95ce23525efb6a3fc21ea29567c1b52 # v3.38.2
         with:
           category: /language:javascript-typescript
-          upload: ${{ github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork }}
+          upload: ${{ github.event_name != 'pull_request' || (github.actor != 'dependabot[bot]' && !github.event.pull_request.head.repo.fork) }}
 
   dependency-review:
     name: Review pull request dependencies
