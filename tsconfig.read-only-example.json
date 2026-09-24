@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "rootDir": "examples/read-only",
+    "lib": ["ES2022", "DOM"],
+    "skipLibCheck": true,
+    "noEmitOnError": true
+  },
+  "include": ["examples/read-only/**/*.ts"]
+}

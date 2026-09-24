@@ -35,7 +35,7 @@ it('generates only scoped app tokens and component selectors with packaged fonts
   expect(css + controls).not.toMatch(/:root|\.am-diagram|\.am-shape|--am-(?!ui-)/);
   expect(controls).not.toMatch(/https?:\/\/|(^|\})\s*(?:button|input|ul|a)\s*[{,:]/m);
   const example = readFileSync('examples/read-only/index.html', 'utf8');
-  const script = readFileSync('examples/read-only/viewer.js', 'utf8');
+  const script = readFileSync('examples/read-only/viewer.ts', 'utf8');
   expect(example).toContain('assets/design-tokens/app-shell.css');
   expect(example).toContain('class="am-app"');
   expect(example).toContain('class="am-ui-status"');

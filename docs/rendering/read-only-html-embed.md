@@ -17,9 +17,11 @@ python3 -m http.server 8000
 
 Then open `http://localhost:8000/examples/read-only/`. Serve from the repository
 root so the example can retrieve the checked-in fixture by its same-origin path.
-The viewer bundle is generated at `.ci-build/archimate-js.js`; it is build output
-and is not committed. Do not open `index.html` as a `file:` URL because browsers
-block its local fixture fetch.
+The viewer bundle is generated at `.ci-build/archimate-js.js`, the model DTO
+browser API at `.ci-build/model-dto.js`, and the migrated viewer module as local
+JavaScript alongside the page. These are build outputs and are not
+committed. Do not open `index.html` as a `file:` URL because browsers block its
+local fixture fetch.
 
 The example links the scoped local app shell stylesheet for its navigation link
 and loading/success/error status. It uses the bundled IBM Plex font without a
@@ -35,6 +37,17 @@ and incrementally cancels reads that exceed the byte cap. It shows a generic
 failure message without logging or rendering parser errors or model contents.
 This is a demonstration boundary, not a substitute for application-level
 authorization or content security policy.
+
+The selected view is also rendered as a text outline. It uses nested HTML lists
+and native disclosure controls for groups; browser and assistive-technology list
+navigation remain available without a custom ARIA tree widget. Names and
+relationship descriptions are inserted as text. Documentation is omitted by
+the DTO outline defaults. The outline currently uses the hand-authored SYNTHETIC
+MEFF companion at `test/fixtures/synthetic/read-only-showcase-outline-meff.xml`,
+which mirrors the diagram's generic labels and relationships. The diagram itself
+continues to use the legacy ArchiMate XML fixture above. Because the DTO importer
+supports a MEFF subset, unsupported model formats show a generic outline
+unavailable status; the legacy importer gap remains tracked under issue #104.
 
 ## Use from a consuming application
 

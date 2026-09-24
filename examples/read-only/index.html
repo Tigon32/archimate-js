@@ -30,10 +30,20 @@
       </nav>
       <p id="status" class="am-ui-status" role="status" aria-live="polite">Loading synthetic example…</p>
       <div class="diagram-frame"><div id="diagram" aria-label="Synthetic service delivery ArchiMate diagram"></div></div>
+      <section id="accessible-outline" class="am-outline" aria-labelledby="outline-title">
+        <h2 id="outline-title">Text outline</h2>
+        <p>The same selected view is available as a navigable outline. Expand or collapse groups with the native disclosure controls.</p>
+        <p id="outline-status" role="status" aria-live="polite">Loading text outline…</p>
+        <h3 id="outline-elements-heading">Elements</h3>
+        <div id="outline-content"></div>
+        <h3 id="outline-relationships-heading">Relationships</h3>
+        <div id="outline-relationships"></div>
+      </section>
     </main>
 
     <!-- Generated locally from the package entrypoint by `npm run compile`. -->
     <script src="../../.ci-build/archimate-js.js"></script>
+    <script src="../../.ci-build/model-dto.js"></script>
     <script type="module" src="./theme.js"></script>
     <script type="module" src="./viewer.js"></script>
   </body>

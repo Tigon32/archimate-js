@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Classification: SYNTHETIC
+  Provenance: Hand-authored MEFF 3.1 companion for the repository's
+  read-only-showcase.xml. Generic labels, identities, and relationships mirror
+  that example so its supported DTO outline can be exercised without copying
+  private or third-party architecture data. This is not an XSD conformance claim.
+-->
+<model xmlns="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:archimate="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  identifier="model-synthetic-showcase-outline">
+  <name xml:lang="en">Synthetic Service Delivery</name>
+  <elements>
+    <element identifier="business-actor" xsi:type="archimate:BusinessActor"><name xml:lang="en">Customer</name></element>
+    <element identifier="business-process" xsi:type="archimate:BusinessProcess"><name xml:lang="en">Submit request</name></element>
+    <element identifier="application-service" xsi:type="archimate:ApplicationService"><name xml:lang="en">Request service</name></element>
+    <element identifier="application-component" xsi:type="archimate:ApplicationComponent"><name xml:lang="en">Request portal</name></element>
+    <element identifier="technology-node" xsi:type="archimate:Node"><name xml:lang="en">Cloud platform</name></element>
+  </elements>
+  <relationships>
+    <relationship identifier="assignment-customer-process" xsi:type="archimate:Assignment"
+      source="business-actor" target="business-process"><name xml:lang="en">Assigns request</name></relationship>
+    <relationship identifier="realization-process-service" xsi:type="archimate:Realization"
+      source="business-process" target="application-service" />
+    <relationship identifier="serving-component-service" xsi:type="archimate:Serving"
+      source="application-component" target="application-service" />
+    <relationship identifier="deployment-component-node" xsi:type="archimate:Assignment"
+      source="application-component" target="technology-node" />
+  </relationships>
+  <views>
+    <diagrams>
+      <view identifier="view-synthetic-showcase" xsi:type="archimate:Diagram">
+        <name xml:lang="en">Service delivery overview</name>
+        <node identifier="view-customer" xsi:type="archimate:Element" elementRef="business-actor" x="40" y="130" w="150" h="80" />
+        <node identifier="view-process" xsi:type="archimate:Element" elementRef="business-process" x="260" y="130" w="170" h="80" />
+        <node identifier="view-service" xsi:type="archimate:Element" elementRef="application-service" x="510" y="130" w="170" h="80" />
+        <node identifier="view-component" xsi:type="archimate:Element" elementRef="application-component" x="510" y="300" w="170" h="80" />
+        <node identifier="view-platform" xsi:type="archimate:Element" elementRef="technology-node" x="760" y="300" w="170" h="80" />
+        <connection identifier="view-assignment" xsi:type="archimate:Relationship" relationshipRef="assignment-customer-process" source="view-customer" target="view-process"><sourceAttachment x="190" y="170"/><targetAttachment x="260" y="170"/></connection>
+        <connection identifier="view-realization" xsi:type="archimate:Relationship" relationshipRef="realization-process-service" source="view-process" target="view-service"><sourceAttachment x="430" y="170"/><targetAttachment x="510" y="170"/></connection>
+        <connection identifier="view-serving" xsi:type="archimate:Relationship" relationshipRef="serving-component-service" source="view-component" target="view-service"><sourceAttachment x="595" y="300"/><targetAttachment x="595" y="210"/></connection>
+        <connection identifier="view-deployment" xsi:type="archimate:Relationship" relationshipRef="deployment-component-node" source="view-component" target="view-platform"><sourceAttachment x="680" y="340"/><targetAttachment x="760" y="340"/></connection>
+      </view>
+    </diagrams>
+  </views>
+</model>

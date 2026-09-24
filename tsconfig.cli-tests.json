@@ -24,6 +24,7 @@
     "test/browser/export-api.mts",
     "test/browser/theme-contrast.mts",
     "test/performance/browser-benchmark.mts",
+    "test/browser/accessible-outline.mts",
     "scripts/check-secrets.mts",
     "test/security/check-secrets.test.mts",
     "scripts/check-tracked-paths.mts",
