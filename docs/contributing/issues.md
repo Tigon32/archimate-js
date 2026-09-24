@@ -106,6 +106,37 @@ dependencies, and split independently releasable phases with different blockers.
 Keep coordination-only references as related work. The forms provide structure;
 no workflow automatically changes dependency links from untrusted issue text.
 
+## Umbrella and child issues
+
+An issue is oversized when its acceptance boundary contains multiple
+independently testable outcomes, spans unrelated subsystems, needs separate
+owners or branches, has materially different blockers, or cannot be reviewed
+and released as one small change. Treat those signals as a required scope
+review, not as permission to start parallel work under one claim.
+
+When an issue is oversized, keep it as an **umbrella**: a public tracker for
+the outcome, child links, dependencies, risks, and progress. The umbrella is
+kept unclaimed and unassigned. Create one child issue per independently
+testable and reviewable outcome, with observable acceptance criteria and only
+the strict dependencies that actually block that child. Use native dependency
+links when available and explain the direction in each issue; use ordinary
+references for related work. Claim and branch from a child, never from the
+umbrella merely to implement one child.
+
+Close the umbrella only when every required child is closed or its remaining
+scope has been explicitly descoped or moved to a follow-up. Child closure
+must link its PR and checks; umbrella progress records completed children,
+open blockers, and newly discovered scope without turning the umbrella into a
+work lease. If implementation discovers a distinct outcome, new blocker, or
+larger boundary, stop before silently expanding the child: update the
+umbrella, create or link the appropriate child/follow-up, and preserve the
+original acceptance boundary.
+
+For ownership, stalled work, and PR recovery, use the
+[agent-coordination runbook](agent-coordination.md); its manual rules remain
+the interim procedure until the serialized controller planned in
+[#140](https://github.com/Tigon32/archimate-js/issues/140) exists.
+
 ## Short examples (SYNTHETIC unless linked to public work)
 
 - **Researched feature:** A request for opt-in compound layout can cite the
@@ -128,3 +159,7 @@ no workflow automatically changes dependency links from untrusted issue text.
 - **Soft relationship:** A headless outline and an export visual-quality gate
   might share a synthetic diagram fixture. Mention the shared fixture as
   related work; neither issue must block the other solely because of reuse.
+- **Oversized umbrella:** “Improve export quality” covers deterministic SVG,
+  browser screenshots, and release checks. Keep that issue unclaimed; create
+  children for each independently testable gate, add only real blockers, and
+  claim one child per PR.

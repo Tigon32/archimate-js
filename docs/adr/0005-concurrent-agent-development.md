@@ -31,10 +31,11 @@ is shared between harnesses, so its assignment alone does not identify a run.
    [`docs/contributing/agent-coordination.md`](../contributing/agent-coordination.md).
    A shared assignee is never evidence of exclusive ownership.
 2. Before editing, search open/closed issues and PRs; identify strict
-   dependencies, existing claims, and likely shared files. Claim the smallest
-   independently reviewable issue or child slice. One active implementation
-   lease per issue; reviewers may participate without taking the lease. Do not
-   claim an umbrella when implementing only one child.
+   dependencies, existing claims, and likely shared files. An umbrella issue is
+   never claimable or assignable: it remains an unclaimed, unassigned tracker.
+   Claim the smallest independently reviewable child slice. One active
+   implementation lease per child issue; reviewers may participate without
+   taking the lease.
 3. A claim record uses the versioned JSON contract in the runbook. It contains
    `schema`, `record_type`, `issue`, `actor_id`, `github_login`, `lease_id`
    (unpredictable token), `epoch` (monotonic fencing number), lease timestamps,
@@ -100,19 +101,22 @@ is shared between harnesses, so its assignment alone does not identify a run.
 7. Each claimant uses a separate worktree/checkout and unique branch such as
    `agent/<actor-id>/issue-<number>-<slug>`, based on current `main`. Never
    edit another actor's worktree or branch. Keep changes scoped to the claimed
-   issue; coordinate shared files in its issue/PR before editing. Refresh from
+   issue; coordinate shared files in its issue/PR before editing. Never
+   overwrite another actor's branch. Refresh from
    `main` before PR creation and merge; link the issue and claim ID in the PR.
 8. Split large issues by independently testable outcomes and real blockers.
-   Use native issue dependencies for strict sequencing and ordinary references
-   for related work. Independent child issues can proceed concurrently, with
-   separate leases and PRs. Keep PRs small; report handoff state, remaining
-   risks, and test evidence when a lease ends.
+   An oversized issue is an unclaimed, unassigned umbrella tracker; claim only
+   independently reviewable child issues. Use native issue dependencies for
+   strict sequencing and ordinary references for related work. Independent
+   children can proceed concurrently with separate leases and PRs. The issue
+   guide defines scope discovery, progress, and umbrella closure rules.
 9. Require the repository's checks and appropriate review before merging.
    Protect `main` with required checks and reviews; use a merge queue if merge
    contention warrants it, and ensure required Actions also respond to
-   `merge_group` when a queue is enabled. Never bypass a failed check or
-   overwrite another PR's branch to resolve a conflict. A claimant releases
-   its lease after merge/closure and updates any dependent issue.
+   `merge_group` when a queue is enabled. The coordination runbook defines
+   active, waiting, stalled, and orphaned PR states and the only safe recovery
+   paths. Never bypass a failed check or weaken tests. A claimant releases its
+   lease after merge/closure and updates any dependent issue.
 
 ### Implementation and rollout
 
@@ -155,6 +159,9 @@ is shared between harnesses, so its assignment alone does not identify a run.
   maintainer-mediated handoff. It does not weaken, replace, or pre-implement
   the serialized controller and automatic expiry specified for
   [#140](https://github.com/Tigon32/archimate-js/issues/140).
+- Umbrellas preserve planning visibility without serializing independent child
+  work; recovery preserves abandoned branches as audit evidence while moving
+  validated work onto current `main`.
 
 ## References
 
@@ -168,3 +175,12 @@ is shared between harnesses, so its assignment alone does not identify a run.
 - GitHub issue dependencies: https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/creating-issue-dependencies.
 - Branch protection and merge queue: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches and https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue.
 - Git worktrees: https://git-scm.com/docs/git-worktree.
+
+## Revision history
+
+- 2026-09-24 — ADR-0005 moved from `Proposed` to `Accepted` after the manual
+  claim-fencing decision in [#141](https://github.com/Tigon32/archimate-js/issues/141).
+- 2026-09-24 — Clarified umbrella/child scope fencing and fail-closed PR
+  recovery rules in [#157](https://github.com/Tigon32/archimate-js/issues/157).
+  Status remains `Accepted`; detailed operator procedures live in the linked
+  contribution documents.
