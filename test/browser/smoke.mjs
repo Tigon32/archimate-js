@@ -58,7 +58,7 @@ try {
     headless: true,
     args: [ '--no-sandbox', '--disable-setuid-sandbox' ]
   });
-  context = await browser.newContext();
+  context = await browser.newContext({ colorScheme: 'light' });
   await context.tracing.start({ screenshots: true, snapshots: true, sources: false });
   page = await context.newPage();
   const origin = `http://127.0.0.1:${server.address().port}`;
@@ -81,7 +81,7 @@ try {
   assert.equal(await chooser.inputValue(), 'default');
   assert.equal(await page.locator('.am-app').getAttribute('data-theme'), 'light');
   await page.emulateMedia({ colorScheme: 'dark' });
-  assert.equal(await page.locator('.am-app').getAttribute('data-theme'), 'dark');
+  await page.locator('.am-app[data-theme="dark"]').waitFor();
   await chooser.focus();
   await page.keyboard.press('End');
   await page.keyboard.press('Tab');
@@ -94,7 +94,7 @@ try {
   await page.locator('#theme-choice').selectOption('default');
   assert.equal(await page.locator('.am-app').getAttribute('data-theme'), 'dark');
   await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
-  assert.equal(await page.locator('.am-app').getAttribute('data-theme'), 'light');
+  await page.locator('.am-app[data-theme="light"]').waitFor();
   await page.locator('#theme-choice').selectOption('high-contrast-light');
   assert.equal(await page.locator('.am-app').getAttribute('data-theme'), 'high-contrast-light');
   await page.locator('#theme-choice').selectOption('light');
