@@ -1,4 +1,6 @@
-import { readFileSync, statSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -15,6 +17,27 @@ describe('local verification gate', () => {
 
     if (process.platform !== 'win32') {
       expect(statSync(hookPath).mode & 0o111).not.toBe(0);
+    }
+  });
+
+  it('installs hooks in a fresh Git checkout with no prior hook configuration', () => {
+    const checkout = mkdtempSync(path.join(tmpdir(), 'archimate-js-hooks-'));
+
+    try {
+      execFileSync('git', ['init', '--quiet'], { cwd: checkout });
+      execFileSync(process.execPath, [path.join(repositoryRoot, 'scripts/install-git-hooks.mjs')], {
+        cwd: checkout,
+        stdio: 'pipe'
+      });
+
+      const configuredPath = execFileSync('git', ['config', '--local', '--get', 'core.hooksPath'], {
+        cwd: checkout,
+        encoding: 'utf8'
+      }).trim();
+
+      expect(configuredPath).toBe('.githooks');
+    } finally {
+      rmSync(checkout, { recursive: true, force: true });
     }
   });
 

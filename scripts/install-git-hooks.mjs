@@ -25,9 +25,14 @@ function main() {
     return;
   }
 
-  const configuredPath = git(['config', '--local', '--get', 'core.hooksPath'], {
-    stdio: ['ignore', 'pipe', 'ignore']
-  }).trim();
+  let configuredPath = '';
+  try {
+    configuredPath = git(['config', '--local', '--get', 'core.hooksPath'], {
+      stdio: ['ignore', 'pipe', 'ignore']
+    }).trim();
+  } catch {
+    // Fresh checkouts normally have no core.hooksPath yet.
+  }
 
   if (configuredPath === '.githooks') {
     console.log('archimate-js: repository Git hooks already configured.');
