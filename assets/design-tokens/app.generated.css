@@ -1,0 +1,18 @@
+/* Generated from app.tokens.json; scoped to the application shell. */
+.am-app, .am-app[data-theme="light"] {
+  --am-ui-surface: #ffffff;
+  --am-ui-text: #20242b;
+  --am-ui-focus: #165dcc;
+  --am-ui-error: #b3261e;
+}
+.am-app[data-theme="dark"] {
+  --am-ui-surface: #1e1f22;
+  --am-ui-text: #f3f4f6;
+  --am-ui-focus: #80b4ff;
+  --am-ui-error: #ff8a80;
+}
+.am-app {
+  --am-ui-space-sm: 4px;
+  --am-ui-space-md: 8px;
+  --am-ui-space-lg: 16px;
+}
