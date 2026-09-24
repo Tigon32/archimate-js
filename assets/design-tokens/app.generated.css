@@ -1,18 +1,45 @@
 /* Generated from app.tokens.json; scoped to the application shell. */
 .am-app, .am-app[data-theme="light"] {
   --am-ui-surface: #ffffff;
+  --am-ui-surface-raised: #f7f9fc;
   --am-ui-text: #20242b;
+  --am-ui-text-muted: #4b5563;
+  --am-ui-border: #65738a;
+  --am-ui-action: #164fa5;
+  --am-ui-action-hover: #123e83;
+  --am-ui-action-text: #ffffff;
+  --am-ui-disabled-surface: #e5e9ef;
+  --am-ui-disabled-text: #5c6678;
   --am-ui-focus: #165dcc;
   --am-ui-error: #b3261e;
+  --am-ui-success: #146c32;
+  --am-ui-warning: #7b4b00;
 }
 .am-app[data-theme="dark"] {
   --am-ui-surface: #1e1f22;
+  --am-ui-surface-raised: #292d34;
   --am-ui-text: #f3f4f6;
+  --am-ui-text-muted: #c1c8d2;
+  --am-ui-border: #8592a5;
+  --am-ui-action: #a9cbff;
+  --am-ui-action-hover: #d0e3ff;
+  --am-ui-action-text: #1e1f22;
+  --am-ui-disabled-surface: #444953;
+  --am-ui-disabled-text: #b9c2d0;
   --am-ui-focus: #80b4ff;
   --am-ui-error: #ff8a80;
+  --am-ui-success: #6ede9c;
+  --am-ui-warning: #ffd27a;
 }
 .am-app {
   --am-ui-space-sm: 4px;
   --am-ui-space-md: 8px;
   --am-ui-space-lg: 16px;
+  --am-ui-border-width: 1px;
+  --am-ui-border-radius: 6px;
+  --am-ui-border-focus-width: 3px;
+  --am-ui-font-family: "IBM Plex", Arial, sans-serif;
+  --am-ui-font-body-size: 14px;
+  --am-ui-font-small-size: 12px;
+  --am-ui-font-weight-strong: 600;
 }

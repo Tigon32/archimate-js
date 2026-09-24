@@ -21,6 +21,12 @@ The viewer bundle is generated at `.ci-build/archimate-js.js`; it is build outpu
 and is not committed. Do not open `index.html` as a `file:` URL because browsers
 block its local fixture fetch.
 
+The example links the scoped local app shell stylesheet for its navigation link
+and loading/success/error status. It uses the bundled IBM Plex font without a
+remote font service. To check the dark controls theme, set `data-theme="dark"`
+on the example's `.am-app` root; this changes UI variables only and leaves the
+ArchiMate SVG colors intact.
+
 The example presents a non-interactive view-only diagram; it provides no editing
 controls or save operation. Its CSS `pointer-events: none` is demo-level
 non-interactivity only, not an authorization or security boundary. The fixture

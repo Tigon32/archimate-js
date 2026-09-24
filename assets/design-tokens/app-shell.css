@@ -1,0 +1,97 @@
+@import url("./app.generated.css");
+
+/* Local OFL font; the notation font stack belongs to the diagram renderer. */
+@font-face {
+  font-family: "IBM Plex";
+  src: url("../ibm-plex-font/IBMPlexSans-Regular.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex";
+  src: url("../ibm-plex-font/IBMPlexSans-SemiBold.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+
+.am-app {
+  color: var(--am-ui-text);
+  background: var(--am-ui-surface);
+  font: var(--am-ui-font-body-size)/1.5 var(--am-ui-font-family);
+}
+
+.am-app .am-ui-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--am-ui-space-md);
+  align-items: center;
+  margin-block: var(--am-ui-space-md);
+}
+
+.am-app .am-ui-panel,
+.am-app .am-ui-status {
+  color: var(--am-ui-text);
+  background: var(--am-ui-surface-raised);
+  border: var(--am-ui-border-width) solid var(--am-ui-border);
+  border-radius: var(--am-ui-border-radius);
+  padding: var(--am-ui-space-md) var(--am-ui-space-lg);
+}
+
+.am-app .am-ui-status[data-state="success"] { border-color: var(--am-ui-success); }
+.am-app .am-ui-status[data-state="warning"] { border-color: var(--am-ui-warning); }
+.am-app .am-ui-status[data-state="error"] { border-color: var(--am-ui-error); }
+
+.am-app .am-ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: var(--am-ui-space-sm) var(--am-ui-space-lg);
+  border: var(--am-ui-border-width) solid var(--am-ui-action);
+  border-radius: var(--am-ui-border-radius);
+  background: var(--am-ui-action);
+  color: var(--am-ui-action-text);
+  font: var(--am-ui-font-weight-strong) var(--am-ui-font-body-size)/1.5 var(--am-ui-font-family);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.am-app .am-ui-button:hover:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--am-ui-action-hover);
+  border-color: var(--am-ui-action-hover);
+}
+
+.am-app .am-ui-button:disabled,
+.am-app .am-ui-button[aria-disabled="true"] {
+  color: var(--am-ui-disabled-text);
+  background: var(--am-ui-disabled-surface);
+  border-color: var(--am-ui-border);
+  cursor: not-allowed;
+}
+
+.am-app .am-ui-field {
+  box-sizing: border-box;
+  min-height: 36px;
+  padding: var(--am-ui-space-sm) var(--am-ui-space-md);
+  color: var(--am-ui-text);
+  background: var(--am-ui-surface);
+  border: var(--am-ui-border-width) solid var(--am-ui-border);
+  border-radius: var(--am-ui-border-radius);
+  font: inherit;
+}
+
+.am-app .am-ui-field[aria-invalid="true"] { border-color: var(--am-ui-error); }
+.am-app .am-ui-field:disabled {
+  color: var(--am-ui-disabled-text);
+  background: var(--am-ui-disabled-surface);
+  cursor: not-allowed;
+}
+
+.am-app .am-ui-button:focus-visible,
+.am-app .am-ui-field:focus-visible {
+  outline: var(--am-ui-border-focus-width) solid var(--am-ui-focus);
+  outline-offset: 2px;
+}

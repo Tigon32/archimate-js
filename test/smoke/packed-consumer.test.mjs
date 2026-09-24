@@ -98,9 +98,15 @@ try {
   run(process.execPath, ['--input-type=module', '-e', consumerScript], { cwd: consumer });
 
   const packageJson = JSON.parse(await readFile(path.join(packageRoot, 'package.json'), 'utf8'));
+  const consumerRequire = createRequire(path.join(consumer, 'package.json'));
   assert.equal(packageJson.exports['./validator'].import, './dist/validator/index.js');
   assert.equal(packageJson.exports['./model-dto'].import, './dist/model-dto/index.js');
-  assert.deepEqual(Object.keys(packageJson.exports).sort(), ['.', './model-dto', './validator']);
+  assert.equal(packageJson.exports['./app-shell.css'], './assets/design-tokens/app-shell.css');
+  assert.deepEqual(Object.keys(packageJson.exports).sort(), ['.', './app-shell.css', './model-dto', './validator']);
+  const stylePath = consumerRequire.resolve('archimate-js/app-shell.css');
+  assert.match(await readFile(stylePath, 'utf8'), /\.am-app \.am-ui-status/);
+  await readFile(path.join(packageRoot, 'assets/design-tokens/app.generated.css'), 'utf8');
+  await readFile(path.join(packageRoot, 'assets/ibm-plex-font/IBMPlexSans-Regular.ttf'));
   assert.equal(packageJson.bin['archimate-js'], 'bin/archimate-js.mjs');
   await readFile(path.join(packageRoot, 'dist/browser/archimate-js.js'), 'utf8');
   const installedBin = process.platform === 'win32'
@@ -110,7 +116,6 @@ try {
     'validate', path.join(root, 'test/fixtures/synthetic/minimal-application-view.xml')
   ], { cwd: consumer });
   assert.equal(JSON.parse(packedCli).valid, true);
-  const consumerRequire = createRequire(path.join(consumer, 'package.json'));
   assert.ok(consumerRequire.resolve('playwright-core'));
   assert.ok(consumerRequire.resolve('archimate-font/package.json'));
   await assert.rejects(readFile(path.join(
