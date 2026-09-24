@@ -9,3 +9,4 @@ export {
 
 export { routeViewConnections } from './lib/layout/route-view-connections.mjs';
 export { optimizeDiagram, applyLayoutPatch } from './lib/layout/optimize-diagram.mjs';
+export { exportMeff } from './lib/export/Meff';
