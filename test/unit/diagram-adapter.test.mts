@@ -102,7 +102,7 @@ it('binds an ID-only canvas port and emits detached state with the edited view I
   const editor = new DiagramAdapter(fixture());
   const renders: CanvasProjection[] = [];
   let onCommand: ((command: EditorCommand) => void) | undefined;
-  let onSelection: ((viewId: string, ids: string[]) => void) | undefined;
+  let onSelection: ((ids: string[]) => void) | undefined;
   const port: CanvasPort = {
     render: (projection) => { renders.push(projection); },
     onCommand: (handler) => { onCommand = handler; return () => { onCommand = undefined; }; },
@@ -110,17 +110,20 @@ it('binds an ID-only canvas port and emits detached state with the edited view I
   };
   const events: string[] = [];
   editor.subscribe((event) => { events.push(`${event.type}:${event.viewId}`); event.model.id = 'modified'; });
-  const detach = editor.attach(port);
-  onSelection?.('view-one', ['node-a']);
+  const detach = editor.attach('view-one', port);
+  onSelection?.(['node-a']);
   onCommand?.({ type: 'label', viewId: 'view-one', itemId: 'node-a', label: 'New label' });
-  onCommand?.({ type: 'connect', viewId: 'view-two', connection: {
+  expect(() => onCommand?.({ type: 'connect', viewId: 'view-two', connection: {
+    id: 'line-two', kind: 'line', waypoints: [{ x: 1, y: 2 }, { x: 3, y: 4 }]
+  } })).toThrow();
+  editor.execute({ type: 'connect', viewId: 'view-two', connection: {
     id: 'line-two', kind: 'line', waypoints: [{ x: 1, y: 2 }, { x: 3, y: 4 }]
   } });
   expect(events).toEqual(['selection:view-one', 'changed:view-one', 'changed:view-two']);
   editor.undo();
   expect(events.at(-1)).toBe('changed:view-two');
   expect(editor.getModel().id).toBe('synthetic-model');
-  expect(renders.some((value) => value.viewId === 'view-two')).toBe(true);
+  expect(renders.every((value) => value.viewId === 'view-one')).toBe(true);
   detach();
   expect(onCommand).toBeUndefined();
   expect(onSelection).toBeUndefined();

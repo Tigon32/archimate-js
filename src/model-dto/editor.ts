@@ -27,7 +27,7 @@ export type EditorEvent = { type: 'changed' | 'selection'; viewId: string; model
 export interface CanvasPort {
   render(projection: CanvasProjection): void;
   onCommand(handler: (command: EditorCommand) => void): () => void;
-  onSelection(handler: (viewId: string, ids: string[]) => void): () => void;
+  onSelection(handler: (ids: string[]) => void): () => void;
 }
 
 function findNode(nodes: ViewNodeDto[], id: string): ViewNodeDto | undefined {
@@ -169,7 +169,7 @@ export class DiagramAdapter {
   private future: Array<{ model: ModelDto; viewId: string }> = [];
   private selection = new Map<string, string[]>();
   private listeners = new Set<(event: EditorEvent) => void>();
-  private canvases = new Set<CanvasPort>();
+  private canvases = new Map<CanvasPort, string>();
 
   constructor(model: unknown) {
     const validated = validateModelDto(model);
@@ -196,11 +196,17 @@ export class DiagramAdapter {
   }
 
   /** A UI port translates native canvas events to ID-only commands and selection. */
-  attach(port: CanvasPort): () => void {
-    this.canvases.add(port);
-    const offCommand = port.onCommand((command) => { this.execute(command); });
-    const offSelection = port.onSelection((viewId, ids) => { this.select(viewId, ids); });
-    for (const view of this.model.views) port.render(this.project(view.id));
+  attach(viewId: string, port: CanvasPort): () => void {
+    if (this.canvases.has(port)) invalid();
+    port.render(this.project(viewId));
+    const offCommand = port.onCommand((command) => {
+      if (command.viewId !== viewId) invalid();
+      this.execute(command);
+    });
+    let offSelection: () => void;
+    try { offSelection = port.onSelection((ids) => { this.select(viewId, ids); }); }
+    catch (error) { offCommand(); throw error; }
+    this.canvases.set(port, viewId);
     return () => { offCommand(); offSelection(); this.canvases.delete(port); };
   }
 
@@ -248,7 +254,9 @@ export class DiagramAdapter {
   }
 
   private emit(type: EditorEvent['type'], viewId: string): void {
-    for (const port of this.canvases) for (const view of this.model.views) port.render(this.project(view.id));
+    for (const [port, boundView] of this.canvases) if (boundView === viewId) {
+      port.render(this.project(viewId));
+    }
     for (const listener of this.listeners) listener({ type, viewId,
       model: this.getModel(), selectedIds: [...(this.selection.get(viewId) || [])] });
   }

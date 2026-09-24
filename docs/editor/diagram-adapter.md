@@ -11,7 +11,7 @@ each command commits. Failed commands leave the model and history intact.
 import { DiagramAdapter, importMeffToModelDto } from 'archimate-js/model-dto';
 
 const editor = new DiagramAdapter(importMeffToModelDto(xml));
-const detach = editor.attach(canvasPort);
+const detach = editor.attach('view-one', canvasPort);
 editor.execute({ type: 'move', viewId: 'view-one', nodeId: 'node-one', x: 120, y: 80 });
 editor.undo();
 const dtoJson = editor.serialize();
