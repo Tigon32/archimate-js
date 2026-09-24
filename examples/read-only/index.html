@@ -17,13 +17,24 @@
     <main class="am-app">
       <h1>Read-only ArchiMate view</h1>
       <p>This local example loads a hand-authored synthetic ArchiMate model across business, application, and technology layers. The rendered diagram is intentionally non-interactive.</p>
-      <nav class="am-ui-toolbar" aria-label="Diagram navigation"><a class="am-ui-button" href="#diagram">Go to diagram</a></nav>
+      <nav class="am-ui-toolbar" aria-label="Diagram navigation">
+        <label for="theme-choice">Theme</label>
+        <select id="theme-choice" class="am-ui-field">
+          <option value="default">Default (system preference)</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+          <option value="high-contrast-light">High contrast light</option>
+          <option value="high-contrast-dark">High contrast dark</option>
+        </select>
+        <a class="am-ui-button" href="#diagram">Go to diagram</a>
+      </nav>
       <p id="status" class="am-ui-status" role="status" aria-live="polite">Loading synthetic example…</p>
       <div class="diagram-frame"><div id="diagram" aria-label="Synthetic service delivery ArchiMate diagram"></div></div>
     </main>
 
     <!-- Generated locally from the package entrypoint by `npm run compile`. -->
     <script src="../../.ci-build/archimate-js.js"></script>
+    <script type="module" src="./theme.js"></script>
     <script type="module" src="./viewer.js"></script>
   </body>
 </html>

@@ -12,6 +12,7 @@ const resultsDirectory = path.join(root, 'test-results');
 const routes = new Map([
   ['/examples/read-only/', [ 'examples/read-only/index.html', 'text/html; charset=utf-8' ]],
   ['/examples/read-only/viewer.js', [ 'examples/read-only/viewer.js', 'text/javascript; charset=utf-8' ]],
+  ['/examples/read-only/theme.js', [ 'examples/read-only/theme.js', 'text/javascript; charset=utf-8' ]],
   ['/.ci-build/model-dto.js', [ '.ci-build/model-dto.js', 'text/javascript; charset=utf-8' ]],
   ['/examples/read-only/diagram.css', [ 'examples/read-only/diagram.css', 'text/css; charset=utf-8' ]],
   ['/assets/design-tokens/app-shell.css', [ 'assets/design-tokens/app-shell.css', 'text/css; charset=utf-8' ]],
@@ -75,6 +76,33 @@ try {
   stage = 'load synthetic read-only example';
   await page.goto(origin + '/examples/read-only/', { waitUntil: 'networkidle' });
   await page.locator('#status').waitFor({ state: 'visible' });
+  stage = 'check theme selector, persistence and OS preference';
+  const chooser = page.getByLabel('Theme', { exact: false });
+  assert.equal(await chooser.inputValue(), 'default');
+  assert.equal(await page.locator('.am-app').getAttribute('data-theme'), 'light');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  assert.equal(await page.locator('.am-app').getAttribute('data-theme'), 'dark');
+  await chooser.focus();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Tab');
+  assert.equal(await chooser.inputValue(), 'high-contrast-dark');
+  assert.equal(await page.locator('.am-app').getAttribute('data-theme'), 'high-contrast-dark');
+  assert.equal(await page.evaluate(() => localStorage.getItem('archimate-js.ui-theme')), 'high-contrast-dark');
+  await page.reload({ waitUntil: 'networkidle' });
+  assert.equal(await page.locator('#theme-choice').inputValue(), 'high-contrast-dark');
+  assert.equal(await page.locator('.am-app').getAttribute('data-theme'), 'high-contrast-dark');
+  await page.locator('#theme-choice').selectOption('default');
+  assert.equal(await page.locator('.am-app').getAttribute('data-theme'), 'dark');
+  await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
+  assert.equal(await page.locator('.am-app').getAttribute('data-theme'), 'light');
+  await page.locator('#theme-choice').selectOption('high-contrast-light');
+  assert.equal(await page.locator('.am-app').getAttribute('data-theme'), 'high-contrast-light');
+  await page.locator('#theme-choice').selectOption('light');
+  await page.locator('#theme-choice').selectOption('dark');
+  assert.equal(await page.locator('.am-app').getAttribute('data-theme'), 'dark');
+  await page.emulateMedia({ colorScheme: 'dark', forcedColors: 'active' });
+  assert.equal(await page.locator('.am-app').getAttribute('data-theme'), 'dark');
+  await page.emulateMedia({ colorScheme: 'light', forcedColors: 'none', reducedMotion: 'no-preference' });
 
   stage = 'check DTO import eligibility in the browser';
   const eligibility = await page.evaluate(async () => {

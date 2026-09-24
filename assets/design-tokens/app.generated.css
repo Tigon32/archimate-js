@@ -1,5 +1,6 @@
 /* Generated from app.tokens.json; scoped to the application shell. */
 .am-app, .am-app[data-theme="light"] {
+  color-scheme: light;
   --am-ui-surface: #ffffff;
   --am-ui-surface-raised: #f7f9fc;
   --am-ui-text: #20242b;
@@ -14,8 +15,18 @@
   --am-ui-error: #b3261e;
   --am-ui-success: #146c32;
   --am-ui-warning: #7b4b00;
+  --am-ui-link: #164fa5;
+  --am-ui-icon: #4b5563;
+  --am-ui-hover-surface: #edf4ff;
+  --am-ui-pressed-surface: #dceaff;
+  --am-ui-selected-surface: #dceaff;
+  --am-ui-selected-text: #20242b;
+  --am-ui-invalid-surface: #fff4f2;
+  --am-ui-overlay-surface: #ffffff;
+  --am-ui-overlay-text: #20242b;
 }
 .am-app[data-theme="dark"] {
+  color-scheme: dark;
   --am-ui-surface: #1e1f22;
   --am-ui-surface-raised: #292d34;
   --am-ui-text: #f3f4f6;
@@ -30,6 +41,67 @@
   --am-ui-error: #ff8a80;
   --am-ui-success: #6ede9c;
   --am-ui-warning: #ffd27a;
+  --am-ui-link: #a9cbff;
+  --am-ui-icon: #c1c8d2;
+  --am-ui-hover-surface: #344256;
+  --am-ui-pressed-surface: #415578;
+  --am-ui-selected-surface: #415578;
+  --am-ui-selected-text: #f3f4f6;
+  --am-ui-invalid-surface: #462923;
+  --am-ui-overlay-surface: #292d34;
+  --am-ui-overlay-text: #f3f4f6;
+}
+.am-app[data-theme="high-contrast-light"] {
+  color-scheme: light;
+  --am-ui-surface: #ffffff;
+  --am-ui-surface-raised: #fafafa;
+  --am-ui-text: #101010;
+  --am-ui-text-muted: #333333;
+  --am-ui-border: #454545;
+  --am-ui-action: #003c8f;
+  --am-ui-action-hover: #002c6b;
+  --am-ui-action-text: #ffffff;
+  --am-ui-disabled-surface: #ededed;
+  --am-ui-disabled-text: #333333;
+  --am-ui-focus: #003c8f;
+  --am-ui-error: #8b0000;
+  --am-ui-success: #005221;
+  --am-ui-warning: #684000;
+  --am-ui-link: #003c8f;
+  --am-ui-icon: #333333;
+  --am-ui-hover-surface: #e8f2ff;
+  --am-ui-pressed-surface: #dceaff;
+  --am-ui-selected-surface: #dceaff;
+  --am-ui-selected-text: #101010;
+  --am-ui-invalid-surface: #fff0ed;
+  --am-ui-overlay-surface: #ffffff;
+  --am-ui-overlay-text: #101010;
+}
+.am-app[data-theme="high-contrast-dark"] {
+  color-scheme: dark;
+  --am-ui-surface: #050505;
+  --am-ui-surface-raised: #151515;
+  --am-ui-text: #ffffff;
+  --am-ui-text-muted: #e5e5e5;
+  --am-ui-border: #bcbcbc;
+  --am-ui-action: #9ed0ff;
+  --am-ui-action-hover: #c9e5ff;
+  --am-ui-action-text: #050505;
+  --am-ui-disabled-surface: #303030;
+  --am-ui-disabled-text: #e5e5e5;
+  --am-ui-focus: #9ed0ff;
+  --am-ui-error: #ffb4aa;
+  --am-ui-success: #a8efbe;
+  --am-ui-warning: #ffe3a3;
+  --am-ui-link: #9ed0ff;
+  --am-ui-icon: #e5e5e5;
+  --am-ui-hover-surface: #263f55;
+  --am-ui-pressed-surface: #294c6b;
+  --am-ui-selected-surface: #294c6b;
+  --am-ui-selected-text: #ffffff;
+  --am-ui-invalid-surface: #4e2222;
+  --am-ui-overlay-surface: #151515;
+  --am-ui-overlay-text: #ffffff;
 }
 .am-app {
   --am-ui-space-sm: 4px;
@@ -39,7 +111,7 @@
   --am-ui-border-radius: 6px;
   --am-ui-border-focus-width: 3px;
   --am-ui-font-family: "IBM Plex", Arial, sans-serif;
-  --am-ui-font-body-size: 14px;
-  --am-ui-font-small-size: 12px;
+  --am-ui-font-body-size: 0.875rem;
+  --am-ui-font-small-size: 0.75rem;
   --am-ui-font-weight-strong: 600;
 }
