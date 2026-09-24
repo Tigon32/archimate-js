@@ -30,10 +30,12 @@ describe('local verification gate', () => {
 
     try {
       execFileSync('git', ['init', '--quiet'], { cwd: checkout });
-      execFileSync(process.argv[0], [path.join(repositoryRoot, 'scripts/install-git-hooks.mjs')], {
-        cwd: checkout,
-        stdio: 'pipe'
-      });
+      const stdout = execFileSync(
+        process.argv[0],
+        [path.join(repositoryRoot, 'scripts/install-git-hooks.mjs')],
+        { cwd: checkout, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
+      );
+      expect(stdout).toBe('');
 
       const configuredPath = execFileSync('git', ['config', '--local', '--get', 'core.hooksPath'], {
         cwd: checkout,
