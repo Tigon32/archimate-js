@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+// @ts-expect-error Runtime script is intentionally plain ESM without a declaration file.
 import { classifyAutomergeCandidate, evaluateDrainState, latestRunsByName } from '../../scripts/drain-agent-pr.mjs';
 
 const repository = 'Tigon32/archimate-js';
@@ -13,7 +14,12 @@ const basePr = {
   labels: []
 };
 
-function run(name, id, status = 'completed', conclusion = 'success') {
+function run(
+  name: string,
+  id: number,
+  status: string = 'completed',
+  conclusion: string | null = 'success'
+) {
   return { name, id, status, conclusion };
 }
 
