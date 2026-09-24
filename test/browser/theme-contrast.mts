@@ -112,6 +112,115 @@ async function measureMode(page: Page, mode: string): Promise<Record<string, num
   return results;
 }
 
+async function readShellLayout(page: Page) {
+  return page.evaluate(() => {
+    const selectors = ['h1', '.am-app > p:not(.am-ui-status)', 'label[for="theme-choice"]',
+      '#theme-choice', '.am-ui-button', '#status', '.diagram-frame'];
+    const textSelectors = selectors.slice(0, 3).concat(['.am-ui-button', '#status']);
+    return {
+      viewport: window.innerWidth,
+      pageWidth: document.documentElement.scrollWidth,
+      controls: selectors.map((selector) => {
+        const element = document.querySelector(selector);
+        if (!element) throw new Error(`Missing ${selector}`);
+        const rect = element.getBoundingClientRect();
+        return { selector, left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom,
+          width: rect.width, height: rect.height };
+      }),
+      text: textSelectors.map((selector) => {
+        const element = document.querySelector(selector);
+        if (!element) throw new Error(`Missing ${selector}`);
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        return { selector, value: element.textContent?.trim(), rects: Array.from(range.getClientRects()).map(
+          (rect) => ({ left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom,
+            width: rect.width, height: rect.height })) };
+      }),
+      chooser: (() => {
+        const element = document.querySelector('#theme-choice');
+        if (!(element instanceof HTMLSelectElement)) throw new Error('Missing theme chooser');
+        return { value: element.value, name: element.getAttribute('aria-label'),
+          selected: element.selectedOptions[0]?.textContent?.trim() };
+      })(),
+      diagram: (() => {
+        const frame = document.querySelector('.diagram-frame');
+        if (!frame) throw new Error('Missing diagram frame');
+        return { scrollWidth: frame.scrollWidth, clientWidth: frame.clientWidth };
+      })()
+    };
+  });
+}
+
+async function checkShellLayout(page: Page, mode: string, scenario: string): Promise<void> {
+  const layout = await readShellLayout(page);
+  assert.ok(layout.pageWidth <= layout.viewport + 1,
+    `${mode} ${scenario}: page overflows horizontally (${layout.pageWidth}px > ${layout.viewport}px)`);
+  for (const item of layout.controls) {
+    assert.ok(item.left >= -1 && item.right <= layout.viewport + 1 && item.width > 0 && item.height > 0,
+      `${mode} ${scenario}: ${item.selector} is clipped or missing`);
+  }
+  for (let first = 0; first < layout.controls.length; first++) {
+    for (const second of layout.controls.slice(first + 1)) {
+      const item = layout.controls[first];
+      assert.ok(item.right <= second.left + 1 || second.right <= item.left + 1 ||
+        item.bottom <= second.top + 1 || second.bottom <= item.top + 1,
+      `${mode} ${scenario}: ${item.selector} overlaps ${second.selector}`);
+    }
+  }
+  for (const item of layout.text) {
+    const box = layout.controls.find((control) => control.selector === item.selector);
+    assert.ok(box && item.value && item.rects.length, `${mode} ${scenario}: ${item.selector} text is missing`);
+    for (const rect of item.rects) {
+      assert.ok(rect.width > 0 && rect.height > 0 && rect.left >= box.left - 1 &&
+        rect.right <= box.right + 1 && rect.top >= box.top - 1 && rect.bottom <= box.bottom + 1,
+      `${mode} ${scenario}: ${item.selector} text escapes its box`);
+    }
+  }
+  assert.ok(layout.chooser.value && layout.chooser.selected &&
+    layout.chooser.name?.includes(layout.chooser.selected),
+  `${mode} ${scenario}: selected theme has no accessible name`);
+  if (scenario === '320px reflow') {
+    assert.ok(layout.diagram.scrollWidth > layout.diagram.clientWidth,
+      `${mode}: spatial diagram is not independently pannable`);
+  }
+}
+
+async function checkResizeAndReflow(page: Page): Promise<void> {
+  const chooser = page.locator('#theme-choice');
+  const textSelectors = ['h1', '.am-app > p:not(.am-ui-status)', 'label[for="theme-choice"]',
+    '#theme-choice', '.am-ui-button', '#status'];
+  for (const choice of ['default', 'light', 'dark', 'high-contrast-light', 'high-contrast-dark']) {
+    await chooser.selectOption(choice);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const baseline = await page.evaluate((selectors) => selectors.map((selector) =>
+      parseFloat(getComputedStyle(document.querySelector(selector)!).fontSize)), textSelectors);
+    await page.locator('html').evaluate((element) => { element.style.fontSize = '200%'; });
+    const resized = await page.evaluate((selectors) => selectors.map((selector) =>
+      parseFloat(getComputedStyle(document.querySelector(selector)!).fontSize)), textSelectors);
+    for (let index = 0; index < textSelectors.length; index++) {
+      assert.ok(resized[index] >= baseline[index] * 1.95 && resized[index] <= baseline[index] * 2.05,
+        `${choice}: ${textSelectors[index]} did not double at 200% text resize`);
+    }
+    await checkShellLayout(page, choice, '200% text resize');
+    await page.locator('html').evaluate((element) => { element.style.fontSize = ''; });
+
+    await page.setViewportSize({ width: 320, height: 800 });
+    await checkShellLayout(page, choice, '320px reflow');
+    const override = await page.addStyleTag({ content: '.am-app * { line-height: 1.5 !important; letter-spacing: 0.12em !important; word-spacing: 0.16em !important; } .am-app p { margin-bottom: 2em !important; }' });
+    const spacing = await page.locator('.am-app > p:not(.am-ui-status)').evaluate((element) => {
+      const css = getComputedStyle(element);
+      return { font: parseFloat(css.fontSize), line: parseFloat(css.lineHeight),
+        letter: parseFloat(css.letterSpacing), word: parseFloat(css.wordSpacing),
+        paragraph: parseFloat(css.marginBottom) };
+    });
+    assert.ok(spacing.line >= spacing.font * 1.5 && spacing.letter >= spacing.font * 0.12 - 0.01 &&
+      spacing.word >= spacing.font * 0.16 - 0.01 && spacing.paragraph >= spacing.font * 2,
+    `${choice}: text spacing override did not engage`);
+    await checkShellLayout(page, choice, '320px text spacing');
+    await override.evaluate((element) => element.parentNode?.removeChild(element));
+  }
+}
+
 await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
 const address = server.address();
 assert.ok(address && typeof address !== 'string');
@@ -133,6 +242,7 @@ try {
     assert.equal(await page.locator('.am-app').getAttribute('data-theme'), choice);
     matrix[choice] = await measureMode(page, choice);
   }
+  await checkResizeAndReflow(page);
   console.log(JSON.stringify({ browser: 'Chromium', platform: process.platform, matrix }));
 } finally {
   await browser.close();
