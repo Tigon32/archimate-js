@@ -118,3 +118,51 @@ export async function writeArtifacts(
     throw new Error('OUTPUT_WRITE_FAILED');
   }
 }
+
+/** Publish a complete batch and manifest as one rollback unit. */
+export async function writeBatchArtifacts(
+  directory: string,
+  files: Array<{ filename: string; contents: string | Uint8Array }>,
+  manifest: string,
+  inputPath: string
+): Promise<void> {
+  const absolute = path.resolve(directory);
+  const parts: string[] = [];
+  let cursor = absolute;
+  while (cursor !== path.dirname(cursor)) { parts.unshift(cursor); cursor = path.dirname(cursor); }
+  try {
+    for (const component of parts) {
+      const item = await lstat(component).catch((error: NodeJS.ErrnoException) => {
+        if (error.code === 'ENOENT') return undefined;
+        throw error;
+      });
+      if (item && (!item.isDirectory() || item.isSymbolicLink())) throw new Error('OUTPUT_WRITE_FAILED');
+    }
+    await mkdir(absolute, { recursive: true });
+    const all = [...files, { filename: 'manifest.json', contents: manifest }];
+    const names = new Set<string>();
+    const previous: PreviousOutput[] = [];
+    for (const file of all) {
+      if (!file.filename || path.basename(file.filename) !== file.filename ||
+          file.filename === '.' || file.filename === '..' ||
+          names.has(file.filename.toLowerCase())) throw new Error('OUTPUT_WRITE_FAILED');
+      names.add(file.filename.toLowerCase());
+      const target = path.join(absolute, file.filename);
+      if (target === path.resolve(inputPath)) throw new Error('OUTPUT_WRITE_FAILED');
+      previous.push(await snapshot(target));
+    }
+    const committed: PreviousOutput[] = [];
+    try {
+      for (let index = 0; index < all.length; index++) {
+        await writeAtomic(previous[index].path, all[index].contents);
+        committed.push(previous[index]);
+      }
+    } catch {
+      try { await rollback(committed); } catch { throw new Error('OUTPUT_CLEANUP_FAILED'); }
+      throw new Error('OUTPUT_WRITE_FAILED');
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message === 'OUTPUT_CLEANUP_FAILED') throw error;
+    throw new Error('OUTPUT_WRITE_FAILED');
+  }
+}

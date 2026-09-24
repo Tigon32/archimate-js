@@ -30,6 +30,7 @@ export type ExportOptions = ViewSelection & {
   pdfPageSize: PdfPageSize;
   pdfOrientation: PdfOrientation;
   chrome?: string;
+  allViews?: boolean;
 };
 
 export type CliOptions = ValidateOptions | RenderOptions | ExportOptions | { command: 'help' };

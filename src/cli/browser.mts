@@ -81,9 +81,18 @@ export async function renderArtifacts(
   xml: string,
   options: RenderOptions | ExportOptions
 ): Promise<ExportArtifacts> {
+  const values = await renderBatchArtifacts(packageRoot, xml, [options]);
+  return values[0];
+}
+
+export async function renderBatchArtifacts(
+  packageRoot: string,
+  xml: string,
+  requests: Array<RenderOptions | ExportOptions>
+): Promise<ExportArtifacts[]> {
   const bundlePath = path.join(packageRoot, 'dist/browser/archimate-js.js');
   await ensureRenderer(bundlePath);
-  const executablePath = await findChrome(options.chrome);
+  const executablePath = await findChrome(requests[0].chrome);
   let browser;
   try {
     browser = await chromium.launch({ executablePath, headless: true, chromiumSandbox: true });
@@ -91,27 +100,32 @@ export async function renderArtifacts(
     throw new Error('BROWSER_LAUNCH_FAILED');
   }
   try {
-    const scale = options.command === 'export' ? options.scale : 1;
+    const scale = requests[0].command === 'export' ? requests[0].scale : 1;
     const context = await browser.newContext({
       locale: 'en-US', timezoneId: 'UTC', viewport: { width: 1024, height: 768 },
       deviceScaleFactor: scale
     });
     await blockNetwork(context);
-    const page = await context.newPage();
-    await page.addScriptTag({ path: bundlePath });
-    const svg = await renderSvg(page, xml, options);
-    if (options.command === 'render') return { svg };
-    const decorated = withBackground(svg, options.background);
-    const artifacts: ExportArtifacts = {};
-    if (options.formats.includes('svg')) artifacts.svg = decorated;
-    if (options.formats.some((format) => format !== 'svg')) {
-      await installSvg(page, decorated, options.background);
+    const renderer = await context.newPage();
+    await renderer.addScriptTag({ path: bundlePath });
+    const capture = await context.newPage();
+    const results: ExportArtifacts[] = [];
+    for (const options of requests) {
+      const svg = await renderSvg(renderer, xml, options);
+      if (options.command === 'render') { results.push({ svg }); continue; }
+      const decorated = withBackground(svg, options.background);
+      const artifacts: ExportArtifacts = {};
+      if (options.formats.includes('svg') || options.allViews) artifacts.svg = decorated;
+      if (options.formats.some((format) => format !== 'svg')) {
+        await installSvg(capture, decorated, options.background);
+      }
+      if (options.formats.includes('png')) {
+        artifacts.png = await pngArtifact(capture, options.background === 'transparent');
+      }
+      if (options.formats.includes('pdf')) artifacts.pdf = await pdfArtifact(capture, options);
+      results.push(artifacts);
     }
-    if (options.formats.includes('png')) {
-      artifacts.png = await pngArtifact(page, options.background === 'transparent');
-    }
-    if (options.formats.includes('pdf')) artifacts.pdf = await pdfArtifact(page, options);
-    return artifacts;
+    return results;
   } catch (error) {
     const code = error instanceof Error && RENDER_CODES.has(error.message)
       ? error.message : 'VIEW_RENDER_FAILED';

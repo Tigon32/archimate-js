@@ -277,5 +277,20 @@
       "MEFF 3.1 Diagram XSD validation"
     ],
     "review_after": "2026-12-23"
+  },
+  {
+    "id": "synthetic-batch-collisions",
+    "path": "test/fixtures/synthetic/batch-collisions.xml",
+    "classification": "SYNTHETIC",
+    "purpose": "Exercise deterministic multi-view ordering, sanitized filename collisions, and batch format export.",
+    "provenance": "Derived from the public synthetic minimal-application-view fixture using generic ArchiMate names and no real architecture data.",
+    "contains_private_data": false,
+    "expected_coverage": [
+      "three diagram views",
+      "duplicate sanitized names",
+      "unsafe characters",
+      "batch SVG PNG PDF export"
+    ],
+    "review_after": "2026-12-23"
   }
 ]
