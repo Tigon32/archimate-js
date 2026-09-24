@@ -68,6 +68,20 @@ cannot be retargeted through one view. Multi-item deletion is rejected as one
 unsupported gesture. Removing a view node removes attached view connections
 but retains semantic elements and relationships.
 
+The DTO adapter also checks every newly authored semantic relationship and every
+endpoint-changing reconnect against the reviewed ArchiMate 3.2 decision service
+shared with standalone validation. A reviewed `allowed` tuple can commit;
+`disallowed` raises `DTO_RELATIONSHIP_DISALLOWED`, and unreviewed combinations
+raise `DTO_RELATIONSHIP_UNSUPPORTED`. Both failures leave model state and undo
+history unchanged and contain no model identifiers. MEFF/DTO relationship type
+names such as `archimate:Serving` resolve to the same reviewed row as
+`ServingRelationship`. Existing imported relationships remain available even
+when their tuple is unreviewed. Adding another view reference to such a
+relationship or changing only a connection's waypoints does not create a new
+semantic claim. The canvas port's immediate gesture
+affordance still comes from legacy rules; aligning that UI hint and custom
+profiles is separate work under #102.
+
 The adapter's move, resize, connect, reconnect, delete, and presentation label
 commands use a snapshot-backed undo/redo stack. A node move carries its nested
 children and attached endpoints. UI selection is

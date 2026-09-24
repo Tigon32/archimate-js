@@ -174,22 +174,22 @@ try {
       registry.get('node-component')?.name === 'Updated component';
     editor.undo(); editor.undo(); editor.undo();
     const beforeTopology = editor.serialize();
-    const createdCanvas = modeling.createConnection(registry.get('node-component'),
-      registry.get('node-service'), { id: 'new-connection', type: 'Serving',
-        waypoints: [{ x: 160, y: 75 }, { x: 220, y: 90 }, { x: 300, y: 75 }] });
+    const createdCanvas = modeling.createConnection(registry.get('node-service'),
+      registry.get('node-component'), { id: 'new-connection', type: 'Serving',
+        waypoints: [{ x: 300, y: 75 }, { x: 220, y: 90 }, { x: 160, y: 75 }] });
     const added = editor.getModel();
     const newConnection = added.views[0].connections.find((item) => item.id === 'new-connection');
     const semantic = added.relationships.find((item) => item.id === newConnection?.relationshipId);
     const created = createdCanvas?.id === 'new-connection' &&
-      registry.get('new-connection')?.source?.id === 'node-component' &&
-      semantic?.sourceId === 'component-one' && semantic?.targetId === 'service-two' &&
+      registry.get('new-connection')?.source?.id === 'node-service' &&
+      semantic?.sourceId === 'service-two' && semantic?.targetId === 'component-one' &&
       newConnection?.waypoints[1].x === 220;
-    modeling.reconnectEnd(registry.get('new-connection'), registry.get('node-service-nested'),
+    modeling.reconnectStart(registry.get('new-connection'), registry.get('node-service-nested'),
       { x: 105, y: 175 });
     const reconnected = editor.getModel().views[0].connections.find((item) => item.id === 'new-connection');
-    const endpointsPreserved = reconnected?.targetId === 'node-service-nested' &&
-      reconnected.waypoints[1].x === 220 && reconnected.waypoints.at(-1).x === 105 &&
-      registry.get('new-connection')?.target?.id === 'node-service-nested';
+    const endpointsPreserved = reconnected?.sourceId === 'node-service-nested' &&
+      reconnected.waypoints[1].x === 220 && reconnected.waypoints[0].x === 105 &&
+      registry.get('new-connection')?.source?.id === 'node-service-nested';
     const beforeInvalid = editor.serialize();
     let invalidUnchanged = false;
     try {

@@ -81,11 +81,11 @@ try {
     modeling.moveElements([registry.get('node-component')], { x: 12, y: -5 });
     modeling.resizeShape(registry.get('node-service'), { x: 210, y: 30, width: 150, height: 80 });
     modeling.updateLabel(registry.get('node-component'), 'Updated component');
-    modeling.createConnection(registry.get('node-component'), registry.get('node-service'),
+    modeling.createConnection(registry.get('node-service'), registry.get('node-component'),
       { id: 'new-connection', type: 'Serving', waypoints: [
-        { x: 160, y: 75 }, { x: 220, y: 90 }, { x: 300, y: 75 }
+        { x: 300, y: 75 }, { x: 220, y: 90 }, { x: 160, y: 75 }
       ] });
-    modeling.reconnectEnd(registry.get('new-connection'), registry.get('node-service-nested'),
+    modeling.reconnectStart(registry.get('new-connection'), registry.get('node-service-nested'),
       { x: 105, y: 175 });
     const beforeUndo = session.editor.serialize();
     session.editor.undo(); session.editor.undo();

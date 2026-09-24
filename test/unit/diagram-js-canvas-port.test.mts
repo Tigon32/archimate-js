@@ -69,29 +69,29 @@ it('routes semantic connect, reconnect and view deletion through one history', (
   const { editor, port, modeling, shapes, connections } = setup();
   const original = editor.serialize();
   const detach = editor.attach('view-dto-export', port);
-  const source = shapes.get('node-component');
-  const target = shapes.get('node-service');
+  const source = shapes.get('node-service');
+  const target = shapes.get('node-component');
   modeling.createConnection(source, target, { id: 'new-connection', type: 'Serving',
-    waypoints: [{ x: 150, y: 70 }, { x: 200, y: 80 }, { x: 300, y: 70 }] });
+    waypoints: [{ x: 300, y: 70 }, { x: 200, y: 80 }, { x: 150, y: 70 }] });
   const added = editor.getModel();
   const created = added.views[0].connections.find((item) => item.id === 'new-connection')!;
   const relationship = added.relationships.find((item) => item.id === created.relationshipId)!;
   expect(relationship).toMatchObject({ type: 'archimate:Serving',
-    sourceId: 'component-one', targetId: 'service-two' });
+    sourceId: 'service-two', targetId: 'component-one' });
   expect(created.waypoints.map((point) => point.kind)).toEqual([
     'sourceAttachment', 'bendpoint', 'targetAttachment'
   ]);
   expect(editor.exportMeff()).toContain(`identifier="${relationship.id}"`);
   expect(connections.has('new-connection')).toBe(true);
 
-  modeling.reconnect(connections.get('new-connection'), shapes.get('node-service'),
-    shapes.get('node-component'), [{ x: 310, y: 75 }, { x: 230, y: 85 }, { x: 150, y: 75 }]);
+  modeling.reconnect(connections.get('new-connection'), shapes.get('node-service-nested'),
+    shapes.get('node-component'), [{ x: 105, y: 175 }, { x: 230, y: 85 }, { x: 150, y: 75 }]);
   const changed = editor.getModel();
   expect(changed.relationships.find((item) => item.id === relationship.id)).toMatchObject({
     sourceId: 'service-two', targetId: 'component-one'
   });
   expect(changed.views[0].connections.find((item) => item.id === 'new-connection')).toMatchObject({
-    sourceId: 'node-service', targetId: 'node-component'
+    sourceId: 'node-service-nested', targetId: 'node-component'
   });
   expect(() => modeling.reconnect(connections.get('new-connection'), shapes.get('node-service'),
     shapes.get('node-service'), { x: Number.NaN, y: 0 })).toThrow();

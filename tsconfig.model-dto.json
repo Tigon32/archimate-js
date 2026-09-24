@@ -7,10 +7,11 @@
     "declaration": true,
     "declarationMap": false,
     "sourceMap": false,
-    "outDir": "dist/model-dto",
-    "rootDir": "src/model-dto",
+    "outDir": "dist",
+    "rootDir": "src",
     "lib": ["ES2022", "DOM"],
     "skipLibCheck": true
   },
-  "include": ["src/model-dto/**/*.ts"]
+  "include": ["src/model-dto/**/*.ts", "src/language/relationship-decisions.mts",
+    "src/language/relationship-semantics.mts"]
 }
