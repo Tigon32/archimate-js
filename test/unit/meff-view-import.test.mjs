@@ -63,6 +63,45 @@ describe('MEFF View and Diagram import', () => {
     expect(connection.relationshipRef).toBe(relationship);
     expect(connection.source).toBe(componentNode);
     expect(connection.target).toBe(serviceNode);
+
+    expect(componentNode.meffGeometry).toEqual({
+      x: 20, y: 40, w: 140, h: 70, coordinateSpace: 'diagram'
+    });
+    expect(componentNode.style).toEqual({
+      lineWidth: 7,
+      lineColor: { r: 20, g: 40, b: 60, a: 50 },
+      fillColor: { r: 180, g: 210, b: 240, a: 0 },
+      font: {
+        name: 'Synthetic Sans', size: 10.5, style: 'bold italic',
+        color: { r: 11, g: 22, b: 33, a: 75 }
+      }
+    });
+    expect(componentNode.nodes[0].meffGeometry).toEqual({
+      x: 10, y: 120, w: 130, h: 70, coordinateSpace: 'diagram'
+    });
+    expect(connection.style).toEqual({
+      lineWidth: 9,
+      lineColor: { r: 1, g: 2, b: 3, a: 0 }
+    });
+    expect(connection.meffGeometry).toEqual({
+      sourceAttachment: {
+        x: 160, y: 75, kind: 'sourceAttachment', coordinateSpace: 'diagram'
+      },
+      bendpoints: [
+        { x: 220, y: 80, kind: 'bendpoint', coordinateSpace: 'diagram' },
+        { x: 260, y: 100, kind: 'bendpoint', coordinateSpace: 'diagram' }
+      ],
+      targetAttachment: {
+        x: 300, y: 75, kind: 'targetAttachment', coordinateSpace: 'diagram'
+      },
+      coordinateSpace: 'diagram'
+    });
+    expect(connection.waypointsNode.waypoints.map(({ x, y, kind }) => ({ x, y, kind }))).toEqual([
+      { x: 160, y: 75, kind: 'sourceAttachment' },
+      { x: 220, y: 80, kind: 'bendpoint' },
+      { x: 260, y: 100, kind: 'bendpoint' },
+      { x: 300, y: 75, kind: 'targetAttachment' }
+    ]);
   });
 
 
