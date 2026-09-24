@@ -23,6 +23,31 @@ describe('Association direction rendering', () => {
 
     expect(graphics.querySelector('path')?.hasAttribute('marker-end')).toBe(false);
   });
+
+  it('renders an imported positive line width and keeps the default for missing or invalid widths', () => {
+    const explicit = createRenderer();
+    explicit.renderer.drawConnection(explicit.graphics, directedAssociation({
+      typeOption: false,
+      isDirected: false,
+      lineWidth: 3
+    }));
+    expect(explicit.graphics.querySelector('path')?.getAttribute('stroke-width')).toBe('3');
+
+    const defaultWidth = createRenderer();
+    defaultWidth.renderer.drawConnection(defaultWidth.graphics, directedAssociation({
+      typeOption: false,
+      isDirected: false
+    }));
+    expect(defaultWidth.graphics.querySelector('path')?.getAttribute('stroke-width')).toBe('1');
+
+    const invalidWidth = createRenderer();
+    invalidWidth.renderer.drawConnection(invalidWidth.graphics, directedAssociation({
+      typeOption: false,
+      isDirected: false,
+      lineWidth: 0
+    }));
+    expect(invalidWidth.graphics.querySelector('path')?.getAttribute('stroke-width')).toBe('1');
+  });
 });
 
 function createRenderer() {
@@ -41,12 +66,12 @@ function createRenderer() {
   return { renderer, graphics };
 }
 
-function directedAssociation({ typeOption, isDirected }) {
+function directedAssociation({ typeOption, isDirected, lineWidth = 1 }) {
   return {
     type: 'Association',
     typeOption,
     businessObject: { relationshipRef: { isDirected } },
-    style: { lineColor: '#000000' },
+    style: { lineColor: '#000000', lineWidth },
     waypoints: [ { x: 0, y: 0 }, { x: 120, y: 0 } ]
   };
 }
