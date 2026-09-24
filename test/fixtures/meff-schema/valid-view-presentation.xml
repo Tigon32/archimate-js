@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Classification: SYNTHETIC
+  Provenance: Hand-authored for Tigon32/archimate-js from public MEFF 3.1 schema docs.
+  Contains no private project or customer architecture data.
+-->
+<model
+  xmlns="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:archimate="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  identifier="model-synthetic-presentation">
+  <name xml:lang="en">Synthetic Presentation Records Fixture</name>
+  <elements>
+    <element identifier="component-one" xsi:type="archimate:ApplicationComponent">
+      <name xml:lang="en">Component One</name>
+    </element>
+    <element identifier="service-two" xsi:type="archimate:ApplicationService">
+      <name xml:lang="en">Service Two</name>
+    </element>
+  </elements>
+  <relationships>
+    <relationship identifier="serving-one-two" xsi:type="archimate:Serving"
+      source="component-one" target="service-two">
+      <name xml:lang="en">Serves</name>
+    </relationship>
+  </relationships>
+  <views>
+    <diagrams>
+      <view identifier="view-synthetic-one" xsi:type="archimate:Diagram">
+        <name xml:lang="en">Synthetic Application View</name>
+        <node identifier="node-component-one" xsi:type="archimate:Element"
+          elementRef="component-one" x="20" y="40" w="140" h="70">
+          <style lineWidth="7">
+            <lineColor r="20" g="40" b="60" a="50"/>
+            <fillColor r="180" g="210" b="240" a="0"/>
+            <font name="Synthetic Sans" size="10.5" style="bold italic">
+              <color r="11" g="22" b="33" a="75"/>
+            </font>
+          </style>
+          <node identifier="node-service-nested" xsi:type="archimate:Element"
+            elementRef="service-two" x="10" y="120" w="130" h="70" />
+        </node>
+        <node identifier="node-service-two" xsi:type="archimate:Element"
+          elementRef="service-two" x="300" y="40" w="140" h="70" />
+        <node identifier="container-one" xsi:type="archimate:Container" x="470" y="20" w="180" h="160">
+          <label xml:lang="en">Presentation group</label>
+          <style lineWidth="2"><lineColor r="10" g="20" b="30"/></style>
+          <node identifier="label-one" xsi:type="archimate:Label" x="490" y="50" w="130" h="40">
+            <label xml:lang="en">Presentation-only note</label>
+          </node>
+        </node>
+        <connection identifier="connection-serving-one-two"
+          xsi:type="archimate:Relationship" relationshipRef="serving-one-two"
+          source="node-component-one" target="node-service-two">
+          <style lineWidth="9">
+            <lineColor r="1" g="2" b="3" a="0"/>
+          </style>
+          <sourceAttachment x="160" y="75"/>
+          <bendpoint x="220" y="80"/>
+          <bendpoint x="260" y="100"/>
+          <targetAttachment x="300" y="75"/>
+        </connection>
+        <connection identifier="line-one" xsi:type="archimate:Line" source="container-one" target="label-one">
+          <label>Presentation line</label>
+          <style lineWidth="3"><lineColor r="10" g="30" b="50"/></style>
+          <sourceAttachment x="560" y="60"/>
+          <bendpoint x="590" y="80"/>
+          <targetAttachment x="600" y="90"/>
+        </connection>
+        <connection identifier="line-free" xsi:type="archimate:Line">
+          <bendpoint x="660" y="130"/><bendpoint x="700" y="145"/>
+        </connection>
+      </view>
+    </diagrams>
+  </views>
+</model>

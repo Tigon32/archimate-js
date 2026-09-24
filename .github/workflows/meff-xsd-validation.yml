@@ -64,6 +64,9 @@ jobs:
           xmllint --noout --schema "$model_schema" test/fixtures/meff-schema/valid-model.xml
           xmllint --noout --schema "$model_schema" test/fixtures/meff-schema/valid-model-records.xml
           xmllint --noout --schema "$diagram_schema" test/fixtures/meff-schema/valid-view-diagram.xml
+          xmllint --noout --schema "$diagram_schema" test/fixtures/meff-schema/valid-view-annotations.xml
+          xmllint --noout --schema "$diagram_schema" test/fixtures/meff-schema/valid-view-presentation.xml
+          xmllint --noout --schema "$diagram_schema" test/fixtures/meff-schema/valid-view-viewpoint.xml
           invalid_log="${RUNNER_TEMP}/meff-invalid-fixture.log"
           if xmllint --noout --schema "$model_schema" test/fixtures/meff-schema/invalid-missing-model-identifier.xml >"$invalid_log" 2>&1; then
             echo "Expected the missing-model-identifier fixture to fail XSD validation."

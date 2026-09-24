@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Classification: SYNTHETIC
+  Provenance: Hand-authored for Tigon32/archimate-js from public MEFF 3.1 schema docs.
+  Contains no private project or customer architecture data.
+-->
+<model
+  xmlns="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:archimate="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  identifier="model-synthetic-annotations">
+  <name xml:lang="en">Synthetic Diagram Annotation Fixture</name>
+  <elements>
+    <element identifier="component-one" xsi:type="archimate:ApplicationComponent">
+      <name xml:lang="en">Component One</name>
+    </element>
+    <element identifier="service-two" xsi:type="archimate:ApplicationService">
+      <name xml:lang="en">Service Two</name>
+    </element>
+  </elements>
+  <relationships>
+    <relationship identifier="serving-one-two" xsi:type="archimate:Serving"
+      source="component-one" target="service-two">
+      <name xml:lang="en">Serves</name>
+    </relationship>
+  </relationships>
+  <propertyDefinitions>
+    <propertyDefinition identifier="annotation-property" type="string"><name>Annotation category</name></propertyDefinition>
+  </propertyDefinitions>
+  <views>
+    <diagrams>
+      <view identifier="view-synthetic-one" xsi:type="archimate:Diagram">
+        <name xml:lang="en">Synthetic Application View</name>
+        <documentation xml:lang="en">View-specific documentation</documentation>
+        <properties><property propertyDefinitionRef="annotation-property"><value xml:lang="en">Synthetic category</value></property></properties>
+        <node identifier="node-component-one" xsi:type="archimate:Element"
+          elementRef="component-one" x="20" y="40" w="140" h="70">
+          <label xml:lang="en">Local component label</label>
+          <documentation xml:lang="en">Node-specific note</documentation>
+          <style lineWidth="7">
+
+            <lineColor r="20" g="40" b="60" a="50"/>
+            <fillColor r="180" g="210" b="240" a="0"/>
+            <font name="Synthetic Sans" size="10.5" style="bold italic">
+              <color r="11" g="22" b="33" a="75"/>
+            </font>
+          </style>
+          <viewRef ref="view-synthetic-two"/>
+          <node identifier="node-service-nested" xsi:type="archimate:Element"
+            elementRef="service-two" x="10" y="120" w="130" h="70" />
+        </node>
+        <node identifier="node-service-two" xsi:type="archimate:Element"
+          elementRef="service-two" x="300" y="40" w="140" h="70" />
+        <connection identifier="connection-serving-one-two"
+          xsi:type="archimate:Relationship" relationshipRef="serving-one-two"
+          source="node-component-one" target="node-service-two">
+          <label xml:lang="en">Local serving label</label>
+          <documentation xml:lang="en">Connection-specific note</documentation>
+          <style lineWidth="9">
+            <lineColor r="1" g="2" b="3" a="0"/>
+          </style>
+          <viewRef ref="view-synthetic-two"/>
+          <sourceAttachment x="160" y="75"/>
+          <bendpoint x="220" y="80"/>
+          <bendpoint x="260" y="100"/>
+          <targetAttachment x="300" y="75"/>
+        </connection>
+      </view>
+      <view identifier="view-synthetic-two" xsi:type="archimate:Diagram"><name>Drill-down view</name></view>
+    </diagrams>
+  </views>
+</model>

@@ -43,22 +43,23 @@ lexicographically, so the same input yields the same ordered list.
 | `MEFF_ELEMENTS_UNSUPPORTED` | Legacy/parser-probe element records outside the supported MEFF Model-core path | Schema-valid Model-core element records are reconstructed; unsupported element forms remain warnings. |
 | `MEFF_RELATIONSHIPS_UNSUPPORTED` | Legacy/parser-probe relationship records outside the supported MEFF Model-core path | Schema-valid Model-core relationship records are reconstructed with endpoint references; unsupported relationship forms remain warnings. |
 | `MEFF_MODEL_METADATA_UNSUPPORTED` | Unrecognized children within Model metadata, organizations, properties, or definitions | Supported Model records are reconstructed; unrecognized subfields remain warnings. |
-| `MEFF_VIEWS_UNSUPPORTED` | A View/Viewpoint structure outside the supported Diagram subset, or unreadable View data | That view data is skipped. |
-| `MEFF_DIAGRAMS_UNSUPPORTED` | A non-Element node, non-Relationship connection, or unsupported style/label/documentation/drill-down field | That record or field is skipped; supported records in the same Diagram remain importable. |
+| `MEFF_VIEWS_UNSUPPORTED` | A View structure outside the supported Diagram subset, or unreadable View data | That view data is skipped. |
+| `MEFF_VIEWPOINT_FIELD_UNSUPPORTED` | Viewpoint concern or modeling note outside the declared metadata profile | The unsupported field is skipped. |
+| `IMPORT_VIEWPOINT_REFERENCE_UNRESOLVED` | A Diagram view references a missing viewpoint definition | Literal reference is retained without a resolved identifier. |
+| `MEFF_DIAGRAMS_UNSUPPORTED` | A Diagram field outside the supported projection | That field is skipped; supported records in the same Diagram remain importable. |
+| `MEFF_DIAGRAM_NODE_TYPE_UNSUPPORTED` | A concrete node type other than Element, Container, or Label | The node is skipped. |
+| `MEFF_DIAGRAM_CONNECTION_TYPE_UNSUPPORTED` | A concrete connection type other than Relationship or Line | The connection is skipped. |
 | `MEFF_EXTENSIONS_UNSUPPORTED` | An element in a namespace outside the MEFF ArchiMate namespace | Extension content is not reconstructed. |
 
 All are `warning` diagnostics at stage `parse`. Messages do not include source
 XML, model names, identifiers, extension namespace URIs, or parser text. These
 checks recognize a bounded set of common MEFF structures; they are not schema
 validation and do not prove every unknown record has been detected. The current
-supported View/Diagram subset maps named Diagram views, nested Element nodes,
-Relationship connections, diagram-space geometry, source/target attachments,
-bendpoints, supported style fields, relationship labels, and connection line
-width to the existing view tree and renderer. Full Diagram fidelity remains
-outside this subset; local Diagram annotations are tracked by
-[#75](https://github.com/Tigon32/archimate-js/issues/75), additional
-presentation records by [#76](https://github.com/Tigon32/archimate-js/issues/76),
-and Viewpoint metadata by [#77](https://github.com/Tigon32/archimate-js/issues/77).
+supported View/Diagram subset maps named Diagram views, viewpoint metadata,
+Element/Container/Label nodes, Relationship/Line connections, authored geometry,
+local labels/documentation, view-level properties, and supported styles to the
+view tree. See [the declared profile](meff-diagram-import.md) for rendering
+limits and unsupported nested viewpoint structures.
 The package does not currently provide a MEFF XML exporter, so no
 export-omission diagnostic is emitted. Add those diagnostics with the
 supported-subset exporter tracked by [#59](https://github.com/Tigon32/archimate-js/issues/59).

@@ -201,5 +201,53 @@
       "MEFF 3.1 Diagram XSD validation"
     ],
     "review_after": "2026-12-23"
+  },
+  {
+    "id": "synthetic-meff-xsd-valid-view-annotations",
+    "path": "test/fixtures/meff-schema/valid-view-annotations.xml",
+    "classification": "SYNTHETIC",
+    "purpose": "Positive MEFF 3.1 fixture for diagram-local labels, documentation, drill-down references, and view properties.",
+    "provenance": "Adapted from the repository-authored synthetic Diagram fixture using the public 3.1 Diagram and View XSD descriptions; contains no third-party XML.",
+    "contains_private_data": false,
+    "expected_coverage": [
+      "local node and connection labels",
+      "diagram documentation",
+      "viewRef resolution",
+      "view-level properties",
+      "MEFF 3.1 Diagram XSD validation"
+    ],
+    "review_after": "2026-12-23"
+  },
+  {
+    "id": "synthetic-meff-xsd-valid-view-presentation",
+    "path": "test/fixtures/meff-schema/valid-view-presentation.xml",
+    "classification": "SYNTHETIC",
+    "purpose": "Positive MEFF 3.1 fixture for Container and Label nodes, routed Line, and unsourced Line.",
+    "provenance": "Adapted from the repository-authored synthetic Diagram fixture using the public 3.1 Diagram XSD descriptions; contains no third-party XML.",
+    "contains_private_data": false,
+    "expected_coverage": [
+      "presentation container nesting",
+      "presentation label bounds",
+      "semantic-free line route and style",
+      "unsourced line",
+      "MEFF 3.1 Diagram XSD validation"
+    ],
+    "review_after": "2026-12-23"
+  },
+  {
+    "id": "synthetic-meff-xsd-valid-view-viewpoint",
+    "path": "test/fixtures/meff-schema/valid-view-viewpoint.xml",
+    "classification": "SYNTHETIC",
+    "purpose": "Positive MEFF 3.1 viewpoint catalog fixture with a Diagram referencing its viewpoint.",
+    "provenance": "Adapted from the repository-authored synthetic Diagram fixture using the public 3.1 View XSD descriptions; contains no third-party XML.",
+    "contains_private_data": false,
+    "expected_coverage": [
+      "viewpoint identity, names and documentation",
+      "allowed element and relationship type names",
+      "viewpoint purpose and content",
+      "Diagram viewpoint and viewpointRef",
+      "MEFF 3.1 Diagram XSD validation"
+    ],
+    "review_after": "2026-12-23"
   }
 ]

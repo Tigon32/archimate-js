@@ -10,8 +10,10 @@ Model Exchange File Format (MEFF) 3.1 schema resources.
 - Files are stored only in the ephemeral GitHub runner's `RUNNER_TEMP` directory.
   They are not added to the repository, package, workflow artifacts, or cache.
 - CI verifies the downloads against the SHA-256 digests recorded below.
-- `valid-model.xml` and `valid-model-records.xml` are validated against the Model XSD; `valid-view-diagram.xml`
-  is validated against the Diagram XSD, which includes the View schema. The negative
+- `valid-model.xml` and `valid-model-records.xml` are validated against the Model XSD;
+  `valid-view-diagram.xml`, `valid-view-annotations.xml`, and
+  `valid-view-presentation.xml`, and `valid-view-viewpoint.xml` are validated
+  against the Diagram XSD, which includes the View schema. The negative
   Model fixture fails because it deliberately omits the required model `identifier`.
 - The validator is `xmllint` from Ubuntu 24.04's `libxml2-utils` package.
 - This verifies XML schema constraints only. It does not establish ArchiMate semantic

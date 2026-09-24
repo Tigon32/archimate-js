@@ -9,11 +9,152 @@ import ArchimateDescriptors from '../../lib/moddle/resources/archimate.json';
 import { preflightImportXml } from '../../lib/import/XmlPreflight.js';
 import ArchimateImporter from '../../lib/import/ArchimateImporter';
 import ElementFactory from '../../lib/features/modeling/ElementFactory';
+import { getLabel } from '../../lib/features/label-editing/LabelUtil';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fixturePath = path.resolve(here, '../fixtures/meff-schema/valid-view-diagram.xml');
 
 describe('MEFF View and Diagram import', () => {
+  it('preserves viewpoint definitions, allowed types, and resolved view references', async () => {
+    const xml = await readFile(path.resolve(here, '../fixtures/meff-schema/valid-view-viewpoint.xml'), 'utf8');
+    const model = {
+      elementsById: new Map([
+        ['component-one', { id: 'component-one', type: 'archimate:ApplicationComponent' }],
+        ['service-two', { id: 'service-two', type: 'archimate:ApplicationService' }]
+      ]),
+      relationshipsById: new Map([['serving-one-two', { id: 'serving-one-two', type: 'archimate:Serving' }]])
+    };
+    const parsed = parseMeffViews(xml, model);
+    expect(parsed.diagnostics).toEqual([]);
+    expect(preflightImportXml(xml).warnings).toEqual([]);
+    const viewpoint = parsed.views.viewpoints.viewpointsList[0];
+    expect(viewpoint).toEqual({
+      id: 'viewpoint-synthetic-one', name: 'Synthetic application viewpoint',
+      localizedNames: [{ language: 'en', value: 'Synthetic application viewpoint' }],
+      meffDocumentation: [{ language: 'en', value: 'Viewpoint documentation' }],
+      meffProperties: [],
+      viewpointPurpose: 'Designing Informing', viewpointContent: 'Details',
+      allowedElementTypes: ['ApplicationComponent', 'ApplicationService'],
+      allowedRelationshipTypes: ['Serving']
+    });
+    const view = parsed.views.diagrams.viewsList[0];
+    expect(view).toMatchObject({
+      viewpoint: 'Application Structure',
+      viewpointRef: 'viewpoint-synthetic-one',
+      resolvedViewpointRef: viewpoint.id
+    });
+    const unresolved = parseMeffViews(xml.replace('viewpointRef="viewpoint-synthetic-one"',
+      'viewpointRef="unresolved-synthetic-viewpoint"'), model);
+    expect(unresolved.views.diagrams.viewsList[0].viewpointRef).toBe('unresolved-synthetic-viewpoint');
+    expect(unresolved.views.diagrams.viewsList[0].resolvedViewpointRef).toBeUndefined();
+    expect(unresolved.diagnostics.map(({ code }) => code)).toEqual(['IMPORT_VIEWPOINT_REFERENCE_UNRESOLVED']);
+    expect(JSON.stringify(unresolved.diagnostics)).not.toContain('unresolved-synthetic-viewpoint');
+    const withConcern = xml.replace('<viewpointPurpose>',
+      '<concern><label>ConfidentialFixtureMarker</label></concern><viewpointPurpose>');
+    const unsupported = parseMeffViews(withConcern, model);
+    expect(unsupported.diagnostics.map(({ code }) => code)).toEqual(['MEFF_VIEWPOINT_FIELD_UNSUPPORTED']);
+    expect(preflightImportXml(withConcern).warnings.map(({ code }) => code)).toEqual([
+      'MEFF_VIEWPOINT_FIELD_UNSUPPORTED'
+    ]);
+    expect(JSON.stringify(unsupported.diagnostics)).not.toContain('ConfidentialFixtureMarker');
+    const fromModdle = await new ArchimateModdle({ archimate: ArchimateDescriptors }).fromXML(xml);
+    expect(fromModdle.rootElement.views.viewpoints.viewpointsList).toHaveLength(1);
+    expect(fromModdle.diagnostics).toEqual([]);
+  });
+
+  it('imports Container, Label, and semantic-free Line presentation records', async () => {
+    const xml = await readFile(path.resolve(here, '../fixtures/meff-schema/valid-view-presentation.xml'), 'utf8');
+    const component = { id: 'component-one', type: 'archimate:ApplicationComponent' };
+    const service = { id: 'service-two', type: 'archimate:ApplicationService' };
+    const relationship = { id: 'serving-one-two', type: 'archimate:Serving' };
+    const parsed = parseMeffViews(xml, {
+      elementsById: new Map([[component.id, component], [service.id, service]]),
+      relationshipsById: new Map([[relationship.id, relationship]])
+    });
+    expect(parsed.diagnostics).toEqual([]);
+    expect(preflightImportXml(xml).warnings).toEqual([]);
+    const [ , , container, , line, freeLine] = parsed.views.diagrams.viewsList[0].viewElements;
+    expect(container).toMatchObject({
+      id: 'container-one', meffType: 'Container', elementRef: undefined,
+      meffGeometry: { x: 470, y: 20, w: 180, h: 160 }, label: 'Presentation group'
+    });
+    expect(container.nodes).toHaveLength(1);
+    expect(container.nodes[0]).toMatchObject({
+      id: 'label-one', meffType: 'Label', elementRef: undefined,
+      label: 'Presentation-only note', x: 490, y: 50, w: 130, h: 40
+    });
+    expect(line).toMatchObject({
+      id: 'line-one', meffType: 'Line', relationshipRef: undefined,
+      source: container, target: container.nodes[0],
+      style: { lineWidth: 3, lineColor: { r: 10, g: 30, b: 50 } }
+    });
+    expect(line.waypointsNode.waypoints.map(({ kind }) => kind)).toEqual([
+      'sourceAttachment', 'bendpoint', 'targetAttachment'
+    ]);
+    expect(freeLine).toMatchObject({ id: 'line-free', meffType: 'Line', relationshipRef: undefined });
+    expect(freeLine.source).toBeUndefined();
+    expect(freeLine.meffGeometry.bendpoints).toHaveLength(2);
+    const factory = new ElementFactory({ create: () => ({}) }, {}, (message) => message);
+    factory.baseCreate = (type, attrs) => ({ ...attrs, factoryType: type });
+    const shapes = new Map();
+    const importer = new ArchimateImporter(
+      { fire() {} },
+      {
+        addShape(shape, parent) { shape.parent = parent; shapes.set(shape.id, shape); return shape; },
+        addConnection(connection) { return connection; }
+      },
+      factory,
+      { get(id) { return shapes.get(id); } },
+      (message) => message,
+      { getExternalLabelBounds(bounds) { return bounds; } }
+    );
+    const groupShape = importer.addElement(container, { type: 'root', x: 0, y: 0 });
+    const noteShape = importer.addElement(container.nodes[0], groupShape);
+    const drawnLine = importer.addConnection(line);
+    expect(groupShape).toMatchObject({ type: 'Container', x: 470, y: 20, width: 180, height: 160 });
+    expect(noteShape).toMatchObject({ type: 'Label', text: 'Presentation-only note', x: 20, y: 30 });
+    expect(drawnLine).toMatchObject({ type: 'Line', source: groupShape, target: noteShape });
+    expect(drawnLine.businessObject.relationshipRef).toBeUndefined();
+    const fromModdle = await new ArchimateModdle({ archimate: ArchimateDescriptors }).fromXML(xml);
+    expect(fromModdle.diagnostics).toEqual([]);
+  });
+
+  it('preserves schema-valid local annotations and view properties separately from semantic names', async () => {
+    const xml = await readFile(path.resolve(here, '../fixtures/meff-schema/valid-view-annotations.xml'), 'utf8');
+    const component = { id: 'component-one', type: 'archimate:ApplicationComponent', name: 'Semantic component' };
+    const service = { id: 'service-two', type: 'archimate:ApplicationService', name: 'Semantic service' };
+    const relationship = { id: 'serving-one-two', type: 'archimate:Serving', name: 'Semantic serving' };
+    const parsed = parseMeffViews(xml, {
+      elementsById: new Map([[component.id, component], [service.id, service]]),
+      relationshipsById: new Map([[relationship.id, relationship]])
+    });
+    expect(parsed.diagnostics).toEqual([]);
+    expect(preflightImportXml(xml).warnings.map(({ code }) => code)).toEqual([]);
+    const [view, drilldown] = parsed.views.diagrams.viewsList;
+    const [node, , connection] = view.viewElements;
+    expect(view.meffDocumentation).toEqual([{ language: 'en', value: 'View-specific documentation' }]);
+    expect(view.meffProperties).toEqual([{
+      propertyDefinitionRef: 'annotation-property',
+      values: [{ language: 'en', value: 'Synthetic category' }]
+    }]);
+    expect(node.localizedLabels).toEqual([{ language: 'en', value: 'Local component label' }]);
+    expect(node.label).toBe('Local component label');
+    expect(getLabel({ businessObject: node })).toBe('Local component label');
+    expect(node.elementRef.name).toBe('Semantic component');
+    expect(node.meffDocumentation).toEqual([{ language: 'en', value: 'Node-specific note' }]);
+    expect(node.viewRefs).toEqual(['view-synthetic-two']);
+    expect(node.resolvedViewRefs).toEqual([drilldown.id]);
+    expect(connection.label).toBe('Local serving label');
+    expect(getLabel({ businessObject: connection })).toBe('Local serving label');
+    expect(connection.relationshipRef.name).toBe('Semantic serving');
+    expect(getLabel({ businessObject: { ...node, label: '', localizedLabels: [{ language: 'en', value: '' }] } })).toBe('');
+    expect(connection.meffDocumentation).toEqual([{ language: 'en', value: 'Connection-specific note' }]);
+    expect(connection.viewRefs).toEqual(['view-synthetic-two']);
+    expect(connection.resolvedViewRefs).toEqual([drilldown.id]);
+    const fromModdle = await new ArchimateModdle({ archimate: ArchimateDescriptors }).fromXML(xml);
+    expect(fromModdle.diagnostics).toEqual([]);
+  });
+
   it('preserves view identity, nested Element membership, and semantic references', async () => {
     const xml = await readFile(fixturePath, 'utf8');
     const component = {
@@ -158,7 +299,7 @@ describe('MEFF View and Diagram import', () => {
 
   it('emits stable diagnostics for unsupported diagram node types', async () => {
     const xml = await readFile(fixturePath, 'utf8');
-    const changed = xml.replace('xsi:type="archimate:Element"', 'xsi:type="archimate:Container"');
+    const changed = xml.replace('xsi:type="archimate:Element"', 'xsi:type="archimate:UnknownNode"');
     const parsed = parseMeffViews(changed, {
       elementsById: new Map([
         ['component-one', { id: 'component-one', type: 'archimate:ApplicationComponent' }],
@@ -169,7 +310,7 @@ describe('MEFF View and Diagram import', () => {
 
     expect(parsed.diagnostics.map((diagnostic) => diagnostic.code)).toEqual([
       'IMPORT_REFERENCE_UNRESOLVED',
-      'MEFF_DIAGRAMS_UNSUPPORTED'
+      'MEFF_DIAGRAM_NODE_TYPE_UNSUPPORTED'
     ]);
     expect(JSON.stringify(parsed.diagnostics)).not.toContain('node-component-one');
   });
