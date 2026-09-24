@@ -34,6 +34,7 @@ The Open Group ArchiMate specification and published exchange/conformance artifa
 - Run `npm ci` in a fresh checkout so the repository-owned Git hooks are installed. The pre-push hook runs the fast `npm run verify:wip` durability gate; `npm run verify:local` is the full qualification gate.
 - Create a Draft PR early and push coherent WIP checkpoints often so collaborators can inspect progress and work survives an agent/workspace failure. Push before risky refactors, long-running operations, and handoffs; prefer additive checkpoint commits and squash at merge.
 - Do not bypass the pre-push gate for agent-generated changes. Keep WIP PRs Draft and run `npm run verify:local` before marking them ready so remote CI remains the authoritative review/merge boundary.
+- Repository maintainers should enable GitHub **Allow auto-merge**. After exact-HEAD local qualification passes, mark the PR Ready and enable auto-merge so successful required remote checks drain the PR without another manual merge step.
 - Use the [issue contribution guide](docs/contributing/issues.md) for issue routing and evidence requirements.
 - For shared-account concurrent work, follow the [manual agent coordination runbook](docs/contributing/agent-coordination.md).
 - Keep umbrella/child scope and PR recovery decisions in those canonical guides; do not duplicate their protocol here.
