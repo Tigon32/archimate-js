@@ -67,6 +67,15 @@ assert.deepEqual(Object.keys(jobs).sort(), [ 'codeql', 'dependency-review' ]);
 assertExactPermissions(codeql.permissions, { contents: 'read', 'security-events': 'write' });
 assertExactPermissions(dependencyReview.permissions, { contents: 'read', 'pull-requests': 'read' });
 assert.equal(dependencyReview.if, "github.event_name == 'pull_request'");
+assert.deepEqual(record(dependencySteps[0].with, 'dependency-review.with'), {
+  'fail-on-severity': 'high',
+  'fail-on-scopes': 'runtime, development',
+  'allow-licenses': 'MIT, MIT-0, ISC, Apache-2.0, BSD-2-Clause, BSD-3-Clause, MPL-2.0, CC0-1.0, OFL-1.1, CC-BY-3.0, CC-BY-4.0, BlueOak-1.0.0',
+  'license-check': true,
+  'vulnerability-check': true,
+  'warn-only': false,
+  'comment-summary-in-pr': 'never'
+});
 assert.deepEqual(record(codeqlSteps[0].with ?? {}, 'checkout.with'), {});
 assert.equal(
   record(codeqlSteps.at(-1)?.with, 'analyze.with').upload,

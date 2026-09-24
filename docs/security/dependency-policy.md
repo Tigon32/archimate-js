@@ -15,6 +15,24 @@ The automated checks are described in
 [`automated-analysis.md`](automated-analysis.md). They are review aids and do
 not prove that a dependency or the repository is free of vulnerabilities.
 
+The pull-request dependency review fails on newly introduced **high** or
+**critical** advisories in runtime and development dependencies. It also fails
+when a new dependency's detected license is outside this reviewed SPDX set:
+MIT, MIT-0, ISC, Apache-2.0, BSD-2-Clause, BSD-3-Clause, MPL-2.0, CC0-1.0,
+OFL-1.1, CC-BY-3.0, CC-BY-4.0, and BlueOak-1.0.0. The set reflects license
+identifiers found in the installed package inventory on 2026-09-24; it is a
+screening policy, not a legal conclusion about compatibility. Unknown or
+non-SPDX license identifiers require review before a dependency is added.
+The action's job summary names the changed package and finding; the workflow
+does not post a pull-request comment or need write permission.
+
+If a package is justified despite a finding, the contributor records the
+package and version, advisory or license identifier, rationale, responsible
+human reviewer, and expiry date in the pull request. A human maintainer reviews
+that record and any narrow workflow-policy change. There is no standing
+workflow allowlist for exceptions; the gate remains red until the reviewed
+policy change lands. Expired exceptions must be revisited or removed.
+
 ## Workflow boundary
 
 CI uses workflow-level `contents: read` permissions. Pull-request workflows do not access repository secrets, write repository contents, publish packages, or run on `pull_request_target`. Workflow actions are pinned to reviewed commit SHAs, and jobs use an explicit GitHub-hosted runner image version. Changes to permissions, action pins, runner images, triggers, or secret access require explicit review.

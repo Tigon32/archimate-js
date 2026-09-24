@@ -6,9 +6,10 @@ This repository runs two automated checks:
   `main`, a weekly schedule, and manual dispatches. It looks for data-flow and code-pattern
   vulnerabilities in the checked-out source.
 - **Dependency review** runs on pull requests and reports newly introduced
-  dependencies or dependency versions with known vulnerable licenses or
-  advisories. It complements, but does not replace, the dependency review
-  process in [`dependency-policy.md`](dependency-policy.md).
+  dependencies or dependency versions with high/critical advisories or licenses
+  outside the reviewed SPDX set in [`dependency-policy.md`](dependency-policy.md).
+  Its failure summary identifies the changed package. It complements the human
+  review process in the dependency policy.
 
 The workflow uses the ordinary `pull_request` event, not
 `pull_request_target`. It does not read repository secrets, publish packages,
