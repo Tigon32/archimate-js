@@ -1,7 +1,7 @@
 # ADR-0005: Coordinate concurrent agent development with expiring issue claims
 
 Date: 2026-09-24
-Status: Proposed
+Status: Accepted
 
 ## Context
 
@@ -21,23 +21,34 @@ is shared between harnesses, so its assignment alone does not identify a run.
 
 ### Identity and claim
 
-1. Every harness has a stable, distinct, assignable GitHub machine/user account.
-   A run receives a unique opaque actor ID (for example
-   `codex-work-<workspace-id>-<UTC-start>`). The assignee is the harness account;
-   the exact actor ID appears in the machine-readable claim record and the PR.
-   A subagent delegated by the claimant inherits the parent's lease unless it
-   independently claims a separate issue. Shared accounts are a transitional
-   limitation and must never be interpreted as exclusive ownership.
+1. The target state is one stable, distinct, assignable GitHub machine/user
+   account per harness. A run receives a unique opaque actor ID (for example
+   `codex-work-<workspace-id>-<UTC-start>`), and the exact actor ID appears in
+   the machine-readable claim record and the PR. A subagent delegated by the
+   claimant inherits the parent's lease unless it independently claims a
+   separate issue. Until distinct accounts and the serialized controller exist,
+   use the manual shared-account protocol in
+   [`docs/contributing/agent-coordination.md`](../contributing/agent-coordination.md).
+   A shared assignee is never evidence of exclusive ownership.
 2. Before editing, search open/closed issues and PRs; identify strict
    dependencies, existing claims, and likely shared files. Claim the smallest
    independently reviewable issue or child slice. One active implementation
    lease per issue; reviewers may participate without taking the lease. Do not
    claim an umbrella when implementing only one child.
-3. A claim record contains `issue`, `actor_id`, `github_login`, `lease_id`
-   (unpredictable token), `epoch` (monotonic fencing number), `claimed_at`,
-   `heartbeat_at`, `expires_at`, `branch`, and `state`. Publish a human-readable
-   issue comment/PR link as a view of that record. The record is authoritative;
-   the assignee is discoverable display metadata.
+3. A claim record uses the versioned JSON contract in the runbook. It contains
+   `schema`, `record_type`, `issue`, `actor_id`, `github_login`, `lease_id`
+   (unpredictable token), `epoch` (monotonic fencing number), lease timestamps,
+   `branch`, `state`, and a decimal-string `claim_comment_id`. A new `claim` or
+   active `takeover` always has `claim_comment_id: null` in the record because
+   a comment cannot know its own GitHub ID before posting; the posted comment
+   ID becomes the authoritative original claim ID in external fence state after
+   an immediate re-read, without editing the record. Later records repeat that
+   ID. `supersedes_claim_comment_id` is the sole replacement lineage field.
+   `issue` and `epoch` are positive integers; the first epoch is 1, replacement
+   and receiver claims use exactly the previous valid epoch plus 1, and
+   same-lease transitions repeat the epoch. Unknown fields, duplicate keys,
+   malformed JSON, and ambiguous history fail closed. The machine-readable JSON
+   block, not prose or the assignee, is authoritative.
 
 ### Expiry and ownership transitions
 
@@ -48,16 +59,34 @@ is shared between harnesses, so its assignment alone does not identify a run.
    expiry clock uses wall time. A worker must stop writes if a renewal fails or
    the lease is expired. Closing/merging the issue or explicitly handing off
    releases it immediately.
-5. All claim, renew, release, and takeover operations go through one serialized
-   claim controller. Under the controller's per-issue serialization, a claim
-   succeeds only if no live lease exists; renew/release requires the current
-   lease ID and epoch. Takeover after expiry creates a new epoch, rechecks the
-   issue/PR state, and records the previous branch and an audit comment. Never
-   delete or force-push another actor's branch. Before each GitHub mutation or
-   push, the worker checks the current lease ID/epoch; the controller rejects
-   stale actors. Assignment changes are made only by the controller and never
-   clear unrelated human assignees. A manual maintainer override uses the same
-   audit path.
+5. In the target state, all claim, renew, release, and takeover operations go
+   through one serialized claim controller. Under the controller's per-issue
+   serialization, a claim succeeds only if no live lease exists; renew/release
+   requires the current lease ID and epoch. Takeover after expiry creates a new
+   epoch, rechecks the issue/PR state, and records the previous branch and an
+   audit comment. Never delete or force-push another actor's branch. Before
+   each GitHub mutation or push, the worker checks the current lease ID/epoch;
+   the controller rejects stale actors. Assignment changes are made only by the
+   controller and never clear unrelated human assignees. A manual maintainer
+   override uses the same audit path.
+
+   During the interim manual phase, comments cannot provide atomic compare and
+   set. Therefore a claimant must re-read and fence-validate immediately after
+   posting and before every edit, commit, push, PR mutation, merge, issue
+   mutation, and scheduled heartbeat. More than one unexpired active claim,
+   malformed authoritative JSON, a missing original claim, or any mismatch
+   fails closed: the harness stops writes and does not select a winner by
+   timestamp, lexical order, assignee, or comment order. Expiry alone is not
+   enough for takeover; the observation and maintainer-acknowledgement steps in
+   the runbook are required.
+   Fence reads are required at every mutation boundary. A contiguous local
+   edit batch is additionally revalidated every five minutes or 20 files, and
+   no mutation may use a fence read older than 60 seconds.
+   Heartbeats require recent observed work progress, stop after 30 minutes of
+   inactivity, and cannot extend a lease beyond eight hours from
+   `lease_started_at` without a maintainer re-acknowledgement. Liveness is
+   determined from the newest valid record for the lease. Every active record
+   satisfies `expires_at <= heartbeat_at + 2 hours`.
 6. Reconcile expired leases on claim/renew/release events and with a periodic
    sweeper (target every 15 minutes). The sweeper re-reads the lease and epoch
    before clearing the matching assignee/record; it must not clear a renewed
@@ -87,12 +116,13 @@ is shared between harnesses, so its assignment alone does not identify a run.
 
 ### Implementation and rollout
 
-10. First publish this protocol and use best-effort manual claims with a unique
-    actor ID, UTC expiry, and explicit release. Manual records are coordination
-    signals, not an exclusive lock and not automatic expiry. Do not start two
-    agents on the same issue during this phase. Provision distinct assignable
-    accounts and scoped credentials before claiming assignment identifies an
-    individual harness.
+10. The first rollout is the manual shared-account phase. Use the canonical
+    versioned JSON records, unique actor and lease IDs, UTC expiry, explicit
+    release, and the fail-closed fence in the runbook. Manual records are
+    coordination signals rather than an atomic lock; they do not make comments,
+    assignees, or scheduled jobs transactional. Do not start two agents on the
+    same issue. Provision distinct assignable accounts and scoped credentials
+    before treating assignment as harness identity.
 11. Build the controller as one trusted workflow/service that owns all lease
     mutations. For an Actions implementation, put **every** claim operation,
     renewal, release, and sweep through a common per-issue concurrency group;
@@ -121,10 +151,16 @@ is shared between harnesses, so its assignment alone does not identify a run.
   auto-release, make assignment atomic, or enforce protected-branch settings.
 - Separate worktrees and small PRs increase useful concurrency while retaining
   one integration gate for `main`.
+- The manual protocol deliberately stops on uncertainty and may require a
+  maintainer-mediated handoff. It does not weaken, replace, or pre-implement
+  the serialized controller and automatic expiry specified for
+  [#140](https://github.com/Tigon32/archimate-js/issues/140).
 
 ## References
 
 - Repository issue routing: [`../contributing/issues.md`](../contributing/issues.md).
+- Manual shared-account operator runbook:
+  [`../contributing/agent-coordination.md`](../contributing/agent-coordination.md).
 - GitHub assignees: https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/assigning-issues-and-pull-requests-to-other-github-users.
 - GitHub assignee REST semantics: https://docs.github.com/en/rest/issues/assignees.
 - GitHub Actions concurrency: https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency.
