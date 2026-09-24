@@ -7,6 +7,7 @@ This project aims to make `archimate-js` operational as a standards-grounded, em
 - Keep changes small and reviewable.
 - Add or update tests for behavior changes.
 - Follow the [issue contribution guide](docs/contributing/issues.md) when opening an issue.
+- Follow the [manual agent coordination runbook](docs/contributing/agent-coordination.md) when coordinating work under a shared account.
 - Prefer public standards and public repositories as references.
 - Add research claims to `docs/research/` with source, date, license constraints, and confidence.
 - Add ADRs for consequential architectural decisions.

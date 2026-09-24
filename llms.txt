@@ -8,6 +8,9 @@ Primary instructions for AI agents and contributors:
 - Read `UPSTREAM.md` for fork provenance.
 - Use `docs/roadmap.md` for implementation order.
 - Use `docs/adr/` for architectural decisions.
+- Use `docs/contributing/agent-coordination.md` for the fail-closed manual
+  shared-account claim and handoff protocol; its future serialized controller
+  is tracked in [issue #140](https://github.com/Tigon32/archimate-js/issues/140).
 - Use `docs/research/` for public-source research and citations.
 
 Hard boundary:
