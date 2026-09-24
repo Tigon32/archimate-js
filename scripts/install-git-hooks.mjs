@@ -16,12 +16,12 @@ function main() {
   try {
     repositoryRoot = git(['rev-parse', '--show-toplevel']).trim();
   } catch {
-    console.log('archimate-js: not a Git checkout; skipping hook installation.');
+    console.error('archimate-js: not a Git checkout; skipping hook installation.');
     return;
   }
 
   if (path.resolve(repositoryRoot) !== path.resolve(process.cwd())) {
-    console.log('archimate-js: package is not the repository root; skipping hook installation.');
+    console.error('archimate-js: package is not the repository root; skipping hook installation.');
     return;
   }
 
@@ -35,7 +35,7 @@ function main() {
   }
 
   if (configuredPath === '.githooks') {
-    console.log('archimate-js: repository Git hooks already configured.');
+    console.error('archimate-js: repository Git hooks already configured.');
     return;
   }
 
@@ -43,7 +43,7 @@ function main() {
     cwd: repositoryRoot,
     stdio: 'inherit'
   });
-  console.log('archimate-js: configured core.hooksPath=.githooks');
+  console.error('archimate-js: configured core.hooksPath=.githooks');
 }
 
 main();
