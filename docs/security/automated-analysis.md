@@ -1,6 +1,6 @@
 # Automated security analysis
 
-This repository runs two automated checks:
+This repository runs automated checks:
 
 - **CodeQL** analyzes JavaScript and TypeScript on pull requests, pushes to
   `main`, a weekly schedule, and manual dispatches. It looks for data-flow and code-pattern
@@ -11,6 +11,20 @@ This repository runs two automated checks:
   A lockfile-delta check also rejects changed packages with missing or
   unapproved license metadata. Failures identify the package. The checks
   complement the human review process in the dependency policy.
+- **Secret scan** runs in ordinary CI through `npm test` and locally with
+  `npm run test:secrets`. It checks Git-tracked UTF-8 text for GitHub token,
+  AWS access-key, and private-key-header forms. Optional public or local marker
+  strings can be supplied as comma- or newline-separated
+  `ARCHIMATE_SECRET_SCAN_MARKERS`; their values are never printed. Binary files
+  are skipped and tracked symlinks fail the check without being followed.
+
+The secret-scan test uses only in-memory `SYNTHETIC` canaries authored for this
+public repository. Failures report rule IDs and counts, without matched text or
+paths. A false positive should be reviewed in a PR with a synthetic
+reproduction; do not paste the suspected value into an issue or log. The check
+is intentionally a narrow accidental-leak guard. It cannot establish that
+source is public or licensed, or prove that no secret remains. GitHub repository
+secret scanning and push protection are separate repository settings.
 
 The workflow uses the ordinary `pull_request` event, not
 `pull_request_target`. It does not read repository secrets, publish packages,

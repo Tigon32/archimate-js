@@ -5,6 +5,7 @@
     "moduleResolution": "NodeNext",
     "strict": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "lib": ["ES2022", "DOM"],
     "types": ["node", "vitest/globals"],
     "skipLibCheck": true
@@ -16,7 +17,9 @@
     "test/smoke/packed-consumer.test.mts",
     "test/release/evidence.test.mts",
     "test/unit/cli-export.test.mts",
-    "test/browser/export-api.mts"
+    "test/browser/export-api.mts",
+    "scripts/check-secrets.mts",
+    "test/security/check-secrets.test.mts"
   ],
   "exclude": ["node_modules", "dist", "coverage", "test-results"]
 }
