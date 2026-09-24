@@ -348,27 +348,35 @@ export function createExportService(config: ExportServiceConfig = {}) {
       finally { await session.close(); }
     },
     async writeExport(request: ExportFileRequest): Promise<ExportFileResult> {
-      try {
-        if (!config.outputDirectory) throw error('INVALID_OPTIONS');
-        const result = await run(request);
-        const basename = (request.basename || 'view').normalize('NFKD')
-          .replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9._-]+/g, '-')
-          .replace(/^[.-]+|[.-]+$/g, '').slice(0, 80) || 'view';
-        await mkdir(config.outputDirectory, { recursive: true });
-        const files = result.artifacts.map(({ format }) =>
-          path.join(config.outputDirectory!, `${basename}.${format}`));
-        const previous = await Promise.all(files.map(async (file) => ({
-          file, value: await readFile(file).catch(() => undefined)
-        })));
-        try {
-          for (const [index, artifact] of result.artifacts.entries()) {
-            await writeAtomic(files[index], artifact.bytes);
-          }
-        } catch { await rollback(previous); throw error('OUTPUT_WRITE_FAILED'); }
-        return { ...result, files };
-      } catch (value) { throw normalizeError(value, 'OUTPUT_WRITE_FAILED'); }
+      return writeConfiguredExport(config, request, run);
     }
   };
+}
+
+async function writeConfiguredExport(
+  config: ExportServiceConfig,
+  request: ExportFileRequest,
+  run: (request: ExportRequest) => Promise<ExportResult>
+): Promise<ExportFileResult> {
+  try {
+    if (!config.outputDirectory) throw error('INVALID_OPTIONS');
+    const result = await run(request);
+    const basename = (request.basename || 'view').normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9._-]+/g, '-')
+      .replace(/^[.-]+|[.-]+$/g, '').slice(0, 80) || 'view';
+    await mkdir(config.outputDirectory, { recursive: true });
+    const files = result.artifacts.map(({ format }) =>
+      path.join(config.outputDirectory!, `${basename}.${format}`));
+    const previous = await Promise.all(files.map(async (file) => ({
+      file, value: await readFile(file).catch(() => undefined)
+    })));
+    try {
+      for (const [index, artifact] of result.artifacts.entries()) {
+        await writeAtomic(files[index], artifact.bytes);
+      }
+    } catch { await rollback(previous); throw error('OUTPUT_WRITE_FAILED'); }
+    return { ...result, files };
+  } catch (value) { throw normalizeError(value, 'OUTPUT_WRITE_FAILED'); }
 }
 
 const defaultService = createExportService();

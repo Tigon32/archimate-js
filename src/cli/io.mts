@@ -127,27 +127,41 @@ export async function writeBatchArtifacts(
   inputPath: string
 ): Promise<void> {
   const absolute = path.resolve(directory);
-  const parts: string[] = [];
-  let cursor = absolute;
-  while (cursor !== path.dirname(cursor)) { parts.unshift(cursor); cursor = path.dirname(cursor); }
   try {
-    for (const component of parts) {
-      const item = await lstat(component).catch((error: NodeJS.ErrnoException) => {
-        if (error.code === 'ENOENT') return undefined;
-        throw error;
-      });
-      if (item && ((!item.isDirectory() && !item.isSymbolicLink()) ||
-          (item.isSymbolicLink() && !await safeSystemAlias(component)))) {
-        throw new Error('OUTPUT_WRITE_FAILED');
-      }
-    }
-
-    async function safeSystemAlias(component: string): Promise<boolean> {
-      if (process.platform !== 'darwin' || !['/var', '/tmp'].includes(component)) return false;
-      try { return (await realpath(component)) === `/private${component}`; } catch { return false; }
-    }
-    await mkdir(absolute, { recursive: true });
+    await ensureOutputDirectory(absolute);
     const all = [...files, { filename: 'manifest.json', contents: manifest }];
+    await publishBatchFiles(absolute, all, inputPath);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'OUTPUT_CLEANUP_FAILED') throw error;
+    throw new Error('OUTPUT_WRITE_FAILED');
+  }
+}
+
+async function ensureOutputDirectory(directory: string): Promise<void> {
+  const parts: string[] = [];
+  let cursor = directory;
+  while (cursor !== path.dirname(cursor)) { parts.unshift(cursor); cursor = path.dirname(cursor); }
+  for (const component of parts) {
+    const item = await lstat(component).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === 'ENOENT') return undefined;
+      throw error;
+    });
+    if (item && ((!item.isDirectory() && !item.isSymbolicLink()) ||
+        (item.isSymbolicLink() && !await safeOutputAlias(component)))) throw new Error();
+  }
+  await mkdir(directory, { recursive: true });
+}
+
+async function safeOutputAlias(component: string): Promise<boolean> {
+  if (process.platform !== 'darwin' || !['/var', '/tmp'].includes(component)) return false;
+  try { return (await realpath(component)) === `/private${component}`; } catch { return false; }
+}
+
+async function publishBatchFiles(
+  directory: string,
+  all: Array<{ filename: string; contents: string | Uint8Array }>,
+  inputPath: string
+): Promise<void> {
     const names = new Set<string>();
     const previous: PreviousOutput[] = [];
     for (const file of all) {
@@ -155,10 +169,11 @@ export async function writeBatchArtifacts(
           file.filename === '.' || file.filename === '..' ||
           names.has(file.filename.toLowerCase())) throw new Error('OUTPUT_WRITE_FAILED');
       names.add(file.filename.toLowerCase());
-      const target = path.join(absolute, file.filename);
+      const target = path.join(directory, file.filename);
       if (target === path.resolve(inputPath)) throw new Error('OUTPUT_WRITE_FAILED');
       previous.push(await snapshot(target));
     }
+
     const committed: PreviousOutput[] = [];
     try {
       for (let index = 0; index < all.length; index++) {
@@ -169,10 +184,6 @@ export async function writeBatchArtifacts(
       try { await rollback(committed); } catch { throw new Error('OUTPUT_CLEANUP_FAILED'); }
       throw new Error('OUTPUT_WRITE_FAILED');
     }
-  } catch (error) {
-    if (error instanceof Error && error.message === 'OUTPUT_CLEANUP_FAILED') throw error;
-    throw new Error('OUTPUT_WRITE_FAILED');
-  }
 }
 
 type PartialGroup = { files: Array<{ filename: string; contents: string | Uint8Array }> };
@@ -189,13 +200,9 @@ async function preparePartialDirectory(directory: string): Promise<string> {
         throw error;
       });
       if (item && ((!item.isDirectory() && !item.isSymbolicLink()) ||
-          (item.isSymbolicLink() && !await safeSystemAlias(component)))) throw new Error();
+          (item.isSymbolicLink() && !await safeOutputAlias(component)))) throw new Error();
     }
 
-    async function safeSystemAlias(component: string): Promise<boolean> {
-      if (process.platform !== 'darwin' || component !== '/var') return false;
-      try { return (await realpath(component)) === '/private/var'; } catch { return false; }
-    }
     await mkdir(absolute, { recursive: true });
   } catch { throw new Error('OUTPUT_WRITE_FAILED'); }
   return absolute;

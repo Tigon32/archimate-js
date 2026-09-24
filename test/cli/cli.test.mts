@@ -212,11 +212,13 @@ async function batchBrowserTests(directory: string): Promise<void> {
   const complete = JSON.parse(await readFile(path.join(batchDir, 'manifest.json'), 'utf8'));
   assert.equal(complete.overallStatus, 'success');
   assert.ok(complete.entries.every((entry: { status: string }) => entry.status === 'success'));
+  await formatOrderTests(directory);
+}
+
+async function formatOrderTests(directory: string): Promise<void> {
   for (const formats of ['png', 'pdf']) {
     const output = path.join(directory, `batch-${formats}`);
-    const result = runCli(cli, [
-      'export', batchFixture, '--all-views', '--format', formats, '--output-dir', output
-    ], 0);
+    const result = runCli(cli, ['export', batchFixture, '--all-views', '--format', formats, '--output-dir', output], 0);
     assert.deepEqual(result.json.formats, [formats]);
     const manifest = JSON.parse(await readFile(path.join(output, 'manifest.json'), 'utf8'));
     assert.ok(manifest.entries.every((entry: { outputs: Array<{ format: string }> }) =>
@@ -225,28 +227,18 @@ async function batchBrowserTests(directory: string): Promise<void> {
   }
   const pngFirst = path.join(directory, 'order-png-first');
   const pdfFirst = path.join(directory, 'order-pdf-first');
-  runCli(cli, ['export', batchFixture, '--all-views',
-    '--format', 'png,pdf', '--output-dir', pngFirst], 0);
-  runCli(cli, ['export', batchFixture, '--all-views',
-    '--format', 'pdf,png', '--output-dir', pdfFirst], 0);
-  assert.deepEqual(pngDimensions(await readFile(path.join(pngFirst, 'Resume-Q4.png'))),
-    pngDimensions(await readFile(path.join(pdfFirst, 'Resume-Q4.png'))));
-  assert.equal(createHash('sha256').update(await readFile(path.join(pngFirst, 'Resume-Q4.png'))).digest('hex'),
-    createHash('sha256').update(await readFile(path.join(pdfFirst, 'Resume-Q4.png'))).digest('hex'));
-  const manifestShape = (value: {
-    schemaVersion: number;
-    entries: Array<{ viewId: string; viewName: string; diagnostics: unknown[];
-      outputs: Array<{ format: string; path: string; dimensions: unknown }> }>;
-  }) => ({
-    schemaVersion: value.schemaVersion,
-    entries: value.entries.map((entry) => ({
-      ...entry, outputs: entry.outputs.map(({ format, path: outputPath, dimensions }) =>
-        ({ format, path: outputPath, dimensions }))
-    }))
-  });
-  assert.deepEqual(
-    manifestShape(JSON.parse(await readFile(path.join(pngFirst, 'manifest.json'), 'utf8'))),
-    manifestShape(JSON.parse(await readFile(path.join(pdfFirst, 'manifest.json'), 'utf8'))));
+  runCli(cli, ['export', batchFixture, '--all-views', '--format', 'png,pdf', '--output-dir', pngFirst], 0);
+  runCli(cli, ['export', batchFixture, '--all-views', '--format', 'pdf,png', '--output-dir', pdfFirst], 0);
+  const pngA = await readFile(path.join(pngFirst, 'Resume-Q4.png'));
+  const pngB = await readFile(path.join(pdfFirst, 'Resume-Q4.png'));
+  assert.deepEqual(pngDimensions(pngA), pngDimensions(pngB));
+  assert.equal(createHash('sha256').update(pngA).digest('hex'), createHash('sha256').update(pngB).digest('hex'));
+  const shape = (value: any) => ({ schemaVersion: value.schemaVersion,
+    entries: value.entries.map((entry: any) => ({ ...entry,
+      outputs: entry.outputs.map(({ format, path: outputPath, dimensions }: any) =>
+        ({ format, path: outputPath, dimensions })) })) });
+  assert.deepEqual(shape(JSON.parse(await readFile(path.join(pngFirst, 'manifest.json'), 'utf8'))),
+    shape(JSON.parse(await readFile(path.join(pdfFirst, 'manifest.json'), 'utf8'))));
 }
 
 async function partialBrowserTest(directory: string): Promise<void> {
