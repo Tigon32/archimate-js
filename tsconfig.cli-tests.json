@@ -19,7 +19,8 @@
     "test/unit/cli-export.test.mts",
     "test/browser/export-api.mts",
     "scripts/check-secrets.mts",
-    "test/security/check-secrets.test.mts"
+    "test/security/check-secrets.test.mts",
+    "test/security/supply-chain.test.mts"
   ],
   "exclude": ["node_modules", "dist", "coverage", "test-results"]
 }
