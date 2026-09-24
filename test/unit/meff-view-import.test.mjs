@@ -120,6 +120,9 @@ describe('MEFF View and Diagram import', () => {
     expect(view.id).toBe('view-synthetic-one');
     expect(view.viewElements[0].elementRef).toBe(component);
     expect(view.viewElements[2].relationshipRef).toBe(relationship);
+    expect(view.viewElements[0].style.font.size).toBe(10.5);
+    expect(view.viewElements[0].style.fillColor.a).toBe(0);
+    expect(view.viewElements[0].style.font.color.a).toBe(75);
   });
 
   it('returns no views for a schema Model without a views section', () => {
