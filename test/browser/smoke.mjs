@@ -228,10 +228,9 @@ try {
     });
     const parsed = new DOMParser().parseFromString(svg, 'image/svg+xml');
     const path = parsed.querySelector('.djs-connection .djs-visual path');
-    const styleWidth = /(?:^|;)\s*stroke-width:\s*([^;]+)/.exec(path?.getAttribute('style') || '')?.[1]?.trim();
-    return path?.getAttribute('stroke-width') || styleWidth || null;
+    return Number.parseFloat(path?.style.strokeWidth || path?.getAttribute('stroke-width') || 'NaN');
   });
-  assert.equal(importedConnectionWidth, '9',
+  assert.equal(importedConnectionWidth, 9,
     'SVG export should preserve an explicitly imported connection width');
 
   stage = 'assert malformed input returns content-free diagnostic';
