@@ -78,7 +78,9 @@ function assignExportOption(
 }
 
 function validateExport(parsed: Partial<ExportOptions>, formats: Set<ExportFormat>): ExportOptions {
-  if (!parsed.outputDirectory || Boolean(parsed.viewId) === Boolean(parsed.viewName) || !formats.size) {
+  if (!parsed.outputDirectory ||
+      Number(Boolean(parsed.viewId)) + Number(Boolean(parsed.viewName)) + Number(Boolean(parsed.allViews)) !== 1 ||
+      !formats.size) {
     throw new Error('CLI_USAGE');
   }
   if (!Number.isInteger(parsed.scale) || parsed.scale! < 1 || parsed.scale! > 4) throw new Error('CLI_USAGE');
@@ -100,6 +102,13 @@ function parseExport(input: string, rest: string[]): ExportOptions {
   const seen = new Set<string>();
   for (let index = 0; index < rest.length; index += 2) {
     const option = rest[index];
+    if (option === '--all-views') {
+      if (seen.has(option)) throw new Error('CLI_USAGE');
+      seen.add(option);
+      parsed.allViews = true;
+      index -= 1;
+      continue;
+    }
     const value = requireValue(rest, index);
     if (option === '--format') addFormats(formats, value);
     else if (option === '--scale') {
@@ -108,6 +117,7 @@ function parseExport(input: string, rest: string[]): ExportOptions {
       parsed.scale = Number(value);
     } else assignExportOption(parsed, seen, option, value);
   }
+  if (parsed.allViews && seen.has('--basename')) throw new Error('CLI_USAGE');
   parsed.basename = sanitizeBasename(parsed.basename!);
   return validateExport(parsed, formats);
 }

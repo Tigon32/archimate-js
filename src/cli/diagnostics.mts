@@ -3,6 +3,7 @@ import type { CliDiagnostic } from './types.mjs';
 export const SAFE_MESSAGES = Object.freeze({
   BROWSER_LAUNCH_FAILED: 'Unable to start the configured Chrome or Chromium executable.',
   BROWSER_NOT_FOUND: 'Chrome or Chromium was not found. Set CHROME_BIN or use --chrome.',
+  BATCH_VIEWS_INVALID: 'No unambiguous supported diagram views are available for batch export.',
   CLI_INTERNAL_ERROR: 'The command could not be completed.',
   CLI_USAGE: 'Command options are invalid. Run archimate-js --help for usage.',
   EXPORT_OUTPUT_WRITE_FAILED: 'Unable to write the requested output files.',

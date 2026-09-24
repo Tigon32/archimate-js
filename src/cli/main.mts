@@ -4,9 +4,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { parseArguments } from './arguments.mjs';
-import { renderArtifacts } from './browser.mjs';
+import { renderArtifacts, renderBatchArtifacts } from './browser.mjs';
+import { prepareBatch } from './batch.mjs';
 import { diagnostic, safeErrorCode } from './diagnostics.mjs';
-import { readBoundedXml, writeArtifacts, writeAtomic } from './io.mjs';
+import { readBoundedXml, writeArtifacts, writeAtomic, writeBatchArtifacts } from './io.mjs';
+import { listBatchViews } from './views.mjs';
 import type { CliOptions, CliResult, ExportOptions, RenderOptions } from './types.mjs';
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -19,7 +21,7 @@ function usage(): void {
   process.stdout.write(`Usage:
   archimate-js validate <model.xml>
   archimate-js render <model.xml> (--view-id <id> | --view-name <name>) --output <view.svg> [--chrome <path>]
-  archimate-js export <model.xml> (--view-id <id> | --view-name <name>) --format <svg,png,pdf> --output-dir <dir>
+  archimate-js export <model.xml> (--view-id <id> | --view-name <name> | --all-views) --format <svg,png,pdf> --output-dir <dir>
     [--basename <name>] [--scale <1..4>] [--background <transparent|white|black|#RRGGBB>]
     [--pdf-page-size <A3|A4|A5|Legal|Letter>] [--pdf-orientation <portrait|landscape>] [--chrome <path>]
 
@@ -37,6 +39,14 @@ async function renderCommand(xml: string, options: RenderOptions): Promise<void>
 }
 
 async function exportCommand(xml: string, options: ExportOptions): Promise<void> {
+  if (options.allViews) {
+    const views = listBatchViews(xml);
+    const requests = views.map((view) => ({ ...options, viewId: view.id, viewName: undefined }));
+    const artifacts = await renderBatchArtifacts(packageRoot, xml, requests);
+    const batch = prepareBatch(views, artifacts, options.formats);
+    await writeBatchArtifacts(options.outputDirectory, batch.files, batch.manifest, options.input);
+    return;
+  }
   const artifacts = await renderArtifacts(packageRoot, xml, options);
   try {
     await writeArtifacts(options.outputDirectory, options.basename, artifacts);

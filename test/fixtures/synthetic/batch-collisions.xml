@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Classification: SYNTHETIC
+  Provenance: Hand-authored for Tigon32/archimate-js.
+  Contains no private project, customer, PLM, Confluence, or real architecture data.
+-->
+<archimate:Model
+  xmlns:archimate="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  id="model-synthetic-minimal"
+  name="Synthetic Minimal Application View">
+  <name>Synthetic Minimal Application View</name>
+  <documentation>Public synthetic fixture for import/render tests.</documentation>
+  <archimate:Elements>
+    <archimate:BaseElement id="application-component-1" xsi:type="archimate:ApplicationComponent" name="Application Component" />
+    <archimate:BaseElement id="application-service-1" xsi:type="archimate:ApplicationService" name="Application Service" />
+  </archimate:Elements>
+  <archimate:Relationships>
+    <archimate:Relationship id="serving-relationship-1" xsi:type="archimate:ServingRelationship" source="application-component-1" target="application-service-1" />
+  </archimate:Relationships>
+  <archimate:Views>
+    <archimate:Diagrams>
+      <archimate:View id="view-z" name="Résumé / Q4">
+        <archimate:Node id="node-application-component-1" elementRef="application-component-1" x="100" y="100" w="160" h="80">
+          <archimate:label>Component label &lt;script&gt;window.__syntheticModelCodeRan = true&lt;/script&gt;</archimate:label>
+          <archimate:Node id="node-application-service-nested" elementRef="application-service-1" x="20" y="20" w="120" h="60" />
+        </archimate:Node>
+        <archimate:Node id="node-application-service-1" elementRef="application-service-1" x="360" y="100" w="160" h="80" />
+        <archimate:Connection id="connection-serving-relationship-1" relationshipRef="serving-relationship-1" source="node-application-component-1" target="node-application-service-1">
+          <archimate:Waypoints>
+            <archimate:Waypoint x="260" y="140" />
+            <archimate:Waypoint x="310" y="140" />
+            <archimate:Waypoint x="360" y="140" />
+          </archimate:Waypoints>
+        </archimate:Connection>
+      </archimate:View>
+      <archimate:View id="view-a" name="Résumé : Q4">
+        <archimate:Node id="node-a" elementRef="application-component-1" x="30" y="30" w="160" h="80" />
+      </archimate:View>
+      <archimate:View id="view-b" name="../../Résumé Q4">
+        <archimate:Node id="node-b" elementRef="application-service-1" x="25" y="25" w="160" h="80" />
+      </archimate:View>
+    </archimate:Diagrams>
+  </archimate:Views>
+</archimate:Model>
