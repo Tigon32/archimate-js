@@ -1,74 +1,71 @@
-import { cpus } from 'node:os';
+// SYNTHETIC: Deterministic generated models only; no imported architecture data.
 import { createHash } from 'node:crypto';
-import { writeFile } from 'node:fs/promises';
+import { cpus } from 'node:os';
+import { mkdir, writeFile } from 'node:fs/promises';
 
 import { optimizeDiagram } from '../../lib/layout/optimize-diagram.mjs';
 import { routeViewConnections } from '../../lib/layout/route-view-connections.mjs';
+import {
+  NODE_MEASUREMENT_KEYS,
+  PERFORMANCE_BUDGETS,
+  PERFORMANCE_CONTRACT_VERSION,
+  PERFORMANCE_HARD_LIMITS,
+  PERFORMANCE_TIERS,
+  artifactMetadata,
+  classifyPerformance,
+  median,
+  summarizeSamples,
+  type NodeMeasurementKey,
+  type PerformanceTier,
+  type TimingSummary
+} from './performance-contract.mts';
+import {
+  createSyntheticModel,
+  isDiagramConnection,
+  isDiagramNode,
+  type SyntheticModel
+} from './synthetic-model.mts';
 
-type Point = { x: number; y: number };
-type DiagramNode = {
-  $type: 'archimate:Node';
-  id: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  nodes: DiagramNode[];
-};
-type DiagramConnection = {
-  $type: 'archimate:Connection';
-  id: string;
-  source: DiagramNode;
-  target: DiagramNode;
-  type: string;
-  relationshipRef: { id: string; type: string };
-  waypointsNode: { waypoints: Point[] };
-};
-type DiagramView = {
-  id: string;
-  viewElements: Array<DiagramNode | DiagramConnection>;
-};
-type SyntheticFixtures = {
-  size: number;
-  provenance: 'SYNTHETIC';
-  semantic: { xml: string; elementCount: number; relationshipCount: number };
-  diagram: { view: DiagramView; nodeCount: number; connectionCount: number };
-};
 type ValidationResult = {
   valid: boolean;
   diagnostics: Array<{ severity: string }>;
   summary?: { elements: readonly unknown[]; relationships: readonly unknown[] };
 };
+type Validator = (xml: string, options?: { includeSummary: boolean }) => ValidationResult;
 type RouteMetrics = {
   nodeIntersections: number;
   sharedSegmentCount: number;
   crossingCount: number;
-  unavoidableCrossings: Array<{ connectionId: string; at: Point }>;
+  unavoidableCrossings: Array<{ connectionId: string; at: { x: number; y: number } }>;
 };
-type RoutedConnection = { waypoints: Point[] };
-type RoutingResult = { connections: RoutedConnection[]; metrics: RouteMetrics };
+type RoutingResult = {
+  connections: Array<{ waypoints: Array<{ x: number; y: number }> }>;
+  metrics: RouteMetrics;
+};
 type LayoutResult = { metrics: Record<string, unknown> };
-type DiagramSummary = {
-  generatedNodeCount: number;
-  generatedConnectionCount: number;
-  routedConnectionCount: number;
-  routedWaypointCount: number;
-  routeMetrics: RouteMetrics;
-  layoutMetrics: Record<string, unknown>;
-};
-type Validator = (xml: string, options?: { includeSummary: boolean }) => ValidationResult;
-type ValidatorModule = { validateArchimateXml: Validator };
+type Measurement = TimingSummary & ReturnType<typeof classifyPerformance>;
+type NodeMeasurements = Record<NodeMeasurementKey, Measurement>;
 type BenchmarkEntry = {
-  fixture: Sample['fixture'];
+  tier: PerformanceTier;
+  fixture: {
+    provenance: 'SYNTHETIC';
+    semantic: { elementCount: number; relationshipCount: number; xmlBytes: number };
+    diagram: { nodeCount: number; connectionCount: number };
+  };
   repeats: number;
-  mediansMs: Record<string, number>;
-  metrics: Sample['metrics'];
   fixtureFingerprint: string;
+  measurements: NodeMeasurements;
+  metrics: {
+    semantic: Record<string, unknown>;
+    diagram: Record<string, unknown>;
+  };
 };
 type BenchmarkResult = {
   schemaVersion: number;
+  contractVersion: number;
   provenance: 'SYNTHETIC';
   mode: 'smoke' | 'full';
+  artifact: ReturnType<typeof artifactMetadata>;
   environment: {
     node: string;
     platform: string;
@@ -76,238 +73,165 @@ type BenchmarkResult = {
     cpuCount: number;
     ci: boolean;
   };
-  options: { sizes: number[]; repeats: number };
+  options: { tiers: PerformanceTier[]; repeats: number };
   benchmarks: BenchmarkEntry[];
 };
 type Sample = {
-  fixture: {
-    size: number;
-    provenance: 'SYNTHETIC';
-    semantic: { elementCount: number; relationshipCount: number; xmlBytes: number };
-    diagram: { nodeCount: number; connectionCount: number };
-  };
-  samples: Record<string, number>;
-  metrics: {
-    semantic: Record<string, unknown>;
-    diagram: DiagramSummary;
-  };
+  model: SyntheticModel;
   fixtureFingerprint: string;
+  timings: Record<NodeMeasurementKey, number>;
+  metrics: BenchmarkEntry['metrics'];
 };
 
-export const BENCHMARK_SCHEMA_VERSION = 1;
-export const FULL_SIZES = Object.freeze([ 9, 25, 49 ]);
-export const SMOKE_SIZES = Object.freeze([ 4, 9 ]);
-export const MEASUREMENT_KEYS = Object.freeze([
-  'semanticGenerationMs',
-  'semanticValidationMs',
-  'diagramGenerationMs',
-  'routingMs',
-  'layoutMs'
-]);
+export const BENCHMARK_SCHEMA_VERSION = 2;
+export { median };
 
 const now = (): bigint => process.hrtime.bigint();
-const elapsedMs = (start: bigint): number => Number(now() - start) / 1e6;
+const elapsedMs = (started: bigint): number => Number(now() - started) / 1e6;
 
-export function median(values: number[]): number {
-  if (!values.length) throw new TypeError('Cannot calculate a median of no values');
-  const sorted = [...values].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+function timed<T>(operation: () => T): { value: T; durationMs: number } {
+  const started = now();
+  const value = operation();
+  return { value, durationMs: elapsedMs(started) };
 }
 
-function digest(value: unknown): string {
-  return createHash('sha256').update(JSON.stringify(value)).digest('hex');
-}
-
-function fixtureFingerprint(xml: string, view: DiagramView): string {
-  return digest({
-    xml,
-    nodes: view.viewElements
-      .filter(isDiagramNode)
+function fingerprint(model: SyntheticModel): string {
+  const fixture = {
+    semanticXml: model.semanticXml,
+    xml: model.xml,
+    nodes: model.view.viewElements.filter(isDiagramNode)
       .map(({ id, x, y, w, h }) => ({ id, x, y, w, h })),
-    connections: view.viewElements
-      .filter(isDiagramConnection)
-      .map(({ id, source, target, type, relationshipRef }) => ({
+    connections: model.view.viewElements.filter(isDiagramConnection)
+      .map(({ id, source, target, relationshipRef }) => ({
         id,
         source: source.id,
         target: target.id,
-        type,
-        relationshipId: relationshipRef.id,
-        relationshipType: relationshipRef.type
+        relationshipRef
       }))
-  });
-}
-
-function isDiagramNode(element: DiagramNode | DiagramConnection): element is DiagramNode {
-  return '$type' in element && element.$type === 'archimate:Node';
-}
-
-function isDiagramConnection(element: DiagramNode | DiagramConnection): element is DiagramConnection {
-  return '$type' in element && element.$type === 'archimate:Connection';
-}
-
-function timed<T>(operation: () => T): { value: T; durationMs: number } {
-  const start = now();
-  const value = operation();
-  return { value, durationMs: elapsedMs(start) };
-}
-
-function semanticXml(size: number): string {
-  const elements: string[] = [];
-  const relationships: string[] = [];
-  for (let i = 0; i < size; i += 1) {
-    const functionId = `synthetic-function-${i}`;
-    const serviceId = `synthetic-service-${i}`;
-    elements.push(`<element id="${functionId}" xsi:type="archimate:ApplicationFunction"/>`);
-    elements.push(`<element id="${serviceId}" xsi:type="archimate:ApplicationService"/>`);
-    relationships.push(`<relationship id="synthetic-realization-${i}" source="${functionId}" target="${serviceId}" xsi:type="archimate:RealizationRelationship"/>`);
-  }
-  return `<?xml version="1.0"?><model id="synthetic-model-${size}" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><elements>${elements.join('')}</elements><relationships>${relationships.join('')}</relationships></model>`;
-}
-
-function diagramFixture(size: number): DiagramView {
-  const width = Math.ceil(Math.sqrt(size));
-  const nodes: DiagramNode[] = Array.from({ length: size }, (_, index) => ({
-    $type: 'archimate:Node',
-    id: `synthetic-node-${index}`,
-    x: (index % width) * 150,
-    y: Math.floor(index / width) * 110,
-    w: 90,
-    h: 60,
-    nodes: []
-  }));
-  const connections: DiagramConnection[] = [];
-  for (let index = 0; index + 1 < nodes.length; index += 1) {
-    connections.push({
-      $type: 'archimate:Connection',
-      id: `synthetic-connection-${index}`,
-      source: nodes[index],
-      target: nodes[index + 1],
-      type: 'Realization',
-      relationshipRef: { id: `synthetic-realization-${index}`, type: 'Realization' },
-      waypointsNode: { waypoints: [] }
-    });
-  }
-  return {
-    id: `synthetic-view-${size}`,
-    viewElements: [ ...nodes, ...connections ]
   };
+  return createHash('sha256').update(JSON.stringify(fixture)).digest('hex');
 }
 
-export function createSyntheticFixtures(size: number): SyntheticFixtures {
-  if (!Number.isInteger(size) || size < 1) throw new TypeError('Fixture size must be a positive integer');
-  const xml = semanticXml(size);
-  const view = diagramFixture(size);
+export function createSyntheticFixtures(size: number) {
+  const model = createSyntheticModel({ name: 'small', size });
   return {
     size,
+    provenance: model.provenance,
     semantic: {
-      xml,
-      elementCount: size * 2,
-      relationshipCount: size
+      xml: model.semanticXml,
+      elementCount: model.elementCount,
+      relationshipCount: model.relationshipCount
     },
     diagram: {
-      view,
-      nodeCount: size,
-      connectionCount: Math.max(0, size - 1)
-    },
-    provenance: 'SYNTHETIC'
+      view: model.view,
+      nodeCount: model.nodeCount,
+      connectionCount: model.connectionCount
+    }
   };
 }
 
-async function loadValidator(): Promise<{ validateArchimateXml: Validator }> {
+async function loadValidator(): Promise<Validator> {
   try {
     const modulePath = '../../dist/validator/index.js';
     const validatorModule: unknown = await import(modulePath);
-    if (!isValidatorModule(validatorModule)) {
+    if (typeof validatorModule !== 'object' || validatorModule === null ||
+        !('validateArchimateXml' in validatorModule) ||
+        typeof validatorModule.validateArchimateXml !== 'function') {
       throw new TypeError('Validator build does not expose validateArchimateXml');
     }
-    return validatorModule;
+    return validatorModule.validateArchimateXml as Validator;
   } catch (error) {
-    throw new Error('Validator build is missing. Run "npm run compile:validator" before the benchmark.', { cause: error });
+    throw new Error(
+      'Validator build is missing. Run "npm run compile:validator" before the benchmark.',
+      { cause: error }
+    );
   }
 }
 
-function isValidatorModule(value: unknown): value is ValidatorModule {
-  return typeof value === 'object' && value !== null &&
-    'validateArchimateXml' in value &&
-    typeof value.validateArchimateXml === 'function';
-}
-
-function summarizeSemantic(validation: ValidationResult, size: number): Record<string, unknown> {
+function semanticMetrics(validation: ValidationResult, model: SyntheticModel) {
   return {
     valid: validation.valid,
     diagnosticCount: validation.diagnostics.length,
     errorCount: validation.diagnostics.filter(({ severity }) => severity === 'error').length,
     summaryElementCount: validation.summary?.elements?.length ?? null,
     summaryRelationshipCount: validation.summary?.relationships?.length ?? null,
-    generatedElementCount: size * 2,
-    generatedRelationshipCount: size
+    generatedElementCount: model.elementCount,
+    generatedRelationshipCount: model.relationshipCount
   };
 }
 
-function summarizeDiagram(routed: RoutingResult, optimized: LayoutResult, size: number): DiagramSummary {
+function diagramMetrics(routed: RoutingResult, optimized: LayoutResult, model: SyntheticModel) {
   return {
-    generatedNodeCount: size,
-    generatedConnectionCount: Math.max(0, size - 1),
+    generatedNodeCount: model.nodeCount,
+    generatedConnectionCount: model.connectionCount,
     routedConnectionCount: routed.connections.length,
-    routedWaypointCount: routed.connections.reduce((total, connection) => total + connection.waypoints.length, 0),
+    routedWaypointCount: routed.connections
+      .reduce((total, connection) => total + connection.waypoints.length, 0),
     routeMetrics: routed.metrics,
     layoutMetrics: optimized.metrics
   };
 }
 
-function runFixture(size: number, validateArchimateXml: Validator): Sample {
-  const semanticGeneration = timed(() => semanticXml(size));
-  const semanticValidation = timed(() => validateArchimateXml(semanticGeneration.value, { includeSummary: true }));
-  const diagramGeneration = timed(() => diagramFixture(size));
-  const routing = timed(() => routeViewConnections({
-    nodes: diagramGeneration.value.viewElements.filter(isDiagramNode),
-    connections: diagramGeneration.value.viewElements.filter(isDiagramConnection)
-  }));
-  const layout = timed(() => optimizeDiagram(diagramGeneration.value));
+function runFixture(tier: PerformanceTier, validate: Validator): Sample {
+  const generation = timed(() => createSyntheticModel(tier));
+  const model = generation.value;
+  const validation = timed(() => validate(model.semanticXml, { includeSummary: true }));
+  const diagramGeneration = timed(() => createSyntheticModel(tier));
+  const nodes = diagramGeneration.value.view.viewElements.filter(isDiagramNode);
+  const connections = diagramGeneration.value.view.viewElements.filter(isDiagramConnection);
+  const routing = timed(() => routeViewConnections({ nodes, connections }));
+  const layout = timed(() => optimizeDiagram(diagramGeneration.value.view));
   return {
-    fixture: {
-      size,
-      provenance: 'SYNTHETIC',
-      semantic: {
-        elementCount: size * 2,
-        relationshipCount: size,
-        xmlBytes: Buffer.byteLength(semanticGeneration.value)
-      },
-      diagram: {
-        nodeCount: size,
-        connectionCount: Math.max(0, size - 1)
-      }
-    },
-    samples: {
-      semanticGenerationMs: semanticGeneration.durationMs,
-      semanticValidationMs: semanticValidation.durationMs,
+    model,
+    fixtureFingerprint: fingerprint(model),
+    timings: {
+      semanticGenerationMs: generation.durationMs,
+      semanticValidationMs: validation.durationMs,
       diagramGenerationMs: diagramGeneration.durationMs,
       routingMs: routing.durationMs,
       layoutMs: layout.durationMs
     },
     metrics: {
-      semantic: summarizeSemantic(semanticValidation.value, size),
-      diagram: summarizeDiagram(routing.value, layout.value, size)
-    },
-    fixtureFingerprint: fixtureFingerprint(semanticGeneration.value, diagramGeneration.value)
+      semantic: semanticMetrics(validation.value, model),
+      diagram: diagramMetrics(routing.value, layout.value, model)
+    }
   };
 }
 
-function aggregate(samples: Sample[]): BenchmarkEntry {
+function measurements(samples: Sample[], tier: PerformanceTier): NodeMeasurements {
+  return Object.fromEntries(NODE_MEASUREMENT_KEYS.map((key) => {
+    const summary = summarizeSamples(samples.map(({ timings }) => timings[key]));
+    const classification = classifyPerformance(summary.medianMs, summary.toleranceMs, {
+      budgetMs: PERFORMANCE_BUDGETS.node[tier.name][key],
+      hardLimitMs: PERFORMANCE_HARD_LIMITS.node[tier.name][key]
+    });
+    return [ key, { ...summary, ...classification } ];
+  })) as NodeMeasurements;
+}
+
+function aggregate(samples: Sample[], tier: PerformanceTier): BenchmarkEntry {
   const first = samples[0];
-  if (samples.some((sample) => sample.fixtureFingerprint !== first.fixtureFingerprint)) {
-    throw new Error('Synthetic fixture changed between benchmark repeats');
+  if (samples.some(({ fixtureFingerprint }) => fixtureFingerprint !== first.fixtureFingerprint)) {
+    throw new Error(`Synthetic ${tier.name} fixture changed between benchmark repeats`);
   }
   return {
-    fixture: first.fixture,
+    tier,
+    fixture: {
+      provenance: 'SYNTHETIC',
+      semantic: {
+        elementCount: first.model.elementCount,
+        relationshipCount: first.model.relationshipCount,
+        xmlBytes: Buffer.byteLength(first.model.semanticXml)
+      },
+      diagram: {
+        nodeCount: first.model.nodeCount,
+        connectionCount: first.model.connectionCount
+      }
+    },
     repeats: samples.length,
-    mediansMs: Object.fromEntries(Object.keys(first.samples).map((key) => [
-      key,
-      median(samples.map((sample) => sample.samples[key]))
-    ])),
-    metrics: first.metrics,
-    fixtureFingerprint: first.fixtureFingerprint
+    fixtureFingerprint: first.fixtureFingerprint,
+    measurements: measurements(samples, tier),
+    metrics: first.metrics
   };
 }
 
@@ -317,63 +241,72 @@ function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === 'object' && value !== null;
 }
 
-function isInteger(value: unknown): value is number {
-  return typeof value === 'number' && Number.isInteger(value);
+function validMeasurement(value: unknown): boolean {
+  if (!isRecord(value) || !Array.isArray(value.samplesMs) || !value.samplesMs.length) return false;
+  return [ 'medianMs', 'medianAbsoluteDeviationMs', 'toleranceMs', 'budgetMs', 'hardLimitMs' ]
+    .every((key) => typeof value[key] === 'number' && Number.isFinite(value[key])) &&
+    [ 'within', 'exceeded' ].includes(String(value.budgetStatus)) &&
+    [ 'within', 'exceeded' ].includes(String(value.hardLimitStatus));
 }
 
-function isBenchmarkEntry(value: unknown): value is BenchmarkEntry {
-  if (!isRecord(value) || !isRecord(value.fixture) || !isRecord(value.metrics)) return false;
-  const fixture = value.fixture;
-  const semanticFixture = isRecord(fixture.semantic) ? fixture.semantic : null;
-  const diagramFixture = isRecord(fixture.diagram) ? fixture.diagram : null;
-  const semanticMetrics = isRecord(value.metrics.semantic) ? value.metrics.semantic : null;
-  const diagramMetrics = isRecord(value.metrics.diagram) ? value.metrics.diagram : null;
-  const medians = isRecord(value.mediansMs) ? value.mediansMs : null;
-  if (fixture.provenance !== 'SYNTHETIC' || !isInteger(fixture.size) || fixture.size < 1 ||
-      !semanticFixture || !diagramFixture || !semanticMetrics || !diagramMetrics ||
-      !isInteger(value.repeats) || value.repeats < 1 ||
-      typeof value.fixtureFingerprint !== 'string' ||
-      !/^[a-f0-9]{64}$/.test(value.fixtureFingerprint) ||
-      !medians || !MEASUREMENT_KEYS.every((key) => typeof medians[key] === 'number' && Number.isFinite(medians[key]))) return false;
-  return semanticFixture.elementCount === fixture.size * 2 &&
-    semanticFixture.relationshipCount === fixture.size &&
-    diagramFixture.nodeCount === fixture.size &&
-    diagramFixture.connectionCount === Math.max(0, fixture.size - 1) &&
-    semanticMetrics.valid === true &&
-    semanticMetrics.errorCount === 0 &&
-    semanticMetrics.summaryElementCount === semanticFixture.elementCount &&
-    semanticMetrics.summaryRelationshipCount === semanticFixture.relationshipCount &&
-    semanticMetrics.generatedElementCount === semanticFixture.elementCount &&
-    semanticMetrics.generatedRelationshipCount === semanticFixture.relationshipCount &&
-    diagramMetrics.generatedNodeCount === diagramFixture.nodeCount &&
-    diagramMetrics.generatedConnectionCount === diagramFixture.connectionCount &&
-    diagramMetrics.routedConnectionCount === diagramFixture.connectionCount;
+function validEntry(value: unknown): boolean {
+  if (!isRecord(value) || !isRecord(value.tier) || !isRecord(value.fixture) ||
+      !isRecord(value.measurements) || !isRecord(value.metrics)) return false;
+  const tier = value.tier;
+  const measurementsValue = value.measurements;
+  const semantic = isRecord(value.fixture.semantic) ? value.fixture.semantic : {};
+  const diagram = isRecord(value.fixture.diagram) ? value.fixture.diagram : {};
+  const semanticMetricsValue = isRecord(value.metrics.semantic) ? value.metrics.semantic : {};
+  const diagramMetricsValue = isRecord(value.metrics.diagram) ? value.metrics.diagram : {};
+  return PERFORMANCE_TIERS.some((candidate) =>
+    candidate.name === tier.name && candidate.size === tier.size) &&
+    value.fixture.provenance === 'SYNTHETIC' &&
+    semantic.elementCount === tier.size &&
+    semantic.relationshipCount === Number(tier.size) - 1 &&
+    diagram.nodeCount === tier.size &&
+    diagram.connectionCount === Number(tier.size) - 1 &&
+    typeof value.repeats === 'number' && value.repeats >= 1 &&
+    typeof value.fixtureFingerprint === 'string' &&
+    /^[a-f0-9]{64}$/.test(value.fixtureFingerprint) &&
+    NODE_MEASUREMENT_KEYS.every((key) => validMeasurement(measurementsValue[key])) &&
+    semanticMetricsValue.valid === true &&
+    semanticMetricsValue.errorCount === 0 &&
+    semanticMetricsValue.summaryElementCount === semantic.elementCount &&
+    semanticMetricsValue.summaryRelationshipCount === semantic.relationshipCount &&
+    diagramMetricsValue.routedConnectionCount === diagram.connectionCount;
 }
 
 export function validateBenchmarkResult(result: unknown): result is BenchmarkResult {
-  if (!isRecord(result)) return false;
+  if (!isRecord(result) || !isRecord(result.artifact) || !isRecord(result.environment)) return false;
   return result.schemaVersion === BENCHMARK_SCHEMA_VERSION &&
+    result.contractVersion === PERFORMANCE_CONTRACT_VERSION &&
     result.provenance === 'SYNTHETIC' &&
-    isRecord(result.environment) &&
+    result.artifact.format === 'archimate-js.performance/v2' &&
+    result.artifact.kind === 'node' &&
     Array.isArray(result.benchmarks) &&
-    result.benchmarks.length > 0 &&
-    result.benchmarks.every(isBenchmarkEntry);
+    result.benchmarks.length === PERFORMANCE_TIERS.length &&
+    result.benchmarks.every(validEntry);
 }
 
 export async function runBenchmark(
-  { sizes = FULL_SIZES, repeats = 5, smoke = false }: { sizes?: readonly number[]; repeats?: number; smoke?: boolean } = {}
+  { tiers = PERFORMANCE_TIERS, repeats = 5, smoke = false }:
+  { tiers?: readonly PerformanceTier[]; repeats?: number; smoke?: boolean } = {}
 ): Promise<BenchmarkResult> {
-  if (!Number.isInteger(repeats) || repeats < 1) throw new TypeError('Repeats must be a positive integer');
-  const { validateArchimateXml } = await loadValidator();
-  const benchmarks: BenchmarkEntry[] = [];
-  for (const size of sizes) {
-    const samples = Array.from({ length: repeats }, () => runFixture(size, validateArchimateXml));
-    benchmarks.push(aggregate(samples));
+  if (!Number.isInteger(repeats) || repeats < 1) {
+    throw new TypeError('Repeats must be a positive integer');
   }
-  const result = {
+  const validate = await loadValidator();
+  const benchmarks = tiers.map((tier) => aggregate(
+    Array.from({ length: repeats }, () => runFixture(tier, validate)),
+    tier
+  ));
+  const nodeMajor = process.version.replace(/^v/, '').split('.')[0];
+  const result: BenchmarkResult = {
     schemaVersion: BENCHMARK_SCHEMA_VERSION,
+    contractVersion: PERFORMANCE_CONTRACT_VERSION,
     provenance: 'SYNTHETIC',
     mode: smoke ? 'smoke' : 'full',
+    artifact: artifactMetadata('node', `node-${nodeMajor}-${process.platform}-${process.arch}`),
     environment: {
       node: process.version,
       platform: process.platform,
@@ -381,20 +314,23 @@ export async function runBenchmark(
       cpuCount: cpus().length,
       ci: process.env.CI === 'true'
     },
-    options: { sizes: [...sizes], repeats },
+    options: { tiers: tiers.map((tier) => ({ ...tier })), repeats },
     benchmarks
   };
-  if (!validateBenchmarkResult(result)) throw new Error('Benchmark result failed its schema and safety checks');
+  if (!validateBenchmarkResult(result)) {
+    throw new Error('Benchmark result failed its schema and safety checks');
+  }
   return result;
 }
 
 function assertResult(result: BenchmarkResult): void {
-  if (!validateBenchmarkResult(result)) throw new Error('Benchmark assertion failed: invalid result');
   for (const benchmark of result.benchmarks) {
+    const routeMetrics = benchmark.metrics.diagram.routeMetrics as RouteMetrics;
     if (benchmark.metrics.semantic.diagnosticCount !== 0 ||
-        benchmark.metrics.diagram.routedConnectionCount !== benchmark.fixture.diagram.connectionCount ||
-        benchmark.metrics.diagram.routeMetrics.nodeIntersections !== 0) {
-      throw new Error(`Benchmark assertion failed for synthetic size ${benchmark.fixture.size}`);
+        routeMetrics.nodeIntersections !== 0 ||
+        NODE_MEASUREMENT_KEYS.some((key) =>
+          benchmark.measurements[key].hardLimitStatus === 'exceeded')) {
+      throw new Error(`Performance hard limit or structural assertion failed for ${benchmark.tier.name}`);
     }
   }
 }
@@ -402,15 +338,19 @@ function assertResult(result: BenchmarkResult): void {
 async function main(): Promise<void> {
   const args = new Set(process.argv.slice(2));
   const smoke = args.has('--smoke');
-  const assert = args.has('--assert');
-  const repeatsArgument = process.argv.find((argument: string) => argument.startsWith('--repeats='));
-  const outputArgument = process.argv.find((argument: string) => argument.startsWith('--output='));
-  const repeats = repeatsArgument ? Number(repeatsArgument.slice('--repeats='.length)) : smoke ? 2 : 5;
-  const result = await runBenchmark({ sizes: smoke ? SMOKE_SIZES : FULL_SIZES, repeats, smoke });
-  if (assert) assertResult(result);
+  const repeatsArgument = process.argv.find((argument) => argument.startsWith('--repeats='));
+  const outputArgument = process.argv.find((argument) => argument.startsWith('--output='));
+  const repeats = repeatsArgument ? Number(repeatsArgument.slice(10)) : smoke ? 3 : 5;
+  const result = await runBenchmark({ repeats, smoke });
   const json = `${JSON.stringify(result, null, 2)}\n`;
-  if (outputArgument) await writeFile(outputArgument.slice('--output='.length), json);
+  if (outputArgument) {
+    const output = outputArgument.slice(9);
+    const separator = Math.max(output.lastIndexOf('/'), output.lastIndexOf('\\'));
+    if (separator > 0) await mkdir(output.slice(0, separator), { recursive: true });
+    await writeFile(output, json);
+  }
   process.stdout.write(json);
+  if (args.has('--assert')) assertResult(result);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) await main();
