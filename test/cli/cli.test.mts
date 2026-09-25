@@ -168,20 +168,7 @@ async function diffTests(): Promise<void> {
     assert.match(human, /Impacted views \(\d+\):/);
     assert.ok(human.includes('view-dto-export'));
 
-    const renamedSource = source.replaceAll('component-one', 'component-renamed')
-      .replace('<name>Component One</name>', '<name>Component Renamed</name>');
-    await writeFile(after, renamedSource);
-    const renamedJson = runCli(cli, ['diff', before, after, '--format', 'json'], 1);
-    assert.deepEqual(renamedJson.json.renameCandidates, [{ beforeId: 'component-one',
-      afterId: 'component-renamed', reason: 'unique-content-match-except-id-and-name' }]);
-    const renamedChanges = renamedJson.json.changes as Array<{ id: string; kind: string }>;
-    assert.ok(renamedChanges.some((change) =>
-      change.id === 'component-one' && change.kind === 'removed'));
-    assert.ok(renamedChanges.some((change) =>
-      change.id === 'component-renamed' && change.kind === 'added'));
-    const renamedHuman = runCliText(cli, ['diff', before, after], 1);
-    assert.match(renamedHuman, /Advisory element rename candidates \(1\):/);
-    assert.match(renamedHuman, /component-one -> component-renamed/);
+    await renameCandidateCliTests(before, after, source);
 
     const invalid = path.join(directory, 'invalid.xml');
     await writeFile(invalid, '<model><name>private model text</name>');
@@ -201,6 +188,21 @@ async function diffTests(): Promise<void> {
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+}
+
+async function renameCandidateCliTests(before: string, after: string, source: string): Promise<void> {
+  const renamedSource = source.replaceAll('component-one', 'component-renamed')
+    .replace('<name>Component One</name>', '<name>Component Renamed</name>');
+  await writeFile(after, renamedSource);
+  const json = runCli(cli, ['diff', before, after, '--format', 'json'], 1);
+  assert.deepEqual(json.json.renameCandidates, [{ beforeId: 'component-one', afterId: 'component-renamed',
+    reason: 'unique-content-match-except-id-and-name' }]);
+  const changes = json.json.changes as Array<{ id: string; kind: string }>;
+  assert.ok(changes.some(({ id, kind }) => id === 'component-one' && kind === 'removed'));
+  assert.ok(changes.some(({ id, kind }) => id === 'component-renamed' && kind === 'added'));
+  const human = runCliText(cli, ['diff', before, after], 1);
+  assert.match(human, /Advisory element rename candidates \(1\):/);
+  assert.match(human, /component-one -> component-renamed/);
 }
 
 async function browserTests(): Promise<void> {
