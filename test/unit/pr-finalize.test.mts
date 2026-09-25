@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isAgentBranch } from '../../src/coordination/agent-branch.mts';
+import { isAgentBranch } from '../../src/coordination/agent-branch.mjs';
 
 describe('agent PR finalization', () => {
   it('only promotes the reserved agent branch namespace', () => {

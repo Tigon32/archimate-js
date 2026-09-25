@@ -7,7 +7,7 @@ import {
   type LocalVerificationFingerprint,
   type LocalVerificationReceipt,
   type LocalVerificationState
-} from '../../src/verification/local-verification.mts';
+} from '../../src/verification/local-verification.mjs';
 
 const fingerprint: LocalVerificationFingerprint = {
   sha: '0123456789abcdef0123456789abcdef01234567',

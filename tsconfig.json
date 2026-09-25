@@ -5,7 +5,6 @@
     "moduleResolution": "Bundler",
     "strict": true,
     "noEmit": true,
-    "allowImportingTsExtensions": true,
     "lib": ["ES2022", "DOM"],
     "skipLibCheck": true
   },
