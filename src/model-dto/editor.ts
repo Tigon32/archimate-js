@@ -52,14 +52,19 @@ function findNode(nodes: ViewNodeDto[], id: string): ViewNodeDto | undefined {
 }
 
 function nodesOf(nodes: ViewNodeDto[], elements: ModelDto['elements'], parentId?: string): CanvasProjection['nodes'] {
-  return nodes.flatMap((node): CanvasProjection['nodes'] => [
-    { id: node.id, parentId, elementId: node.elementId, kind: node.kind,
-      type: elements.find((item) => item.id === node.elementId)?.type,
-      name: elements.find((item) => item.id === node.elementId)?.name,
-      x: node.x, y: node.y, width: node.width, height: node.height, label: node.label,
-      style: node.style ? structuredClone(node.style) : undefined },
+  return nodes.flatMap((node): CanvasProjection['nodes'] => {
+    const element = elements.find((item) => item.id === node.elementId);
+    return [
+      { id: node.id, kind: node.kind, x: node.x, y: node.y, width: node.width, height: node.height,
+        ...(parentId !== undefined ? { parentId } : {}),
+        ...(node.elementId !== undefined ? { elementId: node.elementId } : {}),
+        ...(element?.type !== undefined ? { type: element.type } : {}),
+        ...(element?.name !== undefined ? { name: element.name } : {}),
+        ...(node.label !== undefined ? { label: node.label } : {}),
+        ...(node.style !== undefined ? { style: structuredClone(node.style) } : {}) },
     ...nodesOf(node.nodes, elements, node.id)
-  ]);
+    ];
+  });
 }
 
 function moveChildren(node: ViewNodeDto, dx: number, dy: number): void {
@@ -388,14 +393,19 @@ export class DiagramAdapter {
   project(viewId: string): CanvasProjection {
     const view = this.model.views.find((item) => item.id === viewId);
     if (!view) invalid();
-    return { viewId, nodes: nodesOf(view.nodes, this.model.elements), connections: view.connections.map((item) => ({
-      id: item.id, sourceId: item.sourceId, targetId: item.targetId,
-      relationshipId: item.relationshipId,
-      type: this.model.relationships.find((relationship) => relationship.id === item.relationshipId)?.type,
-      name: this.model.relationships.find((relationship) => relationship.id === item.relationshipId)?.name,
-      waypoints: structuredClone(item.waypoints), label: item.label,
-      style: item.style ? structuredClone(item.style) : undefined
-    })), selectedIds: [...(this.selection.get(viewId) || [])] };
+    return { viewId, nodes: nodesOf(view.nodes, this.model.elements), connections: view.connections.map((item) => {
+      const relationship = this.model.relationships.find((candidate) => candidate.id === item.relationshipId);
+      return {
+        id: item.id, waypoints: structuredClone(item.waypoints),
+        ...(item.sourceId !== undefined ? { sourceId: item.sourceId } : {}),
+        ...(item.targetId !== undefined ? { targetId: item.targetId } : {}),
+        ...(item.relationshipId !== undefined ? { relationshipId: item.relationshipId } : {}),
+        ...(relationship?.type !== undefined ? { type: relationship.type } : {}),
+        ...(relationship?.name !== undefined ? { name: relationship.name } : {}),
+        ...(item.label !== undefined ? { label: item.label } : {}),
+        ...(item.style !== undefined ? { style: structuredClone(item.style) } : {})
+      };
+    }), selectedIds: [...(this.selection.get(viewId) || [])] };
   }
 
   subscribe(listener: (event: EditorEvent) => void): () => void {

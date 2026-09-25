@@ -13,6 +13,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: [
+      'test/contract/**/*.test.mts',
       'test/unit/**/*.test.mjs',
       'test/unit/**/*.test.mts'
     ],
