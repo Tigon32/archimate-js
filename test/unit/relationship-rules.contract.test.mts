@@ -74,7 +74,9 @@ describe('relationship rule utility', () => {
     expect(isRelationshipAllowed('ApplicationFunction', 'ApplicationComponent', RELATIONSHIP_ASSIGNMENT)).toBe(false);
     expect(isRelationshipAllowed('ApplicationFunction', 'ApplicationComponent', RELATIONSHIP_ASSOCIATION)).toBe(false);
   });
+});
 
+describe('legacy relationship preservation', () => {
   it('keeps an imported synthetic relationship reference intact outside reviewed rows', () => {
     const importedRelationship = { id: 'synthetic-legacy-edge', source: { id: 'synthetic-source' },
       target: { id: 'synthetic-target' }, type: 'SyntheticLegacyRelationship' };
