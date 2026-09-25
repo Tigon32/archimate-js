@@ -327,5 +327,20 @@
     ],
     "review_after": "2026-12-23",
     "content_sha256": "08796564f14f4ae94faedef404130798d09cefe2148991b459e4febafae898b6"
+  },
+  {
+    "id": "synthetic-lint-cli-clean",
+    "path": "test/fixtures/synthetic/lint-cli-clean.xml",
+    "classification": "SYNTHETIC",
+    "purpose": "Clean supported MEFF input for lint CLI output and exit-status checks.",
+    "provenance": "Hand-authored for this public repository from generic MEFF structure descriptions; contains no private data or copied model content.",
+    "contains_private_data": false,
+    "expected_coverage": [
+      "clean lint result",
+      "JSON and human report formats",
+      "warning and info findings from built-in rules"
+    ],
+    "review_after": "2026-12-23",
+    "content_sha256": "fe8fb27ae580c9feab9f772f99c4dc037cb69a19b5f15ba99472c5c8df5424a8"
   }
 ]

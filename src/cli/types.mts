@@ -20,6 +20,12 @@ export type DiffOptions = {
   format: 'json' | 'human';
 };
 
+export type LintOptions = {
+  command: 'lint';
+  input: string;
+  format: 'json' | 'human';
+};
+
 export type RenderOptions = ViewSelection & {
   command: 'render';
   input: string;
@@ -46,7 +52,7 @@ export type ExportOptions = ViewSelection & {
   continueOnError?: boolean;
 };
 
-export type CliOptions = ValidateOptions | DiffOptions | RenderOptions | ExportOptions | { command: 'help' };
+export type CliOptions = ValidateOptions | DiffOptions | LintOptions | RenderOptions | ExportOptions | { command: 'help' };
 
 export type ModelDiffChange = {
   area: 'semantic' | 'presentation';

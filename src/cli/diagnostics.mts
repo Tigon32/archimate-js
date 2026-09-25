@@ -17,6 +17,8 @@ export const SAFE_MESSAGES = Object.freeze({
   FONT_READY_FAILED: 'Fonts did not become ready before capture.',
   INPUT_READ_FAILED: 'Unable to read the model file.',
   INPUT_SIZE_LIMIT: 'The ArchiMate model exceeds the supported size limit.',
+  LINT_ENGINE_FAILED: 'The lint engine could not complete the request.',
+  LINT_INPUT_INVALID: 'The model could not be imported into the supported model representation.',
   OUTPUT_CLEANUP_FAILED: 'Unable to remove incomplete output files.',
   OUTPUT_WRITE_FAILED: 'Unable to write the SVG output file.',
   PDF_TRANSPARENT_BACKGROUND: 'PDF export requires an opaque background.',
