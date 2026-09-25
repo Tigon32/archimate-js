@@ -36,7 +36,7 @@ function main(): void {
   requireExpectedHead(expectedHead, 'after push');
 
   const pr = JSON.parse(capture('gh', [
-    'pr', 'view', '--repo', repository, '--json', 'number,isDraft,headRefOid,headRefName,baseRefName,url'
+    'pr', 'view', branch, '--repo', repository, '--json', 'number,isDraft,headRefOid,headRefName,baseRefName,url'
   ])) as { number: number; isDraft: boolean; headRefOid: string; headRefName: string; baseRefName: string; url: string };
   if (pr.headRefName !== branch || pr.headRefOid !== expectedHead) {
     throw new Error(`PR head does not match verified HEAD: verified=${expectedHead} remote=${pr.headRefOid}`);
