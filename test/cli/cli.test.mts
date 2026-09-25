@@ -12,6 +12,7 @@ const validFixture = path.join(root, 'test/fixtures/synthetic/minimal-applicatio
 const invalidFixture = path.join(root, 'test/fixtures/synthetic/invalid-reference.xml');
 const batchFixture = path.join(root, 'test/fixtures/synthetic/batch-collisions.xml');
 const dtoFixture = path.join(root, 'test/fixtures/synthetic/dto-export-view.xml');
+const cleanLintFixture = path.join(root, 'test/fixtures/synthetic/lint-cli-clean.xml');
 const unsupportedDtoFixture = path.join(root, 'test/fixtures/meff-schema/valid-view-presentation.xml');
 
 type RunResult = { output: string; json: Record<string, unknown> };
@@ -57,6 +58,7 @@ async function validationTests(): Promise<void> {
   const usage = runCli(cli, ['export', validFixture, '--view-id', 'view'], 2);
   assert.deepEqual(codes(usage), ['CLI_USAGE']);
   await diffTests();
+  await lintTests();
 
   await mkdir(path.join(root, 'test-results'), { recursive: true });
   const directory = await mkdtemp(path.join(root, 'test-results/archimate-cli-validation-'));
@@ -91,6 +93,49 @@ async function validationTests(): Promise<void> {
     ], 1);
     assert.equal(invalidBatch.json.valid, false);
     await assert.rejects(readdir(output));
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}
+
+async function lintTests(): Promise<void> {
+  const clean = runCli(cli, ['lint', cleanLintFixture, '--format', 'json'], 0);
+  assert.equal(clean.json.command, 'lint');
+  assert.equal(clean.json.result, 'clean');
+  assert.deepEqual(clean.json.findings, []);
+  assert.deepEqual(clean.json.summary, { errors: 0, warnings: 0, info: 0, total: 0 });
+  assert.deepEqual(runCli(cli, ['lint', cleanLintFixture, '--format', 'json'], 0).json, clean.json);
+  assert.match(runCliText(cli, ['lint', cleanLintFixture], 0), /Lint: clean/);
+
+  const warning = runCli(cli, ['lint', path.join(root,
+    'test/fixtures/meff-schema/valid-model.xml'), '--format', 'json'], 0);
+  assert.ok((warning.json.summary as { warnings: number }).warnings > 0);
+  assert.equal((warning.json.summary as { errors: number }).errors, 0);
+  assert.match(runCliText(cli, ['lint', path.join(root,
+    'test/fixtures/meff-schema/valid-model.xml')], 0), /\[warning\]/);
+
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'archimate-cli-lint-'));
+  try {
+    const infoInput = path.join(directory, 'info.xml');
+    const cleanXml = await readFile(cleanLintFixture, 'utf8');
+    await writeFile(infoInput, cleanXml.replace(
+      '      <name xml:lang="en">Synthetic Function</name>\n', ''));
+    const info = runCli(cli, ['lint', infoInput, '--format', 'json'], 0);
+    assert.ok((info.json.summary as { info: number }).info > 0);
+    assert.equal((info.json.summary as { errors: number }).errors, 0);
+
+    const malformed = path.join(directory, 'malformed.xml');
+    await writeFile(malformed, '<model><name>SYNTHETIC malformed input</name>');
+    const invalid = runCli(cli, ['lint', malformed, '--format', 'json'], 2);
+    assert.deepEqual(codes(invalid), ['LINT_INPUT_INVALID']);
+    assert.equal(invalid.output.includes('SYNTHETIC malformed input'), false);
+    assert.equal(invalid.output.includes(directory), false);
+    const humanInvalid = runCliText(cli, ['lint', malformed], 2);
+    assert.match(humanInvalid, /^Lint failed:/);
+    assert.equal(humanInvalid.includes(directory), false);
+
+    const usage = runCli(cli, ['lint', cleanLintFixture, '--format', 'yaml'], 2);
+    assert.deepEqual(codes(usage), ['CLI_USAGE']);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
