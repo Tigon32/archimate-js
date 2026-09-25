@@ -119,6 +119,16 @@ The package includes a CI-oriented `archimate-js` command. Validation emits dete
 npx archimate-js validate ./model.xml
 ```
 
+Run the built-in lint rules against a model:
+
+```sh
+npx archimate-js lint ./model.xml
+npx archimate-js lint ./model.xml --format json
+```
+
+Lint defaults to human output. Use JSON for stable machine-readable findings;
+see [lint CLI output and exit codes](docs/lint/cli.md).
+
 Render one selected view with an existing Chrome or Chromium installation:
 
 ```sh

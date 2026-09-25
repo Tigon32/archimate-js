@@ -8,6 +8,7 @@ import { renderArtifacts, renderBatchArtifacts, renderBatchOutcomes } from './br
 import { failedBatchEntry, partialManifest, prepareBatch, preparePartialView } from './batch.mjs';
 import { diagnostic, safeErrorCode } from './diagnostics.mjs';
 import { executeDiff } from './diff.mjs';
+import { executeLint } from './lint.mjs';
 import { readBoundedXml, writeArtifacts, writeAtomic, writeBatchArtifacts, writePartialBatchArtifacts } from './io.mjs';
 import { listBatchViews } from './views.mjs';
 import type { CliOptions, CliResult, ExportOptions, RenderOptions } from './types.mjs';
@@ -21,6 +22,7 @@ function emit(value: CliResult): void {
 function usage(): void {
   process.stdout.write(`Usage:
   archimate-js validate <model.xml>
+  archimate-js lint <model.xml> [--format json|human]
   archimate-js diff <before.xml> <after.xml> [--format json|human]
   archimate-js render <model.xml> (--view-id <id> | --view-name <name>) --output <view.svg> [--chrome <path>]
   archimate-js export <model.xml> (--view-id <id> | --view-name <name> | --all-views) --format <svg,png,pdf> --output-dir <dir>
@@ -31,6 +33,7 @@ function usage(): void {
     [--continue-on-error (requires --all-views)]
 
 Diff defaults to concise human output. Rendering requires an existing Chrome or Chromium installation.
+Lint defaults to human output; JSON includes the complete deterministic findings and execution summary.
 `);
 }
 
@@ -76,7 +79,7 @@ async function exportCommand(xml: string, options: ExportOptions): Promise<boole
   return true;
 }
 
-async function execute(options: Exclude<CliOptions, { command: 'help' | 'diff' }>, xml: string): Promise<number> {
+async function execute(options: Exclude<CliOptions, { command: 'help' | 'diff' | 'lint' }>, xml: string): Promise<number> {
   type Validate = (xml: string) => {
     valid: boolean;
     diagnostics: CliResult['diagnostics'];
@@ -134,6 +137,7 @@ async function main(): Promise<number> {
     return 0;
   }
   if (options.command === 'diff') return executeDiff(options);
+  if (options.command === 'lint') return executeLint(options);
   try {
     return await execute(options, await readBoundedXml(options.input));
   } catch (error) {

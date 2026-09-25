@@ -5,6 +5,7 @@ import type {
   DiffOptions,
   ExportFormat,
   ExportOptions,
+  LintOptions,
   PdfOrientation,
   PdfPageSize,
   FitMode,
@@ -161,10 +162,22 @@ function parseDiff(before: string, after: string | undefined, rest: string[]): D
   return { command: 'diff', before, after, format };
 }
 
+function parseLint(input: string, rest: string[]): LintOptions {
+  if (!input || input.startsWith('-')) throw new Error('CLI_USAGE');
+  let format: LintOptions['format'] = 'human';
+  if (rest.length) {
+    if (rest.length !== 2 || rest[0] !== '--format' ||
+        !['json', 'human'].includes(rest[1])) throw new Error('CLI_USAGE');
+    format = rest[1] as LintOptions['format'];
+  }
+  return { command: 'lint', input, format };
+}
+
 export function parseArguments(argv: string[]): CliOptions {
   if (argv.length === 1 && ['--help', '-h'].includes(argv[0])) return { command: 'help' };
   const [command, input, ...rest] = argv;
   if (command === 'diff') return parseDiff(input, rest[0], rest.slice(1));
+  if (command === 'lint') return parseLint(input, rest);
   if (!['validate', 'render', 'export'].includes(command) || !input || input.startsWith('-')) {
     throw new Error('CLI_USAGE');
   }
