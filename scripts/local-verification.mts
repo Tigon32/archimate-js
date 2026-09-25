@@ -366,6 +366,16 @@ function runVerification(paths: Paths, logPath: string): number {
   }
 }
 
+function printFailureLog(logPath: string): void {
+  try {
+    const text = readFileSync(logPath, 'utf8');
+    const lines = text.split(/\r?\n/).slice(-160).join('\n');
+    console.error(`archimate-js: local verification log tail (${logPath}):\n${lines}`);
+  } catch (error) {
+    console.error(`archimate-js: could not read local verification log ${logPath}: ${(error as Error).message}`);
+  }
+}
+
 async function runWorker(paths: Paths, runId: string): Promise<void> {
   if (!await waitForWorkerState(paths, runId) || !workerOwnsState(paths, runId)) return;
   const state = readState(paths);
@@ -414,6 +424,7 @@ function runSynchronousUnderLock(paths: Paths): number {
   const after = snapshot(paths);
   const finishedAt = new Date().toISOString();
   if (exitCode !== 0) {
+    printFailureLog(logPath);
     writeState(paths, { ...running, state: 'failed', finishedAt, exitCode, reason: 'verify:local:run failed' });
     return exitCode;
   }
