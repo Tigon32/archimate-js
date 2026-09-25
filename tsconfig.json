@@ -39,6 +39,7 @@
     "src/cli",
     "src/export",
     "test/cli",
+    "test/browser/theme-export-invariance.mts",
     "test/browser/export-api.mts",
     "test/browser/theme-contrast.mts",
     "test/performance/browser-benchmark.mts",

@@ -15,6 +15,7 @@ import {
   type LocalVerificationReceipt,
   type LocalVerificationState
 } from '../src/verification/local-verification.mts';
+import { failureLogExcerpt } from '../src/verification/local-verification-diagnostics.mts';
 
 interface Paths {
   root: string;
@@ -415,6 +416,7 @@ function runSynchronousUnderLock(paths: Paths): number {
   const finishedAt = new Date().toISOString();
   if (exitCode !== 0) {
     writeState(paths, { ...running, state: 'failed', finishedAt, exitCode, reason: 'verify:local:run failed' });
+    console.error(`archimate-js: verify:local:run failed; diagnostic output follows:\n${failureLogExcerpt(readFileSync(logPath, 'utf8'))}`);
     return exitCode;
   }
   if (!fingerprintsMatch(current, after)) {
