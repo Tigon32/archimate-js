@@ -47,15 +47,25 @@ assert.ok(releaseWorkflow.includes("pull_request:\n    paths:\n      - '.github/
 assert.match(releaseWorkflow, /workflow_dispatch:/);
 assert.match(releaseWorkflow, /push:\n    tags:/);
 
-const readiness = releaseWorkflow.split(/^  release-readiness:$/m)[1]?.split(/^  attest-release:$/m)[0];
+const readiness = releaseWorkflow.split(/^  release-readiness:$/m)[1]?.split(/^  download-artifact-smoke:$/m)[0];
+const smoke = releaseWorkflow.split(/^  download-artifact-smoke:$/m)[1]?.split(/^  attest-release:$/m)[0];
 const attestation = releaseWorkflow.split(/^  attest-release:$/m)[1];
-assert.ok(readiness && attestation, 'release workflow must contain separate readiness and attestation jobs');
+assert.ok(readiness && smoke && attestation, 'release workflow must contain separate readiness, smoke, and attestation jobs');
+assert.match(readiness, /^    if: github\.event_name != 'pull_request'$/m);
 assert.match(readiness, /^    permissions:\n      contents: read\n\n    steps:$/m);
 assert.doesNotMatch(readiness, /id-token:\s*write|attestations:\s*write/);
+assert.match(smoke, /^    if: github\.event_name == 'pull_request'$/m);
+assert.match(smoke, /^    permissions:\n      contents: read\n\n    steps:$/m);
+assert.match(smoke, /SYNTHETIC fixture for actions\/download-artifact v8 integration test/);
+assert.ok(smoke.includes('actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a'));
+assert.ok(smoke.includes('actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c'));
+assert.ok(smoke.includes('name: synthetic-release-evidence'));
+assert.ok(smoke.includes('sha256sum --status --check SHA256SUMS'));
+assert.ok(smoke.includes('test "${#tarballs[@]}" -eq 1'));
+assert.ok(smoke.includes('tar -xzf'));
 assert.match(attestation, /^    if: github\.event_name == 'push' && startsWith\(github\.ref, 'refs\/tags\/v'\)$/m);
 assert.match(attestation, /^    needs: release-readiness$/m);
 assert.match(attestation, /^    permissions:\n      contents: read\n      id-token: write\n      attestations: write\n\n    steps:$/m);
-assert.ok(readiness.includes('actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c'));
 assert.ok(attestation.includes('actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c'));
 assert.deepEqual(
   [ ...releaseWorkflow.matchAll(/actions\/download-artifact@([0-9a-f]{40})/g) ].map((match) => match[1]),
@@ -66,10 +76,7 @@ assert.ok(attestation.includes('name: release-evidence'));
 assert.ok(attestation.includes('sha256sum --status --check SHA256SUMS'));
 assert.ok(attestation.includes('test "${#tarballs[@]}" -eq 1'));
 assert.ok(attestation.includes('subject-path: ${{ steps.tarball.outputs.path }}'));
-assert.ok(readiness.includes('name: Download retained release evidence'));
-assert.ok(readiness.includes('archimate-release-evidence-download'));
-assert.ok(readiness.includes('Verify downloaded release evidence'));
-assert.ok(readiness.includes('sha256sum --status --check SHA256SUMS'));
+assert.doesNotMatch(readiness, /actions\/download-artifact/);
 assert.match(policy, /npm audit/);
 assert.match(policy, /No dependency update is auto-merged/);
 assert.match(policy, /SPDX SBOM/);

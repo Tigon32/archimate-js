@@ -19,6 +19,7 @@ permissions:
 jobs:
   release-readiness:
     name: Read-only release readiness
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -65,21 +66,52 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Download retained release evidence
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: release-evidence
-          path: ${{ runner.temp }}/archimate-release-evidence-download
+  download-artifact-smoke:
+    name: Synthetic download-artifact v8 round-trip
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
 
-      - name: Verify downloaded release evidence
+    steps:
+      - name: Create synthetic release evidence
         shell: bash
         run: |
           set -euo pipefail
-          cd "$RUNNER_TEMP/archimate-release-evidence-download"
+          evidence="$RUNNER_TEMP/archimate-synthetic-evidence"
+          mkdir -p "$evidence/payload"
+          printf '%s\n' 'SYNTHETIC fixture for actions/download-artifact v8 integration test' > "$evidence/payload/fixture.txt"
+          tar -czf "$evidence/synthetic-release-evidence.tgz" -C "$evidence/payload" fixture.txt
+          (cd "$evidence" && sha256sum ./*.tgz > SHA256SUMS)
+
+      - name: Upload synthetic evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: synthetic-release-evidence
+          path: ${{ runner.temp }}/archimate-synthetic-evidence/
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Download synthetic evidence with v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: synthetic-release-evidence
+          path: ${{ runner.temp }}/archimate-synthetic-evidence-download
+
+      - name: Verify downloaded synthetic evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/archimate-synthetic-evidence-download"
+          cd "$evidence"
           sha256sum --status --check SHA256SUMS
           tarballs=( ./*.tgz )
           test "${#tarballs[@]}" -eq 1
           test -f "${tarballs[0]}"
+          mkdir extracted
+          tar -xzf "${tarballs[0]}" -C extracted
+          test "$(cat extracted/fixture.txt)" = 'SYNTHETIC fixture for actions/download-artifact v8 integration test'
 
   attest-release:
     name: Attest verified release tarball
