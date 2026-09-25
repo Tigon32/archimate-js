@@ -9,6 +9,7 @@ import Viewer, { mountViewer, renderViewToSvg } from 'archimate-js';
 import { validateArchimateXml, ARCHIMATE_LANGUAGE_VERSION } from 'archimate-js/validator';
 import { importMeffToModelDto, exportModelDtoToMeff, serializeModelDto, parseModelDto } from 'archimate-js/model-dto';
 import { layoutView } from 'archimate-js/layout';
+import { lintModel } from 'archimate-js/lint';
 import { createExportService } from 'archimate-js/export';
 import 'archimate-js/app-shell.css'; // Optional app control styles for a CSS-capable bundler.
 ```
@@ -34,6 +35,14 @@ Review
 The opt-in `layout` subpath accepts a validated DTO model and selected view id;
 it computes a detached view and reversible geometry patch for explicit full
 built-in layout. See [layout facade scope](layout/diagram-optimization.md).
+The opt-in `lint` subpath accepts a validated DTO model and runs deterministic
+rules with typed findings, subjects, remediation metadata, and isolated rule
+failure diagnostics. Its small built-in pack reports missing descriptive model,
+view, or concept names; these are general quality observations, not ArchiMate
+conformance rules or organization policy. Custom rules and severity overrides
+are configured explicitly. The `incremental` execution mode and changed-subject
+hints are API hooks only: this release still evaluates every enabled rule and
+makes no performance-budget claim.
 The Node-only `export` subpath accepts bounded XML and one selected view and
 exports SVG, PNG, or PDF through an existing local Chrome/Chromium. Configure
 trusted runtime values such as `chrome` and `outputDirectory` with
@@ -165,9 +174,9 @@ The browser check needs a local Chrome/Chromium binary:
 CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" npm run release:check
 ```
 
-The packed consumer test compiles the validator, model DTO, layout, and browser artifact, packs the
+The packed consumer test compiles the validator, model DTO, lint, layout, and browser artifact, packs the
 actual project archive, and installs that archive into an isolated temporary
 consumer with lifecycle scripts disabled. It invokes the installed CLI, bundles
-the root API as a browser consumer, imports the validator, model DTO and layout subpaths in Node, and
+the root API as a browser consumer, imports the validator, model DTO, lint, and layout subpaths in Node, and
 checks blocked deep imports. npm may contact the configured registry to resolve
 the archive's declared runtime dependencies; the test never publishes.

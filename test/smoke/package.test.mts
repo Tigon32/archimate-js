@@ -45,6 +45,8 @@ assert.equal(exportEntry('./model-dto').import, './dist/model-dto/index.js');
 assert.equal(exportEntry('./model-dto').types, './dist/model-dto/index.d.ts');
 assert.equal(exportEntry('./layout').import, './dist/layout/index.js');
 assert.equal(exportEntry('./layout').types, './dist/layout/index.d.ts');
+assert.equal(exportEntry('./lint').import, './dist/lint/index.mjs');
+assert.equal(exportEntry('./lint').types, './dist/lint/index.d.mts');
 assert.equal(packageJson.exports['./app-shell.css'], './assets/design-tokens/app-shell.css');
 assert.ok(packageJson.scripts['test:unit'].includes('--coverage.enabled'), 'unit tests publish informational coverage');
 
