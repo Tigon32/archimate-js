@@ -36,7 +36,7 @@ const server = createServer((request, response) => {
 const address = await new Promise<{ port: number }>((resolve) => {
   server.listen(0, '127.0.0.1', () => resolve(server.address() as { port: number }));
 });
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ executablePath: process.env.CHROME_BIN || undefined, headless: true });
 
 try {
   const page = await browser.newPage();
