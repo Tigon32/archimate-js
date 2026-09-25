@@ -50,6 +50,7 @@
     "test/security/check-secrets.test.mts",
     "test/security/check-tracked-paths.test.mts",
     "test/security/supply-chain.test.mts",
+    "test/security/public-source-exceptions.test.mts",
     "test/unit/cli-export.test.mts",
     "test/unit/pr-drain.test.mts",
     "test/unit/local-verification-process.test.mts",

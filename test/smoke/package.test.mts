@@ -22,6 +22,11 @@ function exportEntry(name: string): { import?: string; types?: string } {
 assert.equal(packageJson.name, 'archimate-js');
 assert.equal(packageJson.license, 'MIT');
 assert.ok(packageJson.dependencies['diagram-js'], 'diagram-js dependency is declared');
+assert.equal(
+  packageJson.dependencies['object-refs'],
+  undefined,
+  'object-refs remains owned by diagram-js instead of being upgraded independently'
+);
 assert.ok(packageJson.dependencies['moddle-xml'], 'moddle-xml dependency is declared');
 assert.ok(packageJson.dependencies.saxes, 'bounded XML parser dependency is declared');
 assert.ok(packageJson.files.includes('index.js'), 'package publishes index.js');
