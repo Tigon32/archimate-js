@@ -1,6 +1,6 @@
 // SYNTHETIC: Hand-authored DTOs using invented IDs and labels only.
 import { expect, it } from 'vitest';
-import { diffModelDto } from '../../src/model-dto/index.js';
+import { assessModelDtoDiffEligibility, diffModelDto } from '../../src/model-dto/index.js';
 
 function fixture() {
   return {
@@ -106,4 +106,61 @@ it('rejects unsupported fields and projection diagnostics without leaking conten
       expect(String(error)).not.toContain('SYNTHETIC_SECRET');
     }
   }
+});
+
+it('provides deterministic content-free diagnostics for ineligible inputs', () => {
+  const before = { ...fixture(), privateLookingField: 'SYNTHETIC_SECRET',
+    secondPrivateLookingField: 'SYNTHETIC_SECRET', diagnostics: [{
+      code: 'DTO_UNSUPPORTED_FIELDS', severity: 'warning', stage: 'projection',
+      message: 'SYNTHETIC_SECRET'
+    }] };
+  const after = { ...fixture(), diagnostics: [{ code: 'DTO_UNSUPPORTED_FIELDS',
+    severity: 'warning', stage: 'projection', message: 'SYNTHETIC_SECRET' }] };
+  const result = assessModelDtoDiffEligibility(before, after);
+  expect(result).toEqual({ eligible: false, diagnostics: [
+    { input: 'before', code: 'MODEL_DTO_DIFF_LOSSY_PROJECTION', count: 1 },
+    { input: 'before', code: 'MODEL_DTO_DIFF_UNSUPPORTED_FIELDS', count: 2 },
+    { input: 'after', code: 'MODEL_DTO_DIFF_LOSSY_PROJECTION', count: 1 }
+  ] });
+  expect(JSON.stringify(result)).not.toContain('SYNTHETIC_SECRET');
+  expect(result).toEqual(assessModelDtoDiffEligibility(before, after));
+});
+
+it('rejects sparse DTO arrays and enumerable custom array fields without leaking values', () => {
+  const sparse = { ...fixture(), diagnostics: new Array<unknown>(1) };
+  const custom = fixture();
+  Object.assign(custom.elements, { syntheticPrivateField: 'SYNTHETIC_SECRET' });
+  const result = assessModelDtoDiffEligibility(sparse, custom);
+  expect(result).toEqual({ eligible: false, diagnostics: [
+    { input: 'before', code: 'MODEL_DTO_DIFF_UNSUPPORTED_FIELDS', count: 1 },
+    { input: 'after', code: 'MODEL_DTO_DIFF_UNSUPPORTED_FIELDS', count: 1 }
+  ] });
+  expect(JSON.stringify(result)).not.toContain('SYNTHETIC_SECRET');
+  expect(() => diffModelDto(sparse, fixture())).toThrowError(
+    'The model DTO cannot be compared without loss.');
+  expect(() => diffModelDto(custom, fixture())).toThrowError(
+    'The model DTO cannot be compared without loss.');
+});
+
+it('rejects enumerable symbol fields on DTO records without leaking values', () => {
+  const source = fixture();
+  const marker = Symbol('SYNTHETIC_SECRET');
+  Object.defineProperty(source.elements[0], marker, {
+    enumerable: true, value: 'SYNTHETIC_SECRET'
+  });
+  const result = assessModelDtoDiffEligibility(source, fixture());
+  expect(result).toEqual({ eligible: false, diagnostics: [
+    { input: 'before', code: 'MODEL_DTO_DIFF_UNSUPPORTED_FIELDS', count: 1 }
+  ] });
+  expect(JSON.stringify(result)).not.toContain('SYNTHETIC_SECRET');
+  expect(() => diffModelDto(source, fixture())).toThrowError(
+    'The model DTO cannot be compared without loss.');
+});
+
+it('preserves invalid DTO errors while inspecting eligibility', () => {
+  const invalid = { ...fixture(), id: 'not valid' };
+  expect(() => assessModelDtoDiffEligibility(invalid, fixture())).toThrowError(
+    'The model DTO is invalid.');
+  try { assessModelDtoDiffEligibility(invalid, fixture()); }
+  catch (error) { expect(error).toMatchObject({ code: 'MODEL_DTO_INVALID' }); }
 });

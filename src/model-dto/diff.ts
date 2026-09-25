@@ -22,6 +22,24 @@ export interface ModelDtoDiff {
   impactedViewIds: string[];
 }
 
+export type ModelDtoDiffEligibilityCode =
+  | 'MODEL_DTO_DIFF_LOSSY_PROJECTION'
+  | 'MODEL_DTO_DIFF_UNSUPPORTED_FIELDS'
+  | 'MODEL_DTO_DIFF_NON_CANONICAL_DATA';
+
+/** Content-free reason why one side cannot be compared without loss. */
+export interface ModelDtoDiffEligibilityDiagnostic {
+  input: 'before' | 'after';
+  code: ModelDtoDiffEligibilityCode;
+  /** Number of projection diagnostics or unsupported fields; otherwise 1. */
+  count: number;
+}
+
+export interface ModelDtoDiffEligibility {
+  eligible: boolean;
+  diagnostics: ModelDtoDiffEligibilityDiagnostic[];
+}
+
 type DiffRecord = Record<string, unknown> & { id: string };
 type NodeRecord = DiffRecord & { viewId: string; parentId?: string };
 
@@ -41,21 +59,101 @@ function stable(value: unknown): string {
 
 function sameData(input: unknown, validated: unknown): boolean {
   if (Array.isArray(input) || Array.isArray(validated)) {
-    return Array.isArray(input) && Array.isArray(validated) &&
-      input.length === validated.length &&
-      input.every((item, index) => sameData(item, validated[index]));
+    if (!Array.isArray(input) || !Array.isArray(validated) ||
+      input.length !== validated.length) return false;
+    const keys = Object.keys(input);
+    const enumerableSymbols = Object.getOwnPropertySymbols(input).filter((key) =>
+      Object.getOwnPropertyDescriptor(input, key)?.enumerable).length;
+    if (enumerableSymbols || keys.length !== input.length || keys.some((key) => {
+      const index = Number(key);
+      return !Number.isInteger(index) || index < 0 || index >= input.length ||
+        String(index) !== key;
+    })) return false;
+    for (let index = 0; index < input.length; index++) {
+      if (!Object.hasOwn(input, index) || !Object.hasOwn(validated, index) ||
+        !sameData(input[index], validated[index])) return false;
+    }
+    return true;
   }
   if (input && typeof input === 'object' || validated && typeof validated === 'object') {
     if (!input || !validated || typeof input !== 'object' ||
       typeof validated !== 'object') return false;
     const source = input as Record<string, unknown>;
     const target = validated as Record<string, unknown>;
+    const sourceSymbols = Object.getOwnPropertySymbols(source).some((key) =>
+      Object.getOwnPropertyDescriptor(source, key)?.enumerable);
+    const targetSymbols = Object.getOwnPropertySymbols(target).some((key) =>
+      Object.getOwnPropertyDescriptor(target, key)?.enumerable);
+    if (sourceSymbols || targetSymbols) return false;
     return Object.keys(source).every((key) => source[key] === undefined ||
       Object.hasOwn(target, key) && sameData(source[key], target[key])) &&
       Object.keys(target).every((key) => target[key] === undefined ||
         Object.hasOwn(source, key) && sameData(source[key], target[key]));
   }
   return input === validated;
+}
+
+function unsupportedFieldCount(input: unknown, validated: unknown): number {
+  if (Array.isArray(input) && Array.isArray(validated)) {
+    const keys = Object.keys(input);
+    const indices = keys.filter((key) => {
+      const index = Number(key);
+      return Number.isInteger(index) && index >= 0 && index < input.length &&
+        String(index) === key;
+    });
+    const enumerableSymbols = Object.getOwnPropertySymbols(input).filter((key) =>
+      Object.getOwnPropertyDescriptor(input, key)?.enumerable).length;
+    let count = input.length - indices.length + keys.length - indices.length +
+      enumerableSymbols;
+    for (const key of indices) {
+      const index = Number(key);
+      count += unsupportedFieldCount(input[index], validated[index]);
+    }
+    return count;
+  }
+  if (!input || typeof input !== 'object' || Array.isArray(input) ||
+      !validated || typeof validated !== 'object' || Array.isArray(validated)) return 0;
+  const source = input as Record<string, unknown>;
+  const target = validated as Record<string, unknown>;
+  const symbolCount = Object.getOwnPropertySymbols(source).filter((key) =>
+    Object.getOwnPropertyDescriptor(source, key)?.enumerable).length;
+  return Object.keys(source).reduce((count, key) => {
+    if (source[key] === undefined) return count;
+    if (!Object.hasOwn(target, key)) return count + 1;
+    return count + unsupportedFieldCount(source[key], target[key]);
+  }, symbolCount);
+}
+
+function inspectEligibility(
+  input: unknown, side: ModelDtoDiffEligibilityDiagnostic['input']
+): ModelDtoDiffEligibilityDiagnostic[] {
+  // Validation deliberately runs first so malformed DTOs keep the existing
+  // MODEL_DTO_INVALID exception contract.
+  const model = validateModelDto(input);
+  const diagnostics: ModelDtoDiffEligibilityDiagnostic[] = [];
+  const projectionCount = model.diagnostics.reduce((count) => count + 1, 0);
+  if (projectionCount) diagnostics.push({ input: side,
+    code: 'MODEL_DTO_DIFF_LOSSY_PROJECTION', count: projectionCount });
+  const unsupported = unsupportedFieldCount(input, model);
+  if (unsupported) diagnostics.push({ input: side,
+    code: 'MODEL_DTO_DIFF_UNSUPPORTED_FIELDS', count: unsupported });
+  if (!sameData(input, model) && !unsupported && !projectionCount) {
+    diagnostics.push({ input: side, code: 'MODEL_DTO_DIFF_NON_CANONICAL_DATA', count: 1 });
+  }
+  return diagnostics;
+}
+
+/** Explain diff eligibility without returning DTO values or field names. */
+export function assessModelDtoDiffEligibility(
+  beforeInput: unknown, afterInput: unknown
+): ModelDtoDiffEligibility {
+  const diagnostics = [
+    ...inspectEligibility(beforeInput, 'before'),
+    ...inspectEligibility(afterInput, 'after')
+  ].sort((left, right) => left.input === right.input
+    ? left.code < right.code ? -1 : left.code > right.code ? 1 : 0
+    : left.input === 'before' ? -1 : 1);
+  return { eligible: diagnostics.length === 0, diagnostics };
 }
 
 function eligible(input: unknown): ModelDto {
