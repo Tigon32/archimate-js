@@ -3,8 +3,10 @@ import type {
 } from './types.js';
 import { exportModelDtoToMeff } from './meff-export.js';
 import { assessModelDtoEditingEligibility, editingIneligibleError } from './eligibility.js';
-import { invalid, serializeModelDto, validateModelDto } from './validate.js';
+import { invalid, isIdentifier, serializeModelDto, validateModelDto } from './validate.js';
 import { validateRelationshipSemantics } from '../language/relationship-semantics.mjs';
+import { rejectRelationshipEdit } from './editor-diagnostics.js';
+import type { RelationshipEditOperation } from './editor-diagnostics.js';
 
 /** The canvas receives values and identifiers, never mutable diagram-js objects. */
 export interface CanvasProjection {
@@ -148,67 +150,143 @@ function editProperty(model: ModelDto, command: Extract<EditorCommand, { type: '
     [...properties, replacement];
 }
 
-function conceptAt(view: ModelDto['views'][number], nodeId: string | undefined): string {
+type RelationshipContext = {
+  viewId: string;
+  connectionId?: string;
+  relationshipId?: string;
+  sourceId?: string;
+  targetId?: string;
+  sourceElementId?: string;
+  targetElementId?: string;
+};
+
+function checkRelationshipIds(command: Extract<EditorCommand, { type: 'connect' | 'reconnect' }>): void {
+  const identifiers = command.type === 'connect' ? [
+    ['viewId', command.viewId], ['connectionId', command.connection.id],
+    ['relationshipId', command.connection.relationshipId],
+    ['sourceId', command.connection.sourceId], ['targetId', command.connection.targetId],
+    ['relationshipId', command.relationship?.id],
+    ['sourceElementId', command.relationship?.sourceId],
+    ['targetElementId', command.relationship?.targetId]
+  ] as const : [
+    ['viewId', command.viewId], ['connectionId', command.connectionId],
+    ['sourceId', command.sourceId], ['targetId', command.targetId]
+  ] as const;
+  const malformed = identifiers.find(([, id]) => id !== undefined && !isIdentifier(id));
+  if (!malformed) return;
+  const context: RelationshipContext = {
+    viewId: command.viewId,
+    connectionId: command.type === 'connect' ? command.connection.id : command.connectionId,
+    relationshipId: command.type === 'connect' ? command.connection.relationshipId : undefined,
+    sourceId: command.type === 'connect' ? command.connection.sourceId : command.sourceId,
+    targetId: command.type === 'connect' ? command.connection.targetId : command.targetId,
+    sourceElementId: command.type === 'connect' ? command.relationship?.sourceId : undefined,
+    targetElementId: command.type === 'connect' ? command.relationship?.targetId : undefined
+  };
+  const [field, value] = malformed;
+  if (field === 'connectionId' && typeof value === 'string') context.connectionId = value;
+  if (field === 'relationshipId' && typeof value === 'string') context.relationshipId = value;
+  if (field === 'sourceId' && typeof value === 'string') context.sourceId = value;
+  if (field === 'targetId' && typeof value === 'string') context.targetId = value;
+  if (field === 'sourceElementId' && typeof value === 'string') context.sourceElementId = value;
+  if (field === 'targetElementId' && typeof value === 'string') context.targetElementId = value;
+  rejectRelationshipEdit('DTO_RELATIONSHIP_MALFORMED_ID', command.type, context);
+}
+
+function conceptAt(view: ModelDto['views'][number], nodeId: string | undefined,
+  operation: RelationshipEditOperation, context: RelationshipContext): string {
   const node = nodeId && findNode(view.nodes, nodeId);
-  if (!node || node.kind !== 'element' || !node.elementId) invalid();
+  if (!node || node.kind !== 'element' || !node.elementId) {
+    rejectRelationshipEdit('DTO_RELATIONSHIP_ENDPOINT_INVALID', operation, context);
+  }
   return node.elementId;
 }
 
 function checkEndpoints(model: ModelDto, view: ModelDto['views'][number],
-  connection: ViewConnectionDto): void {
-  if (connection.kind !== 'relationship' || !connection.relationshipId) invalid();
+  connection: ViewConnectionDto, operation: RelationshipEditOperation): RelationshipDto {
+  const context = { viewId: view.id, connectionId: connection.id,
+    relationshipId: connection.relationshipId,
+    sourceId: connection.sourceId, targetId: connection.targetId };
+  if (connection.kind !== 'relationship' || !connection.relationshipId) {
+    rejectRelationshipEdit('DTO_RELATIONSHIP_ENDPOINT_INVALID', operation, context);
+  }
   const relationship = model.relationships.find((item) => item.id === connection.relationshipId);
-  if (!relationship || relationship.sourceId !== conceptAt(view, connection.sourceId) ||
-      relationship.targetId !== conceptAt(view, connection.targetId)) invalid();
+  if (!relationship) rejectRelationshipEdit('DTO_RELATIONSHIP_NOT_FOUND', operation, context);
+  const sourceId = conceptAt(view, connection.sourceId, operation, context);
+  const targetId = conceptAt(view, connection.targetId, operation, context);
+  if (relationship.sourceId !== sourceId || relationship.targetId !== targetId) {
+    rejectRelationshipEdit('DTO_RELATIONSHIP_ENDPOINT_MISMATCH', operation,
+      { ...context, sourceElementId: sourceId, targetElementId: targetId });
+  }
+  return relationship;
 }
 
-function checkRelationshipDecision(model: ModelDto, relationship: RelationshipDto): void {
+function checkRelationshipDecision(model: ModelDto, relationship: RelationshipDto,
+  operation: RelationshipEditOperation, context: RelationshipContext): void {
   const source = model.elements.find((element) => element.id === relationship.sourceId);
   const target = model.elements.find((element) => element.id === relationship.targetId);
-  if (!source || !target) invalid();
+  if (!source || !target) {
+    rejectRelationshipEdit('DTO_RELATIONSHIP_ENDPOINT_INVALID', operation, context);
+  }
   const result = validateRelationshipSemantics({ sourceType: source.type,
     relationshipType: relationship.type, targetType: target.type });
   if (result.decision === 'allowed') return;
-  const error = new TypeError(result.decision === 'disallowed' ?
-    'The relationship edit is disallowed by the reviewed ArchiMate 3.2 profile.' :
-    'The relationship edit is outside the reviewed ArchiMate 3.2 decision set.');
-  Object.assign(error, { code: result.decision === 'disallowed' ?
-    'DTO_RELATIONSHIP_DISALLOWED' : 'DTO_RELATIONSHIP_UNSUPPORTED' });
-  throw error;
+  rejectRelationshipEdit(result.decision === 'disallowed' ?
+    'DTO_RELATIONSHIP_DISALLOWED' : 'DTO_RELATIONSHIP_UNSUPPORTED', operation, context);
 }
 
 function connect(model: ModelDto, view: ModelDto['views'][number],
   command: Extract<EditorCommand, { type: 'connect' }>): void {
-  if (view.connections.some((connection) => connection.id === command.connection.id)) invalid();
+  const context = { viewId: view.id, connectionId: command.connection.id,
+    relationshipId: command.connection.relationshipId,
+    sourceId: command.connection.sourceId, targetId: command.connection.targetId };
+  if (view.connections.some((connection) => connection.id === command.connection.id)) {
+    rejectRelationshipEdit('DTO_RELATIONSHIP_DUPLICATE_CONNECTION', 'connect', context);
+  }
   if (command.relationship) {
-    if (command.connection.relationshipId !== command.relationship.id ||
-        model.relationships.some((item) => item.id === command.relationship!.id) ||
-        model.elements.some((item) => item.id === command.relationship!.id)) invalid();
+    const submitted = { ...context, relationshipId: command.relationship.id };
+    if (command.connection.relationshipId !== command.relationship.id) {
+      rejectRelationshipEdit('DTO_RELATIONSHIP_ID_MISMATCH', 'connect', submitted);
+    }
+    if (model.relationships.some((item) => item.id === command.relationship!.id) ||
+        model.elements.some((item) => item.id === command.relationship!.id)) {
+      rejectRelationshipEdit('DTO_RELATIONSHIP_ID_CONFLICT', 'connect', submitted);
+    }
     model.relationships.push(command.relationship);
   }
   if (command.connection.kind === 'relationship') {
-    checkEndpoints(model, view, command.connection);
-    // A second view reference does not create or retarget an imported relationship.
-    if (command.relationship) checkRelationshipDecision(model, command.relationship);
+    const relationship = checkEndpoints(model, view, command.connection, 'connect');
+    checkRelationshipDecision(model, relationship, 'connect', { ...context,
+      sourceElementId: relationship.sourceId, targetElementId: relationship.targetId });
   }
-  else if (command.relationship) invalid();
+  else if (command.relationship) {
+    rejectRelationshipEdit('DTO_RELATIONSHIP_ENDPOINT_INVALID', 'connect', context);
+  }
   view.connections.push(command.connection);
 }
 
 function reconnect(model: ModelDto, view: ModelDto['views'][number],
   command: Extract<EditorCommand, { type: 'reconnect' }>): void {
   const connection = view.connections.find((item) => item.id === command.connectionId);
-  if (!connection) invalid();
+  if (!connection) rejectRelationshipEdit('DTO_RELATIONSHIP_CONNECTION_NOT_FOUND', 'reconnect',
+    { viewId: view.id, connectionId: command.connectionId });
   if (connection.kind === 'relationship') {
     const relationship = model.relationships.find((item) => item.id === connection.relationshipId);
-    if (!relationship) invalid();
-    const sourceId = conceptAt(view, command.sourceId);
-    const targetId = conceptAt(view, command.targetId);
+    const context = { viewId: view.id, connectionId: connection.id,
+      relationshipId: connection.relationshipId,
+      sourceId: command.sourceId, targetId: command.targetId };
+    if (!relationship) rejectRelationshipEdit('DTO_RELATIONSHIP_NOT_FOUND', 'reconnect', context);
+    const sourceId = conceptAt(view, command.sourceId, 'reconnect', context);
+    const targetId = conceptAt(view, command.targetId, 'reconnect', context);
+    const semanticContext = { ...context, sourceElementId: sourceId, targetElementId: targetId };
     const changed = relationship.sourceId !== sourceId || relationship.targetId !== targetId;
     if (changed &&
         model.views.some((item) => item.connections.some((candidate) =>
-          candidate !== connection && candidate.relationshipId === relationship.id))) invalid();
-    if (changed) checkRelationshipDecision(model, { ...relationship, sourceId, targetId });
+          candidate !== connection && candidate.relationshipId === relationship.id))) {
+      rejectRelationshipEdit('DTO_RELATIONSHIP_RETARGET_CONFLICT', 'reconnect', semanticContext);
+    }
+    if (changed) checkRelationshipDecision(model, { ...relationship, sourceId, targetId },
+      'reconnect', semanticContext);
     relationship.sourceId = sourceId;
     relationship.targetId = targetId;
   }
@@ -233,9 +311,21 @@ function sameData(source: unknown, target: unknown): boolean {
 }
 
 function apply(model: ModelDto, command: EditorCommand): ModelDto {
+  if (command.type === 'connect' || command.type === 'reconnect') checkRelationshipIds(command);
   const next = structuredClone(model);
   const view = next.views.find((item) => item.id === command.viewId);
-  if (!view) invalid();
+  if (!view) {
+    if (command.type === 'connect' || command.type === 'reconnect') {
+      rejectRelationshipEdit('DTO_RELATIONSHIP_VIEW_NOT_FOUND', command.type, {
+        viewId: command.viewId,
+        connectionId: command.type === 'connect' ? command.connection.id : command.connectionId,
+        relationshipId: command.type === 'connect' ? command.connection.relationshipId : undefined,
+        sourceId: command.type === 'connect' ? command.connection.sourceId : command.sourceId,
+        targetId: command.type === 'connect' ? command.connection.targetId : command.targetId
+      });
+    }
+    invalid();
+  }
 
   switch (command.type) {
   case 'move':
