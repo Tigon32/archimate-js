@@ -7,7 +7,8 @@ import * as legacyConcepts from '../../lib/metamodel/Concept.js';
 import {
   CONCEPT_RECORDS,
   createConceptRegistry,
-  resolveConcept
+  resolveConcept,
+  type ConceptRecord
 } from '../../src/language/concept-registry.mjs';
 import {
   isConceptRendererProjectionCurrent,
@@ -25,6 +26,20 @@ const legacyConceptValues = Object.entries(legacyConcepts)
   .filter(([name]) => /^(MOTIVATION|STRATEGY|BUSINESS|APPLICATION|TECHNOLOGY|PHYSICAL|IMP_MIG|OTHER)_/.test(name))
   .map(([, value]) => value)
   .sort();
+
+const syntheticRecord = (
+  canonicalId: string,
+  type: string,
+  aliases: readonly string[]
+): ConceptRecord => ({
+  canonicalId,
+  type,
+  category: 'element',
+  layer: 'Other',
+  aspect: 'Active structure',
+  aliases,
+  renderer: { domain: 'common', iconKey: type, shapeKey: type, grouping: false }
+});
 
 describe('concept registry', () => {
   it('preserves every legacy rendered/imported concept exactly once', () => {
@@ -51,24 +66,8 @@ describe('concept registry', () => {
 
   it('fails closed when records reuse a canonical ID, type, or alias', () => {
     expect(() => createConceptRegistry([
-      {
-        canonicalId: 'concept/first',
-        type: 'First',
-        category: 'element',
-        layer: 'Other',
-        aspect: 'Active structure',
-        aliases: ['First', 'archimate:First'],
-        renderer: { domain: 'common', iconKey: 'First', shapeKey: 'First', grouping: false }
-      },
-      {
-        canonicalId: 'concept/second',
-        type: 'Second',
-        category: 'element',
-        layer: 'Other',
-        aspect: 'Active structure',
-        aliases: ['Second', 'archimate:First'],
-        renderer: { domain: 'common', iconKey: 'Second', shapeKey: 'Second', grouping: false }
-      }
+      syntheticRecord('concept/first', 'First', ['First', 'archimate:First']),
+      syntheticRecord('concept/second', 'Second', ['Second', 'archimate:First'])
     ])).toThrow('alias "archimate:First"');
   });
 
