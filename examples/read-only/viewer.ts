@@ -152,6 +152,7 @@ function relationshipLabel(relation: OutlineRelationship, names: Map<string, str
 
 function renderRelationships(relations: OutlineRelationship[], names: Map<string, string>, host: HTMLElement): void {
   const list = document.createElement('ul');
+  list.setAttribute('aria-labelledby', 'outline-relationships-heading');
   for (const relation of relations) {
     const item = document.createElement('li');
     item.append(makeOutlineButton({ id: relation.id, label: relationshipLabel(relation, names),
