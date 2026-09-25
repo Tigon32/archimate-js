@@ -112,6 +112,56 @@ async function measureMode(page: Page, mode: string): Promise<Record<string, num
   return results;
 }
 
+async function checkForcedColors(page: Page): Promise<void> {
+  await page.emulateMedia({ colorScheme: 'light', forcedColors: 'active' });
+  assert.equal(await page.evaluate(() => matchMedia('(forced-colors: active)').matches), true,
+    'forced-colors media feature did not become active');
+  const system = await page.evaluate(() => {
+    const resolve = (value: string): string => {
+      const probe = document.createElement('span');
+      probe.style.color = value;
+      probe.style.setProperty('forced-color-adjust', 'none');
+      const shell = document.querySelector('.am-app');
+      if (!shell) throw new Error('Missing app shell');
+      shell.append(probe);
+      const color = getComputedStyle(probe).color;
+      probe.remove();
+      return color;
+    };
+    return { canvasText: resolve('CanvasText'), buttonText: resolve('ButtonText'), highlight: resolve('Highlight') };
+  });
+  const shellText = await style(page, 'h1');
+  const field = await style(page, '#theme-choice');
+  const button = await style(page, '.am-ui-button');
+  assert.equal(shellText.color, system.canvasText, 'shell text did not use CanvasText');
+  assert.equal(field.color, system.buttonText, 'field text did not use ButtonText');
+  assert.equal(field.border, system.buttonText, 'field border did not use ButtonText');
+  assert.equal(button.color, system.buttonText, 'button text did not use ButtonText');
+  const border = await page.locator('#theme-choice').evaluate((element) => {
+    const css = getComputedStyle(element);
+    return { width: parseFloat(css.borderTopWidth), style: css.borderTopStyle };
+  });
+  assert.ok(border.width > 0 && border.style !== 'none', 'forced-colors control border is not visible');
+
+  await page.mouse.move(0, 0);
+  await page.locator('#theme-choice').focus();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Shift+Tab');
+  assert.ok(await page.locator('#theme-choice').evaluate((element) => element.matches(':focus-visible')),
+    'forced-colors field is not keyboard-focus visible');
+  const focused = await style(page, '#theme-choice');
+  assert.ok(parseFloat(focused.outlineWidth) > 0, 'forced-colors focus outline is missing');
+  assert.equal(focused.outline, system.highlight, 'forced-colors focus outline did not use Highlight');
+
+  const adjustments = await page.evaluate(() => ['.am-app', '#theme-choice', '.am-ui-button'].map((selector) => {
+    const element = document.querySelector(selector);
+    if (!element) throw new Error(`Missing ${selector}`);
+    return getComputedStyle(element).forcedColorAdjust;
+  }));
+  assert.ok(adjustments.every((value) => value !== 'none'),
+    'app shell suppresses forced-color adjustment');
+}
+
 async function readShellLayout(page: Page) {
   return page.evaluate(() => {
     const selectors = ['h1', '.am-app > p:not(.am-ui-status)', 'label[for="theme-choice"]',
@@ -242,6 +292,7 @@ try {
     assert.equal(await page.locator('.am-app').getAttribute('data-theme'), choice);
     matrix[choice] = await measureMode(page, choice);
   }
+  await checkForcedColors(page);
   await checkResizeAndReflow(page);
   console.log(JSON.stringify({ browser: 'Chromium', platform: process.platform, matrix }));
 } finally {
