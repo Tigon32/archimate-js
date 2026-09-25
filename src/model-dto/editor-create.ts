@@ -76,6 +76,7 @@ function validateNewElement(model: ModelDto, command: CreateElementCommand): Mod
   if (!view) reject('DTO_CREATE_VIEW_NOT_FOUND');
   validateElement(command.element);
   if (allObjectIds(model).has(command.element.id)) reject('DTO_CREATE_DUPLICATE_ID');
+  if (command.element.id === command.node.id) reject('DTO_CREATE_NODE_ID_CONFLICT');
   if (command.node.kind !== 'element' || command.node.elementId !== command.element.id ||
       command.node.conceptRef !== undefined || command.node.xpathPart !== undefined) {
     reject('DTO_CREATE_INVALID_ELEMENT');
@@ -126,6 +127,7 @@ function validateNewRelationship(model: ModelDto, command: CreateRelationshipCom
     reject('DTO_CREATE_INVALID_RELATIONSHIP');
   }
   if (allObjectIds(model).has(relationship.id)) reject('DTO_CREATE_DUPLICATE_ID');
+  if (relationship.id === connection.id) reject('DTO_CREATE_CONNECTION_ID_CONFLICT');
   if (allObjectIds(model).has(connection.id)) reject('DTO_CREATE_CONNECTION_ID_CONFLICT');
   validateRelationshipEndpoints(model, command.viewId, relationship, connection);
   const candidate = structuredClone(model);

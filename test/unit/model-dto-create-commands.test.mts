@@ -207,3 +207,23 @@ it('rejects view IDs colliding with objects in another view', () => {
       code: 'DTO_CREATE_CONNECTION_ID_CONFLICT'
     }));
 });
+
+it('rejects same-command semantic and view ID collisions atomically', () => {
+    const elementEditor = makeEditor();
+    const elementBefore = elementEditor.serialize();
+    expect(() => elementEditor.execute({ type: 'create-element', viewId,
+      element: element('same-element-id'), node: node('same-element-id', 'same-element-id')
+    })).toThrow(expect.objectContaining({ code: 'DTO_CREATE_NODE_ID_CONFLICT' }));
+    expect(elementEditor.serialize()).toBe(elementBefore);
+    expect(elementEditor.undo()).toBe(false);
+
+    const relationshipEditor = makeEditor();
+    const relationshipBefore = relationshipEditor.serialize();
+    expect(() => relationshipEditor.execute({ type: 'create-relationship', viewId,
+      relationship: relationship('same-relationship-id', 'component-one', 'service-two'),
+      connection: connection('same-relationship-id', 'same-relationship-id',
+        'node-component', 'node-service')
+    })).toThrow(expect.objectContaining({ code: 'DTO_CREATE_CONNECTION_ID_CONFLICT' }));
+    expect(relationshipEditor.serialize()).toBe(relationshipBefore);
+    expect(relationshipEditor.undo()).toBe(false);
+});
