@@ -39,7 +39,10 @@ coded error when no eligible session is open, the facade has been destroyed, or
 the underlying DTO session detects an ineligible state. `close()` detaches the
 current DTO session and canvas port. `destroy()` is idempotent, closes the
 session, removes facade listeners, and destroys the underlying diagram-js
-modeler.
+modeler. Concurrent lifecycle changes are invalidated with a generation token:
+if an earlier `open()` finishes after a newer `open()`, `close()`, or
+`destroy()`, the just-created session is closed and the earlier promise rejects
+with `MODELER_OPEN_SUPERSEDED` or `MODELER_DESTROYED`.
 
 ## Operations and events
 

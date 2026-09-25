@@ -42,7 +42,8 @@ export type ModelerEvent =
   | { type: 'selection'; viewId: string; selectedIds: string[]; model: EditorEvent['model'] };
 
 export class ModelerError extends Error {
-  constructor(readonly code: 'MODELER_DESTROYED' | 'MODELER_SESSION_INELIGIBLE') {
+  constructor(readonly code: 'MODELER_DESTROYED' | 'MODELER_OPEN_SUPERSEDED' |
+    'MODELER_SESSION_INELIGIBLE') {
     super(code);
     this.name = 'ModelerError';
   }
@@ -56,6 +57,7 @@ export default class Modeler {
   private viewId?: string;
   private offEditor?: () => void;
   private destroyed = false;
+  private generation = 0;
   private readonly listeners = new Map<ModelerEvent['type'], Set<(event: ModelerEvent) => void>>();
 
   constructor(options: ModelerOptions) {
@@ -64,8 +66,13 @@ export default class Modeler {
 
   async open(xml: string, options: { viewId?: string } = {}): Promise<OpenResult> {
     this.assertUsable();
-    this.close();
+    const generation = ++this.generation;
+    this.closeCurrent();
     const session = await DtoModelerSession.open(this.modeler, xml, options.viewId);
+    if (this.destroyed || generation !== this.generation) {
+      session.close();
+      throw new ModelerError(this.destroyed ? 'MODELER_DESTROYED' : 'MODELER_OPEN_SUPERSEDED');
+    }
     this.session = session;
     this.viewId = options.viewId || session.editor?.getModel().views[0]?.id;
     if (session.editor) this.offEditor = session.editor.subscribe((event) => this.emitEditor(event));
@@ -128,6 +135,20 @@ export default class Modeler {
   }
 
   close(): void {
+    this.generation += 1;
+    this.closeCurrent();
+  }
+
+  destroy(): void {
+    if (this.destroyed) return;
+    this.generation += 1;
+    this.closeCurrent();
+    this.destroyed = true;
+    this.listeners.clear();
+    this.modeler.destroy?.();
+  }
+
+  private closeCurrent(): void {
     if (!this.session) return;
     this.offEditor?.();
     this.offEditor = undefined;
@@ -135,14 +156,6 @@ export default class Modeler {
     this.session = undefined;
     this.viewId = undefined;
     this.emit({ type: 'closed' });
-  }
-
-  destroy(): void {
-    if (this.destroyed) return;
-    this.close();
-    this.destroyed = true;
-    this.listeners.clear();
-    this.modeler.destroy?.();
   }
 
   private editor(): NonNullable<DtoModelerSession['editor']> {

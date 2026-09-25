@@ -9,8 +9,10 @@ const state = vi.hoisted(() => {
     destroyed: 0,
     opened: [] as string[],
     sessions: [] as Array<{ closed: number }>,
+    pendingOpens: [] as Array<{ session: { closed: number }; resolve(): void }>,
     createdModeler: undefined as undefined | { destroy(): void; get(serviceName: string): unknown },
     eligible: true,
+    deferOpen: false,
     reasons: [] as Array<{ code: string; message: string }>,
     listeners: new Set<(event: unknown) => void>()
   };
@@ -41,6 +43,9 @@ vi.mock('../../src/diagram-js-adapter/index.js', () => {
       state.opened.push(xml);
       const session = new FakeSession();
       state.sessions.push(session);
+      if (state.deferOpen) {
+        await new Promise<void>((resolve) => state.pendingOpens.push({ session, resolve }));
+      }
       return session;
     }
     save() { return { xml: '<model/>', dtoJson: '{"schemaVersion":1}' }; }
@@ -65,7 +70,9 @@ beforeEach(() => {
   state.destroyed = 0;
   state.opened = [];
   state.sessions = [];
+  state.pendingOpens = [];
   state.eligible = true;
+  state.deferOpen = false;
   state.reasons = [];
   state.listeners.clear();
 });
@@ -115,4 +122,34 @@ it('surfaces ineligible saves and unstable diagram-js capabilities', async () =>
   });
   state.eligible = true;
   state.reasons = [];
+});
+
+it('rejects and closes an older open that resolves after a newer open', async () => {
+  const { default: Modeler } = await import('../../src/modeler/index.js');
+  state.deferOpen = true;
+  const modeler = new Modeler({ container: {} as Element });
+  const older = modeler.open('<older/>');
+  const newer = modeler.open('<newer/>');
+  const [olderPending, newerPending] = state.pendingOpens;
+  newerPending.resolve();
+  await expect(newer).resolves.toMatchObject({ eligible: true, viewId: 'view-one' });
+  expect(state.listeners.size).toBe(1);
+  olderPending.resolve();
+  await expect(older).rejects.toMatchObject({ code: 'MODELER_OPEN_SUPERSEDED' });
+  expect(state.sessions[0].closed).toBe(1);
+  expect(state.sessions[1].closed).toBe(0);
+  expect(state.listeners.size).toBe(1);
+});
+
+it('rejects and closes an open that finishes after destroy', async () => {
+  const { default: Modeler } = await import('../../src/modeler/index.js');
+  state.deferOpen = true;
+  const modeler = new Modeler({ container: {} as Element });
+  const opening = modeler.open('<destroyed/>');
+  state.pendingOpens[0].resolve();
+  modeler.destroy();
+  await expect(opening).rejects.toMatchObject({ code: 'MODELER_DESTROYED' });
+  expect(state.sessions[0].closed).toBe(1);
+  expect(state.listeners.size).toBe(0);
+  expect(state.destroyed).toBe(1);
 });
