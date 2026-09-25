@@ -15,15 +15,28 @@ export type { AccessibleOutlineSearchResult } from './outline-search.js';
 export type { AccessibleOutline, AccessibleOutlineNode, AccessibleOutlineRelationship,
   AccessibleOutlineOptions } from './accessible-outline.js';
 export { DiagramAdapter } from './editor.js';
-export { DiagramJsCanvasPort } from './diagram-js-canvas-port.js';
-export { DtoModelerSession } from './modeler-session.js';
-export type { DtoModelerServices, DtoSaveResult } from './modeler-session.js';
+import { DiagramJsCanvasPort as AdapterDiagramJsCanvasPort } from '../diagram-js-adapter/canvas-port.js';
+import { DtoModelerSession as AdapterDtoModelerSession } from '../diagram-js-adapter/modeler-session.js';
+import type { DiagramJsCanvasServices as AdapterDiagramJsCanvasServices } from '../diagram-js-adapter/canvas-port.js';
+import type {
+  DtoModelerServices as AdapterDtoModelerServices,
+  DtoSaveResult as AdapterDtoSaveResult
+} from '../diagram-js-adapter/modeler-session.js';
+/** @deprecated Use the upcoming `archimate-js/modeler` entry planned for EE-M4 (#346). */
+export const DiagramJsCanvasPort = AdapterDiagramJsCanvasPort;
+/** @deprecated Use the upcoming `archimate-js/modeler` entry planned for EE-M4 (#346). */
+export const DtoModelerSession = AdapterDtoModelerSession;
+/** @deprecated Use the upcoming `archimate-js/modeler` entry planned for EE-M4 (#346). */
+export type DiagramJsCanvasServices = AdapterDiagramJsCanvasServices;
+/** @deprecated Use the upcoming `archimate-js/modeler` entry planned for EE-M4 (#346). */
+export type DtoModelerServices = AdapterDtoModelerServices;
+/** @deprecated Use the upcoming `archimate-js/modeler` entry planned for EE-M4 (#346). */
+export type DtoSaveResult = AdapterDtoSaveResult;
 export {
   assessModelDtoEditingEligibility, checkMeffEditingEligibility, createDtoEditorFromMeff
 } from './eligibility.js';
 export type { CanvasPort, CanvasProjection, EditorCommand, EditorEvent } from './editor.js';
 export type { DtoEditingEligibility, DtoEditingReason, DtoMeffEditorEntry } from './eligibility.js';
-export type { DiagramJsCanvasServices } from './diagram-js-canvas-port.js';
 export type {
   ConceptPropertyDto, DtoDiagnostic, ElementDto, ModelDto, PointDto, PropertyDefinitionDto,
   PropertyDefinitionType, PropertyValueDto, RelationshipDto,

@@ -31,9 +31,12 @@ if (result.eligible) {
 }
 ```
 
-`DiagramJsCanvasPort` adapts a Viewer or Modeler canvas, element factory,
-event bus, selection service, and (for editing) modeling service. Pass the
-modeling service from `instance.get('modeling')` to route native
+`DiagramJsCanvasPort` now lives in `src/diagram-js-adapter/`; its compatibility
+re-export from `archimate-js/model-dto` is deprecated until the EE-M4
+`archimate-js/modeler` entry (#346) becomes the public import path. The adapter
+adapts a Viewer or Modeler canvas, element factory, event bus, selection
+service, and (for editing) modeling service. Pass the modeling service from
+`instance.get('modeling')` to route native
 `moveElements`, `resizeShape`, `updateLabel`, `createConnection`, `reconnect`,
 and single-item removal operations into the adapter
 before diagram-js's command stack runs:
@@ -99,7 +102,7 @@ first, checks DTO round-trip eligibility, and attaches the canvas port only
 for an eligible view:
 
 ```ts
-import { DtoModelerSession } from 'archimate-js/model-dto';
+import { DtoModelerSession } from 'archimate-js/model-dto'; // Deprecated compatibility re-export.
 
 const session = await DtoModelerSession.open(modeler, xml, 'view-one');
 if (session.eligible) {
