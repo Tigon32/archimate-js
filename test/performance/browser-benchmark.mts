@@ -1,20 +1,49 @@
-// SYNTHETIC: Measures only the repository's public-safe read-only showcase.
+// SYNTHETIC: Measures deterministic generated models in the public read-only example.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { createServer } from 'node:http';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { createServer, type Server } from 'node:http';
 import { cpus } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium, type Browser, type BrowserContext, type Page, type Route } from 'playwright-core';
+import {
+  chromium,
+  type Browser,
+  type BrowserContext,
+  type Page,
+  type Route
+} from 'playwright-core';
+
+import {
+  PERFORMANCE_BUDGETS,
+  PERFORMANCE_CONTRACT_VERSION,
+  PERFORMANCE_HARD_LIMITS,
+  PERFORMANCE_TIERS,
+  artifactMetadata,
+  classifyPerformance,
+  summarizeSamples,
+  type PerformanceTier
+} from './performance-contract.mts';
+import { createSyntheticModel } from './synthetic-model.mts';
 
 declare global {
   interface Window { __syntheticRenderMs?: number }
 }
 
+type Structure = { shapes: number; connections: number; text: number };
+type PageState = Structure & {
+  durationMs: number | undefined;
+  status: string | null | undefined;
+  statusText: string | null | undefined;
+};
+type FixtureServer = {
+  server: Server;
+  setFixture(xml: string): void;
+};
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const fixturePath = 'test/fixtures/synthetic/read-only-showcase-outline-meff.xml';
+const fixtureRoute = '/test/fixtures/synthetic/read-only-showcase-outline-meff.xml';
 const routes = new Map<string, [string, string]>([
   ['/examples/read-only/', ['examples/read-only/index.html', 'text/html; charset=utf-8']],
   ['/examples/read-only/viewer.js', ['examples/read-only/viewer.js', 'text/javascript; charset=utf-8']],
@@ -26,115 +55,223 @@ const routes = new Map<string, [string, string]>([
   ['/assets/ibm-plex-font/IBMPlexSans-SemiBold.ttf', ['assets/ibm-plex-font/IBMPlexSans-SemiBold.ttf', 'font/ttf']],
   ['/node_modules/diagram-js/assets/diagram-js.css', ['node_modules/diagram-js/assets/diagram-js.css', 'text/css; charset=utf-8']],
   ['/.ci-build/archimate-js.js', ['.ci-build/archimate-js.js', 'text/javascript; charset=utf-8']],
-  ['/.ci-build/model-dto.js', ['.ci-build/model-dto.js', 'text/javascript; charset=utf-8']],
-  ['/test/fixtures/synthetic/read-only-showcase-outline-meff.xml', [fixturePath, 'application/xml; charset=utf-8']]
+  ['/.ci-build/model-dto.js', ['.ci-build/model-dto.js', 'text/javascript; charset=utf-8']]
 ]);
 
-function median(samples: number[]): number {
-  const sorted = [...samples].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-  return sorted[middle];
-}
-
-function createFixtureServer() {
-  return createServer((request, response) => {
-    const route = routes.get(new URL(request.url ?? '/', 'http://localhost').pathname);
-    if (!route) { response.writeHead(404).end(); return; }
+function createFixtureServer(): FixtureServer {
+  let fixtureXml = '';
+  const server = createServer((request, response) => {
+    const requestPath = new URL(request.url ?? '/', 'http://localhost').pathname;
+    if (requestPath === fixtureRoute) {
+      response.setHeader('content-type', 'application/xml; charset=utf-8');
+      response.end(fixtureXml);
+      return;
+    }
+    const route = routes.get(requestPath);
+    if (!route) {
+      response.writeHead(404).end();
+      return;
+    }
     response.setHeader('content-type', route[1]);
     createReadStream(path.join(root, route[0])).pipe(response);
   });
+  return { server, setFixture: (xml) => { fixtureXml = xml; } };
 }
 
-async function observeRender(page: Page): Promise<void> {
-  await page.addInitScript(() => {
+async function observeRender(page: Page, expected: Structure): Promise<void> {
+  await page.addInitScript((minimum) => {
     const started = performance.now();
     const observer = new MutationObserver(() => {
       const status = document.querySelector('#status');
-      const diagram = document.querySelector('#diagram svg.am-diagram');
-      if (status?.getAttribute('data-state') === 'success' && diagram &&
-          document.querySelectorAll('#diagram .djs-shape').length >= 5 &&
-          document.querySelectorAll('#diagram .djs-connection').length >= 4) {
+      const shapes = document.querySelectorAll('#diagram .djs-shape').length;
+      const connections = document.querySelectorAll('#diagram .djs-connection').length;
+      const text = document.querySelectorAll('#diagram svg text').length;
+      if (status?.getAttribute('data-state') === 'success' &&
+          shapes >= minimum.shapes && connections >= minimum.connections &&
+          text >= minimum.text) {
         window.__syntheticRenderMs = performance.now() - started;
         observer.disconnect();
       }
     });
     observer.observe(document, { subtree: true, attributes: true, childList: true });
-  });
+  }, expected);
 }
 
-type Structure = { shapes: number; connections: number; text: number };
+async function readPageState(page: Page): Promise<PageState> {
+  return page.evaluate(() => ({
+    durationMs: window.__syntheticRenderMs,
+    status: document.querySelector('#status')?.getAttribute('data-state'),
+    statusText: document.querySelector('#status')?.textContent,
+    shapes: document.querySelectorAll('#diagram .djs-shape').length,
+    connections: document.querySelectorAll('#diagram .djs-connection').length,
+    text: document.querySelectorAll('#diagram svg text').length
+  }));
+}
 
-async function measureOnce(browser: Browser, origin: string): Promise<{ durationMs: number; structure: Structure }> {
+async function preparePage(context: BrowserContext, origin: string) {
+  let offOriginRequests = 0;
+  const pageErrors: string[] = [];
+  const consoleErrors: string[] = [];
+  await context.route('**/*', (route: Route) => {
+    if (route.request().url().startsWith(origin + '/')) return route.continue();
+    offOriginRequests += 1;
+    return route.abort();
+  });
+  const page = await context.newPage();
+  page.on('pageerror', (error) => { pageErrors.push(error.message); });
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text());
+  });
+  return { page, pageErrors, consoleErrors, offOriginRequests: () => offOriginRequests };
+}
+
+async function measureOnce(
+  browser: Browser,
+  origin: string,
+  expected: Structure
+): Promise<{ durationMs: number; structure: Structure }> {
   const context: BrowserContext = await browser.newContext({ colorScheme: 'light' });
   try {
-    let offOriginRequests = 0;
-    let pageErrors = 0;
-    await context.route('**/*', (route: Route) => {
-      if (route.request().url().startsWith(origin + '/')) return route.continue();
-      offOriginRequests += 1;
-      return route.abort();
-    });
-    const page: Page = await context.newPage();
-    page.on('pageerror', () => { pageErrors += 1; });
-    await observeRender(page);
+    const prepared = await preparePage(context, origin);
+    const { page, pageErrors, consoleErrors } = prepared;
+    await observeRender(page, expected);
     await page.goto(origin + '/examples/read-only/', { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(() => Number.isFinite(window.__syntheticRenderMs), null, { timeout: 15000 });
-    const measured: { durationMs: number | undefined; status: string | null | undefined;
-      shapes: number; connections: number; text: number } = await page.evaluate(() => ({
-      durationMs: window.__syntheticRenderMs,
-      status: document.querySelector('#status')?.getAttribute('data-state'),
-      shapes: document.querySelectorAll('#diagram .djs-shape').length,
-      connections: document.querySelectorAll('#diagram .djs-connection').length,
-      text: document.querySelectorAll('#diagram svg text').length
-    }));
-    assert.equal(measured.status, 'success');
-    assert.ok(measured.shapes >= 5 && measured.connections >= 4 && measured.text >= 5);
-    if (typeof measured.durationMs !== 'number' || !Number.isFinite(measured.durationMs) || measured.durationMs < 0) {
-      throw new Error('Browser timing is missing or invalid');
+    try {
+      await page.waitForFunction(
+        () => Number.isFinite(window.__syntheticRenderMs),
+        null,
+        { timeout: 30000 }
+      );
+    } catch (error) {
+      const state = await readPageState(page);
+      throw new Error(`Browser render did not complete: ${JSON.stringify({
+        state,
+        pageErrors,
+        consoleErrors
+      })}`, {
+        cause: error
+      });
     }
-    assert.equal(offOriginRequests, 0);
-    assert.equal(pageErrors, 0);
-    return { durationMs: measured.durationMs,
-      structure: { shapes: measured.shapes, connections: measured.connections, text: measured.text } };
+    const measured = await readPageState(page);
+    assert.equal(measured.status, 'success');
+    assert.deepEqual(
+      { shapes: measured.shapes, connections: measured.connections, text: measured.text },
+      expected
+    );
+    assert.equal(prepared.offOriginRequests(), 0);
+    assert.deepEqual(pageErrors, []);
+    assert.equal(typeof measured.durationMs, 'number');
+    return { durationMs: measured.durationMs as number, structure: expected };
   } finally {
     await context.close();
   }
 }
 
-async function run() {
-  const output = process.argv.find((arg) => arg.startsWith('--output='))?.slice('--output='.length);
-  const fixtureSha256 = createHash('sha256').update(await readFile(path.join(root, fixturePath))).digest('hex');
-  const server = createFixtureServer();
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+async function measureTier(
+  browser: Browser,
+  origin: string,
+  fixtureServer: FixtureServer,
+  tier: PerformanceTier,
+  repeats: number
+) {
+  const model = createSyntheticModel(tier);
+  fixtureServer.setFixture(model.xml);
+  const expected = {
+    shapes: model.nodeCount * 2,
+    connections: model.connectionCount,
+    text: model.nodeCount
+  };
+  const samples: number[] = [];
+  for (let repeat = 0; repeat < repeats; repeat += 1) {
+    samples.push((await measureOnce(browser, origin, expected)).durationMs);
+  }
+  const summary = summarizeSamples(samples);
+  return {
+    tier,
+    fixtureFingerprint: createHash('sha256').update(model.xml).digest('hex'),
+    fixture: {
+      provenance: model.provenance,
+      elementCount: model.elementCount,
+      relationshipCount: model.relationshipCount,
+      xmlBytes: Buffer.byteLength(model.xml)
+    },
+    repeats,
+    measurement: {
+      ...summary,
+      ...classifyPerformance(summary.medianMs, summary.toleranceMs, {
+        budgetMs: PERFORMANCE_BUDGETS.browser[tier.name],
+        hardLimitMs: PERFORMANCE_HARD_LIMITS.browser[tier.name]
+      })
+    },
+    structure: expected
+  };
+}
+
+type BrowserBenchmark = Awaited<ReturnType<typeof measureTier>>;
+
+function createResult(browser: Browser, benchmarks: BrowserBenchmark[], repeats: number) {
+  const browserMajor = browser.version().split('.')[0];
+  return {
+    schemaVersion: 2,
+    contractVersion: PERFORMANCE_CONTRACT_VERSION,
+    provenance: 'SYNTHETIC',
+    artifact: artifactMetadata(
+      'browser',
+      `chromium-${browserMajor}-${process.platform}-${process.arch}`
+    ),
+    measure: 'navigation-init-to-rendered-svg',
+    environment: {
+      browser: 'chromium',
+      browserVersion: browser.version(),
+      node: process.version,
+      platform: process.platform,
+      arch: process.arch,
+      cpuCount: cpus().length,
+      ci: process.env.CI === 'true'
+    },
+    options: { tiers: PERFORMANCE_TIERS, repeats },
+    benchmarks
+  };
+}
+
+async function emitResult(result: ReturnType<typeof createResult>, output: string | undefined) {
+  const json = `${JSON.stringify(result, null, 2)}\n`;
+  if (output) {
+    await mkdir(path.dirname(path.resolve(output)), { recursive: true });
+    await writeFile(output, json, { flag: 'w' });
+  }
+  process.stdout.write(json);
+}
+
+async function run(): Promise<void> {
+  const args = new Set(process.argv.slice(2));
+  const output = process.argv.find((argument) => argument.startsWith('--output='))?.slice(9);
+  const repeatsArgument = process.argv.find((argument) => argument.startsWith('--repeats='));
+  const repeats = repeatsArgument ? Number(repeatsArgument.slice(10)) : 3;
+  const fixtureServer = createFixtureServer();
+  await new Promise<void>((resolve) => fixtureServer.server.listen(0, '127.0.0.1', resolve));
   let browser: Browser | undefined;
   try {
-    browser = await chromium.launch({ executablePath: process.env.CHROME_BIN || undefined,
-      headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
-    const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
-    const samplesMs: number[] = [];
-    let structure: Structure | undefined;
-    for (let repeat = 0; repeat < 3; repeat += 1) {
-      const current = await measureOnce(browser, origin);
-      if (structure) assert.deepEqual(current.structure, structure);
-      structure = current.structure;
-      samplesMs.push(current.durationMs);
+    browser = await chromium.launch({
+      executablePath: process.env.CHROME_BIN || undefined,
+      headless: true,
+      args: [ '--no-sandbox', '--disable-setuid-sandbox' ]
+    });
+    const address = fixtureServer.server.address() as { port: number };
+    const origin = `http://127.0.0.1:${address.port}`;
+    const benchmarks = [];
+    for (const tier of PERFORMANCE_TIERS) {
+      benchmarks.push(await measureTier(browser, origin, fixtureServer, tier, repeats));
     }
-    const result = {
-      schemaVersion: 1, provenance: 'SYNTHETIC', fixtureSha256,
-      measure: 'navigation-init-to-rendered-svg',
-      environment: { browser: 'chromium', browserVersion: browser.version(), node: process.version,
-        platform: process.platform, arch: process.arch, cpuCount: cpus().length, ci: process.env.CI === 'true' },
-      repeats: samplesMs.length, samplesMs, medianMs: median(samplesMs), structure
-    };
-    const json = JSON.stringify(result, null, 2) + '\n';
-    if (output) {
-      await mkdir(path.dirname(path.resolve(output)), { recursive: true });
-      await writeFile(output, json, { flag: 'w' });
+    const result = createResult(browser, benchmarks, repeats);
+    await emitResult(result, output);
+    if (args.has('--assert') &&
+        benchmarks.some(({ measurement }) => measurement.hardLimitStatus === 'exceeded')) {
+      throw new Error('Browser performance hard limit exceeded');
     }
-    process.stdout.write(json);
   } finally {
     await browser?.close();
-    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await new Promise<void>((resolve) => fixtureServer.server.close(() => resolve()));
   }
 }
 
