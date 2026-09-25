@@ -91,6 +91,66 @@ separate diagram for Markdown and HTML. Repeated renders of the same synthetic
 input in the same browser environment are checked for byte stability. Font
 availability can still affect browser layout across different environments.
 
+## Packaged standalone artifact offline gate
+
+`npm run test:browser` ends with `node test/browser/standalone-network.mts`, an
+end-to-end gate for the artifact that the distribution path actually ships. The
+gate packs the repository with `npm pack --ignore-scripts`, reads the archive
+with the existing packed-asset reader, and serves **only** the packed files. A
+development file that is not published cannot make this gate pass.
+
+The standalone page is assembled from packaged resources alone and loads the
+`SYNTHETIC` fixture `test/fixtures/synthetic/minimal-application-view.xml` from
+the host application's local model path. Required resources, all resolved from
+the package, are:
+
+- `dist/browser/archimate-js.js` (viewer script; notation symbols are inlined in
+  the bundle, so symbols never require a network request);
+- `assets/design-tokens/app-shell.css` and its imported
+  `assets/design-tokens/app.generated.css`;
+- `assets/ibm-plex-font/IBMPlexSans-Regular.ttf` and
+  `assets/ibm-plex-font/IBMPlexSans-SemiBold.ttf`;
+- `archimate-font/lib/css/archimate-font.css` and
+  `archimate-font/lib/font/archimate-font.woff2`.
+
+### Allowed origins and paths
+
+The allowlist is deterministic and closed. The only approved origin is the
+gate's loopback server, and within it only these paths are allowed:
+
+| Path | Purpose |
+| --- | --- |
+| `/` | the generated standalone page |
+| `/package/**` | files read from the packed archive |
+| `/model/standalone-view.xml` | the local synthetic model/view resource |
+| `/probe/redirect` | negative probe that returns a redirect to an unapproved origin |
+
+Any other origin or path is aborted and recorded. The gate fails on unexpected
+external requests, requests to undocumented local paths, missing assets (`4xx`),
+redirects (`3xx`), failed local requests, and page or console runtime errors. It
+then verifies that the packaged bundle rendered the expected synthetic view
+nodes and connection, injected ArchiMate notation symbols with no external
+`use`/`image` references, and that both packaged font families are available.
+
+After those checks it runs three negative probes so a silently broken detector
+cannot pass: an external fetch must be blocked, a missing packaged asset must
+return `404`, and a redirect to an unapproved origin must be blocked and
+recorded.
+
+### Environment limitations
+
+- The gate needs the compiled distribution; run it through `npm run test:browser`
+  (or `npm run compile:browser`) so `dist/browser/archimate-js.js` exists.
+- It uses the repository's configured browser through `CHROME_BIN`, falling back
+  to the bundled Playwright Chromium resolution used by the other browser tests.
+  Without a usable Chromium the gate fails rather than skipping.
+- `npm pack` runs with `--ignore-scripts`, so the gate checks packaging, not the
+  `prepack` compile chain; packed asset provenance stays with the release checks.
+- Font rasterization still depends on the host environment; the gate asserts font
+  availability and resource resolution, not glyph rendering.
+- The gate logs only path names and generic messages. It never logs model XML,
+  request payloads, or private paths.
+
 ## Reporting suspected standards gaps
 
 When imported content appears to violate ArchiMate notation or exchange behavior,

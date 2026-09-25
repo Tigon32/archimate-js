@@ -29,6 +29,8 @@
     "test/performance/browser-benchmark.mts",
     "test/browser/accessible-outline.mts",
     "test/browser/viewer-lifecycle.mts",
+    "test/browser/standalone-artifact.mts",
+    "test/browser/standalone-network.mts",
     "scripts/check-secrets.mts",
     "scripts/content-markers.mts",
     "test/security/check-secrets.test.mts",
