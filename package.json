@@ -21,11 +21,12 @@
   },
   "scripts": {
     "all": "run-s test compile",
-    "compile": "run-s compile:validator compile:model-dto compile:layout compile:browser compile:model-dto:browser compile:export compile:cli compile:read-only-example",
+    "compile": "run-s compile:validator compile:model-dto compile:lint compile:layout compile:browser compile:model-dto:browser compile:export compile:cli compile:read-only-example",
     "compile:export": "tsc -p tsconfig.export.json",
     "compile:cli": "tsc -p tsconfig.cli.json",
     "compile:validator": "node test/smoke/compile-validator.mjs",
     "compile:model-dto": "tsc -p tsconfig.model-dto.json && node scripts/mark-model-dto-esm.mjs",
+    "compile:lint": "tsc -p tsconfig.lint.json",
     "compile:layout": "tsc -p tsconfig.layout.json && node scripts/mark-layout-esm.mjs",
     "compile:browser": "node test/smoke/compile.mts",
     "prepare": "node scripts/install-git-hooks.mjs",
@@ -105,6 +106,10 @@
     "./model-dto": {
       "types": "./dist/model-dto/index.d.ts",
       "import": "./dist/model-dto/index.js"
+    },
+    "./lint": {
+      "types": "./dist/lint/index.d.mts",
+      "import": "./dist/lint/index.mjs"
     },
     "./layout": {
       "types": "./dist/layout/index.d.ts",

@@ -26,6 +26,7 @@ const run = (
 try {
   run(process.execPath, ['test/smoke/compile-validator.mjs'], { cwd: root });
   run('npm', ['run', 'compile:model-dto'], { cwd: root });
+  run('npm', ['run', 'compile:lint'], { cwd: root });
   run('npm', ['run', 'compile:layout'], { cwd: root });
   run('npm', ['run', 'compile:export'], { cwd: root });
   run(process.execPath, ['test/smoke/compile.mts'], { cwd: root });
@@ -60,6 +61,7 @@ try {
     import { importMeffToModelDto, exportModelDtoToMeff,
       createAccessibleOutline, formatAccessibleOutline } from 'archimate-js/model-dto';
     import { layoutView } from 'archimate-js/layout';
+    import { lintModel } from 'archimate-js/lint';
     export default {
       viewer: typeof Viewer,
       mountViewer: typeof mountViewer,
@@ -68,7 +70,8 @@ try {
       dtoExport: typeof exportModelDtoToMeff,
       outline: typeof createAccessibleOutline,
       outlineText: typeof formatAccessibleOutline,
-      layoutView: typeof layoutView
+      layoutView: typeof layoutView,
+      lintModel: typeof lintModel
     };
   `);
   const require = createRequire(path.join(root, 'package.json'));
@@ -94,7 +97,7 @@ try {
   assert.deepEqual(rootApi, { viewer: 'function', mountViewer: 'function',
     renderViewToSvg: 'function', dtoImport: 'function', dtoExport: 'function',
     outline: 'function', outlineText: 'function',
-    layoutView: 'function' });
+    layoutView: 'function', lintModel: 'function' });
   const exportSubpath = [ 'archimate-js', 'export' ].join('/');
   const exportApi = await import(exportSubpath) as {
     exportView: Function;
@@ -173,6 +176,7 @@ try {
     assert.equal(dto.importMeffToModelDto(dto.exportModelDtoToMeff(model)).id, model.id);
 
     const layout = await import('archimate-js/layout');
+    const lint = await import('archimate-js/lint');
     const synthetic = { schemaVersion: 1, id: 'synthetic', elements: [], relationships: [],
       diagnostics: [], views: [{ id: 'view', nodes: [
         { id: 'one', kind: 'container', x: 10, y: 10, width: 40, height: 30, nodes: [] },
@@ -187,6 +191,10 @@ try {
     assert.equal(laidOut.metrics.overlapCountBefore, 1);
     assert.equal(laidOut.metrics.overlapCountAfter, 0);
     assert.equal(synthetic.views[0].nodes[1].x, 15);
+    const lintResult = lint.lintModel(synthetic);
+    assert.ok(lintResult.findings.some((finding) => finding.ruleId === 'core.model-name-present'));
+    assert.ok(lintResult.findings.some((finding) => finding.ruleId === 'core.view-name-present'));
+    assert.deepEqual(lintResult.diagnostics, []);
 
     await assert.rejects(
       import('archimate-js/lib/Viewer'),
@@ -208,10 +216,11 @@ try {
   assert.equal(exportEntry('./validator').import, './dist/validator/index.js');
   assert.equal(exportEntry('./model-dto').import, './dist/model-dto/index.js');
   assert.equal(exportEntry('./layout').import, './dist/layout/index.js');
+  assert.equal(exportEntry('./lint').import, './dist/lint/index.mjs');
   assert.equal(exportEntry('./export').import, './dist/export/index.mjs');
   assert.equal(packageJson.exports['./app-shell.css'], './assets/design-tokens/app-shell.css');
   assert.deepEqual(Object.keys(packageJson.exports).sort(),
-    ['.', './app-shell.css', './export', './layout', './model-dto', './validator']);
+    ['.', './app-shell.css', './export', './layout', './lint', './model-dto', './validator']);
   const stylePath = consumerRequire.resolve('archimate-js/app-shell.css');
   assert.match(await readFile(stylePath, 'utf8'), /\.am-app \.am-ui-status/);
   await readFile(path.join(packageRoot, 'assets/design-tokens/app.generated.css'), 'utf8');
