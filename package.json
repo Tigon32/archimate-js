@@ -52,7 +52,7 @@
     "test:browser": "run-s compile:model-dto compile:browser compile:model-dto:browser compile:read-only-example test:browser:run",
     "compile:model-dto:browser": "node test/smoke/compile-model-dto-browser.mts",
     "compile:read-only-example": "tsc -p tsconfig.read-only-example.json",
-    "test:browser:run": "node test/browser/smoke.mjs && node test/browser/dto-save.mts && node test/browser/theme-contrast.mts && node test/browser/accessible-outline.mts && node test/browser/diagram-js-15-core.mts && node test/browser/focus-interactions.mts",
+    "test:browser:run": "node test/browser/smoke.mjs && node test/browser/dto-save.mts && node test/browser/theme-contrast.mts && node test/browser/accessible-outline.mts && node test/browser/diagram-js-15-core.mts && node test/browser/focus-interactions.mts && node test/browser/viewer-lifecycle.mts",
     "test:export-api": "run-s compile:export compile:browser test:export-api:run",
     "test:export-api:run": "node test/browser/export-api.mts",
     "test:cli": "run-s compile:validator compile:model-dto compile:export compile:cli compile:browser test:cli:validation",
