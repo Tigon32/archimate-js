@@ -12,6 +12,6 @@
     "lib": ["ES2022", "DOM"],
     "skipLibCheck": true
   },
-  "include": ["src/model-dto/**/*.ts", "src/language/relationship-decisions.mts",
+  "include": ["src/model-dto/**/*.ts", "src/diagram-js-adapter/**/*.ts", "src/language/relationship-decisions.mts",
     "src/language/relationship-semantics.mts"]
 }

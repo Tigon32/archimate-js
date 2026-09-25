@@ -1,6 +1,8 @@
-import { DiagramJsCanvasPort, type DiagramJsCanvasServices } from './diagram-js-canvas-port.js';
-import { createDtoEditorFromMeff, editingIneligibleError, type DtoEditingReason } from './eligibility.js';
-import type { DiagramAdapter } from './editor.js';
+import { DiagramJsCanvasPort, type DiagramJsCanvasServices } from './canvas-port.js';
+import {
+  createDtoEditorFromMeff, editingIneligibleError, type DtoEditingReason
+} from '../model-dto/eligibility.js';
+import type { DiagramAdapter } from '../model-dto/editor.js';
 
 /** A narrow, structural interface; the legacy Modeler remains free to serve other imports. */
 export interface DtoModelerServices {

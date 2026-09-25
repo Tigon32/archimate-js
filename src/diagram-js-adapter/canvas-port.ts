@@ -1,6 +1,6 @@
-import type { CanvasPort, CanvasProjection, EditorCommand } from './editor.js';
-import type { StyleDto } from './types.js';
-import { invalid } from './validate.js';
+import type { CanvasPort, CanvasProjection, EditorCommand } from '../model-dto/editor.js';
+import type { StyleDto } from '../model-dto/types.js';
+import { invalid } from '../model-dto/validate.js';
 
 interface CanvasElement {
   id?: string;

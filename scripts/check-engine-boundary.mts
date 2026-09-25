@@ -15,16 +15,8 @@ const FORBIDDEN_SERVICES = new Set([
 
 const ALLOWED_EXCEPTIONS = [
   {
-    path: 'src/model-dto/diagram-js-canvas-port.ts',
-    reason: 'Current diagram-js CanvasPort adapter location until EE-M3 relocates it.'
-  },
-  {
-    path: 'src/model-dto/modeler-session.ts',
-    reason: 'Current DTO modeler session adapter location until EE-M3 relocates it.'
-  },
-  {
     path: 'src/diagram-js-adapter/**',
-    reason: 'Planned EE-M3 diagram-js adapter home; engine-specific dependencies belong there.'
+    reason: 'EE-M3 diagram-js adapter home; engine-specific dependencies belong there.'
   }
 ] as const;
 
