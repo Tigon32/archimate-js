@@ -86,7 +86,11 @@ diagnostic without a view or patch. Unavailable `elk-layered`, `incremental`,
 and `pins` options also return explicit diagnostics, with no fallback to full
 built-in layout. Unknown options are rejected so future controls are not
 silently ignored. This call runs asynchronously at the API boundary, but the
-built-in optimizer itself currently runs on the calling thread.
+built-in optimizer itself currently runs on the calling thread. The
+`elk-layered` strategy's ELK.js license and provenance prerequisite review
+is recorded in
+[`docs/research/elkjs-license-and-provenance.md`](../research/elkjs-license-and-provenance.md)
+(#374); no `elkjs` dependency is added by this documentation.
 
 This is a partial implementation of #100. Layered compound layout, hard and
 soft pins, incremental stability, advanced labels, worker execution, and
