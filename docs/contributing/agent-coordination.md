@@ -103,7 +103,10 @@ Synthetic deterministic cases live in
 `src/coordination/agent-claim-history.mts` resolves a complete, caller-fetched
 comment history to `unclaimed`, `active`, `expired`, `released`, or
 `ambiguous`. It checks comment identity, lease transitions, monotonically
-increasing epochs, takeover lineage, and acknowledgement-comment presence.
+increasing epochs, takeover lineage, and acknowledgement-comment presence. It
+requires takeover requests to be posted after expiry and observation start, and
+active takeover records after the observation window ends. A heartbeat or
+transition on the prior lease after the request cancels that takeover attempt.
 Deterministic synthetic cases live in
 `test/unit/agent-claim-history.test.mts`.
 
