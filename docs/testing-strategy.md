@@ -29,6 +29,14 @@ Node.js 20 is intentionally not part of the forward CI baseline.
    - render the same diagram in HTML and SVG;
    - embed the SVG in Markdown-rendered report images.
 
+## Architecture checks
+
+`npm run check:engine-boundary` enforces the EE-M1 diagram-engine boundary for
+engine-neutral source roots. It rejects direct `diagram-js*` imports, dynamic
+imports, re-exports, CommonJS `require` calls, and diagram-js service lookups
+outside the documented adapter exceptions; it also runs through
+`npm run check:source-policy`, `npm test`, and `npm run verify:wip`.
+
 ## Current known debt
 
 - `npm run lint` currently fails on the inherited codebase and should be treated as a dedicated cleanup workstream.
