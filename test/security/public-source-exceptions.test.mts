@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { formatPublicSourceExceptionFindings, MAX_EXCEPTION_PATH_LENGTH, validatePublicSourceExceptions } from '../../scripts/check-public-source-exceptions.mts';
+import { formatPublicSourceExceptionFindings, MAX_EXCEPTION_PATH_LENGTH, summarizePublicSourceExceptions, validatePublicSourceExceptions } from '../../scripts/check-public-source-exceptions.mts';
 
 type ExceptionSchema = {
   properties: {
@@ -10,6 +10,7 @@ type ExceptionSchema = {
       items: {
         properties: {
           path: { maxLength: number; pattern: string };
+          finding: { enum: string[] };
           rationale: { minLength: number; pattern: string };
         };
       };
@@ -23,6 +24,7 @@ const rationaleSchema = exceptionSchema.properties.exceptions.items.properties.r
 
 const validRecord = {
   path: 'test/fixtures/synthetic-example.json',
+  finding: 'unmanifested-model-or-media',
   rationale: 'SYNTHETIC review-only fixture record.',
   expiresOn: '2026-10-30',
   approver: 'synthetic-reviewer',
@@ -64,8 +66,23 @@ test('fails closed on policy and record schema drift', () => {
     'invalid-policy');
   assert.equal(validatePublicSourceExceptions(policy({ ...validRecord, approval: true }), '2026-09-25')[0]?.rule,
     'invalid-record-fields');
+  assert.equal(validatePublicSourceExceptions(policy({ ...validRecord, finding: 'forbidden-tracked-path' }), '2026-09-25')[0]?.rule,
+    'invalid-finding-class');
   assert.equal(validatePublicSourceExceptions(policy({ ...validRecord, rationale: '' }), '2026-09-25')[0]?.rule,
     'invalid-rationale');
+});
+
+test('release summary contains active rule metadata without paths or rationale', () => {
+  const result = summarizePublicSourceExceptions(policy(validRecord), '2026-09-25');
+  assert.deepEqual(result, {
+    schemaVersion: 1,
+    activeCount: 1,
+    findingClasses: ['unmanifested-model-or-media'],
+    earliestExpiry: '2026-10-30'
+  });
+  assert.equal(JSON.stringify(result).includes(validRecord.path), false);
+  assert.equal(JSON.stringify(result).includes(validRecord.rationale), false);
+  assert.equal(summarizePublicSourceExceptions(policy({ ...validRecord, expiresOn: '2026-09-24' }), '2026-09-25'), null);
 });
 
 test('rejects non-file paths, duplicate paths, and invalid or expired dates', () => {

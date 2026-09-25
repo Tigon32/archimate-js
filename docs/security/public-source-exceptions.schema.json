@@ -12,13 +12,16 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["path", "rationale", "expiresOn", "approver", "reviewedOn"],
+        "required": ["path", "finding", "rationale", "expiresOn", "approver", "reviewedOn"],
         "properties": {
           "path": {
             "type": "string",
             "minLength": 1,
             "maxLength": 512,
             "pattern": "^(?![A-Za-z]:)(?!/)(?!.*//)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*[*?{}\\[\\]])(?!.*\\\\)(?!.*[\\u0000-\\u001f\\u007f])[^/]+(?:/[^/]+)*$"
+          },
+          "finding": {
+            "enum": ["unmanifested-model-or-media", "unmanifested-research-artifact"]
           },
           "rationale": { "type": "string", "minLength": 1, "pattern": "\\S" },
           "expiresOn": { "type": "string", "format": "date" },
