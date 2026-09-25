@@ -1,95 +1,52 @@
-export interface ViewerSelectionAdapter {
+interface SelectionEvent {
+  type: 'changed' | 'selection';
+  viewId: string;
+  selectedIds: string[];
+}
+
+interface DiagramAdapterSelectionApi {
+  project(viewId: string): { selectedIds: string[] };
+  select(viewId: string, ids: string[]): void;
+  subscribe(listener: (event: SelectionEvent) => void): () => void;
+}
+
+export interface DiagramAdapterSelectionBridge {
   onSelectionChange(callback: (ids: string[]) => void): () => void;
   selectById(id: string): boolean;
   clearSelection(): void;
   dispose(): void;
 }
 
-interface DiagramElement {
-  id: string;
-}
-
-interface ElementRegistry {
-  get(id: string): DiagramElement | undefined;
-}
-
-interface SelectionService {
-  get(): DiagramElement[];
-  select(element: DiagramElement | DiagramElement[] | null): void;
-}
-
-interface ViewerWithServices {
-  get(name: 'elementRegistry'): ElementRegistry;
-  get(name: 'selection'): SelectionService;
-  on(event: string, callback: (event?: unknown) => void): void;
-  off(event: string, callback: (event?: unknown) => void): void;
-  destroy?: () => void;
-}
-
-function hasServices(value: unknown): value is ViewerWithServices {
-  return Boolean(value && typeof value === 'object' &&
-    typeof (value as { get?: unknown }).get === 'function' &&
-    typeof (value as { on?: unknown }).on === 'function' &&
-    typeof (value as { off?: unknown }).off === 'function');
-}
-
-function selectedIds(selection: SelectionService): string[] {
-  return selection.get().map((element) => element.id).filter(Boolean);
-}
-
-export function createViewerSelectionAdapter(viewer: unknown): ViewerSelectionAdapter | undefined {
-  if (!hasServices(viewer)) return undefined;
-  const selection = viewer.get('selection');
-  const registry = viewer.get('elementRegistry');
-  if (!selection || !registry) return undefined;
-  const disposers: Array<() => void> = [];
+/** Keep the outline on the DTO adapter's stable, ID-only selection contract. */
+export function createDiagramAdapterSelectionBridge(editor: DiagramAdapterSelectionApi,
+  viewId: string): DiagramAdapterSelectionBridge {
   const callbacks = new Set<(ids: string[]) => void>();
   let disposed = false;
+  const unsubscribe = editor.subscribe((event) => {
+    if (disposed || event.type !== 'selection' || event.viewId !== viewId) return;
+    for (const callback of callbacks) callback([...event.selectedIds]);
+  });
 
-  const notify = (): void => {
-    if (!disposed) callbacks.forEach((callback) => callback(selectedIds(selection)));
-  };
-  const clearAndNotify = (): void => {
-    if (disposed) return;
-    selection.select(null);
-    notify();
-  };
-  viewer.on('selection.changed', notify);
-  viewer.on('import.render.start', clearAndNotify);
-  disposers.push(() => viewer.off('selection.changed', notify),
-    () => viewer.off('import.render.start', clearAndNotify));
-
-  const originalDestroy = typeof viewer.destroy === 'function' ? viewer.destroy.bind(viewer) : undefined;
-  if (originalDestroy) {
-    viewer.destroy = () => {
-      adapter.dispose();
-      originalDestroy();
-    };
-  }
-
-  const adapter: ViewerSelectionAdapter = {
+  return {
     onSelectionChange(callback) {
+      if (disposed) return () => {};
       callbacks.add(callback);
-      callback(selectedIds(selection));
+      callback([...editor.project(viewId).selectedIds]);
       return () => callbacks.delete(callback);
     },
     selectById(id) {
       if (disposed) return false;
-      const element = registry.get(id);
-      if (!element) return false;
-      selection.select(element);
-      notify();
+      editor.select(viewId, [id]);
       return true;
     },
     clearSelection() {
-      clearAndNotify();
+      if (!disposed) editor.select(viewId, []);
     },
     dispose() {
       if (disposed) return;
       disposed = true;
       callbacks.clear();
-      while (disposers.length) disposers.pop()?.();
+      unsubscribe();
     }
   };
-  return adapter;
 }

@@ -1,8 +1,26 @@
-import { createViewerSelectionAdapter, type ViewerSelectionAdapter } from './outline-bridge.js';
+import { createDiagramAdapterSelectionBridge, type DiagramAdapterSelectionBridge } from './outline-bridge.js';
+
+interface DiagramAdapterSelectionApi {
+  project(viewId: string): { selectedIds: string[] };
+  select(viewId: string, ids: string[]): void;
+  subscribe(listener: (event: { type: 'changed' | 'selection'; viewId: string;
+    selectedIds: string[] }) => void): () => void;
+}
 
 interface ViewerBrowserApi {
   mountViewer(options: { xml: string; viewId: string; container: HTMLElement;
-    width: string; height: string }): Promise<unknown>;
+    width: string; height: string }): Promise<ViewerSelectionLifecycle>;
+}
+
+interface ViewerSelectionLifecycle {
+  on(event: string, callback: (event?: unknown) => void): void;
+  off(event: string, callback: (event?: unknown) => void): void;
+  destroy(): void;
+}
+
+interface DtoModelerSession {
+  editor?: DiagramAdapterSelectionApi;
+  close(): void;
 }
 
 interface OutlineNode {
@@ -26,10 +44,14 @@ interface OutlineData {
 }
 
 interface ModelDtoBrowserApi {
+  checkMeffEditingEligibility(xml: unknown): { eligible: boolean };
   importMeffToModelDto(xml: unknown): unknown;
   createAccessibleOutline(model: unknown, viewId: string, options: {
     grouping: 'containment'; includeRelationships: boolean; includeDocumentation: boolean;
   }): OutlineData;
+  DtoModelerSession: {
+    open(viewer: unknown, xml: string, viewId: string): Promise<DtoModelerSession>;
+  };
 }
 
 declare global {
@@ -50,7 +72,8 @@ interface OutlineEntry {
   category: 'element' | 'relationship';
 }
 
-let activeSelectionAdapter: ViewerSelectionAdapter | undefined;
+let activeSelectionAdapter: DiagramAdapterSelectionBridge | undefined;
+let activeDtoSession: DtoModelerSession | undefined;
 
 async function readLimitedResponse(response: Response): Promise<Uint8Array> {
   if (!response.body || typeof response.body.getReader !== 'function') {
@@ -204,7 +227,20 @@ export async function renderExample(): Promise<void> {
     if (typeof viewerApi?.mountViewer !== 'function') throw new Error('Viewer API unavailable');
     const viewer = await viewerApi.mountViewer({ xml, viewId: VIEW_ID, container: requireElement('#diagram'),
       width: '100%', height: '100%' });
-    bindViewerSelection(createViewerSelectionAdapter(viewer));
+    const dtoApi = window.ArchimateModelDto;
+    if (dtoApi?.DtoModelerSession && dtoApi.checkMeffEditingEligibility(xml).eligible) {
+      try {
+        const session = await dtoApi.DtoModelerSession.open(viewer, xml, VIEW_ID);
+        if (session.editor) {
+          bindViewerSelection(viewer, session,
+            createDiagramAdapterSelectionBridge(session.editor, VIEW_ID));
+        } else {
+          session.close();
+        }
+      } catch {
+        // The legacy viewer remains available if its model cannot enter the DTO boundary.
+      }
+    }
     const status = requireElement('#status');
     status.dataset.state = 'success';
     status.textContent = 'Loaded the public synthetic service delivery example.';
@@ -231,18 +267,63 @@ function setActiveButton(id: string | undefined): void {
   }));
 }
 
-function bindViewerSelection(adapter: ViewerSelectionAdapter | undefined): void {
+function disposeViewerSelection(viewer: ViewerSelectionLifecycle): void {
   activeSelectionAdapter?.dispose();
+  activeSelectionAdapter = undefined;
+  activeDtoSession?.close();
+  activeDtoSession = undefined;
+  viewer.off('import.render.start', onViewChange);
+  viewer.off('diagram.destroy', onViewerDestroy);
+  if (selectionOwner === viewer) selectionOwner = undefined;
+  setActiveButton(undefined);
+}
+
+let selectionOwner: ViewerSelectionLifecycle | undefined;
+
+function onViewChange(): void {
+  if (selectionOwner) disposeViewerSelection(selectionOwner);
+}
+
+function onViewerDestroy(): void {
+  if (selectionOwner) disposeViewerSelection(selectionOwner);
+}
+
+export function bindViewerSelection(viewer: ViewerSelectionLifecycle, session: DtoModelerSession,
+  adapter: DiagramAdapterSelectionBridge | undefined): void {
+  if (selectionOwner) disposeViewerSelection(selectionOwner);
+  else {
+    activeSelectionAdapter?.dispose();
+    activeDtoSession?.close();
+  }
   activeSelectionAdapter = adapter;
+  activeDtoSession = session;
+  selectionOwner = viewer;
+  viewer.on('import.render.start', onViewChange);
+  viewer.on('diagram.destroy', onViewerDestroy);
   if (!adapter) return;
   adapter.onSelectionChange((ids) => setActiveButton(ids[0]));
 }
 
 function activateOutlineEntry(button: HTMLButtonElement): void {
   const id = button.dataset.outlineId;
-  if (!id || !activeSelectionAdapter?.selectById(id)) {
+  if (!id) {
     setActiveButton(undefined);
     activeSelectionAdapter?.clearSelection();
+    document.dispatchEvent(new CustomEvent('archimate-outline-activate', {
+      detail: { id, selected: false }
+    }));
+    return;
+  }
+  if (!activeSelectionAdapter) {
+    setActiveButton(id);
+    document.dispatchEvent(new CustomEvent('archimate-outline-activate', {
+      detail: { id, selected: false }
+    }));
+    return;
+  }
+  if (!activeSelectionAdapter.selectById(id)) {
+    setActiveButton(undefined);
+    activeSelectionAdapter.clearSelection();
     document.dispatchEvent(new CustomEvent('archimate-outline-activate', {
       detail: { id, selected: false }
     }));
