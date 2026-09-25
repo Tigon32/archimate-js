@@ -120,6 +120,119 @@ const listenerTrackerScript = `
   };
 })();
 `;
+const focusHelpersScript = `
+window.__focusTestHelpers = {
+  setup: async (api, xml) => {
+    const tracker = window.__focusListenerTracker;
+    const container = document.createElement('div');
+    container.style.width = '800px';
+    container.style.height = '500px';
+    document.body.append(container);
+    const modeler = new api.Modeler({ container });
+    await modeler.importXML(xml);
+    const svg = container.querySelector('svg');
+    if (!svg) throw new Error('Modeler SVG should be mounted.');
+    modeler.get('canvas').focus();
+    modeler.get('selection').select(modeler.get('elementRegistry').get('node-component'));
+    const keyboard = (key, modifiers = {}) =>
+      svg.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...modifiers }));
+    const diagramTargetId = tracker.targetId(svg);
+    const expectedRetainedListeners = tracker.remainingListeners()
+      .filter((record) => record.targetId === diagramTargetId &&
+        [ 'focusin', 'focusout', 'mouseout', 'mouseover' ].includes(record.type) &&
+        record.registrationOrigin.includes('/diagram-js/lib/core/Canvas.js'))
+      .sort((left, right) => left.listenerId - right.listenerId);
+    if (expectedRetainedListeners.length !== 4 ||
+        new Set(expectedRetainedListeners.map((record) => record.type)).size !== 4 ||
+        new Set(expectedRetainedListeners.map((record) => record.listenerId)).size !== 4 ||
+        expectedRetainedListeners.some((record) => record.capture || record.count !== 1)) {
+      throw new Error('Diagram-js retained listener identities do not match the canonical set.');
+    }
+    const sameSvgProjectListener = () => {};
+    const secondSvgProjectListener = () => {};
+    const secondSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    document.body.append(secondSvg);
+    const secondTargetId = tracker.targetId(secondSvg);
+    svg.addEventListener('focusin', sameSvgProjectListener);
+    secondSvg.addEventListener('focusout', secondSvgProjectListener, true);
+    const controls = tracker.remainingListeners().filter((record) =>
+      !record.registrationOrigin.includes('diagram-js') &&
+      (record.targetId === diagramTargetId || record.targetId === secondTargetId));
+    const controlsAreDistinct = controls.length === 2 &&
+      new Set(controls.map((record) => record.listenerId)).size === 2 &&
+      controls.some((record) => record.targetId === diagramTargetId &&
+        record.type === 'focusin' && !record.capture) &&
+      controls.some((record) => record.targetId === secondTargetId &&
+        record.type === 'focusout' && record.capture);
+    svg.removeEventListener('focusin', sameSvgProjectListener);
+    secondSvg.removeEventListener('focusout', secondSvgProjectListener, true);
+    secondSvg.remove();
+    const controlIds = new Set(controls.map((record) => record.listenerId));
+    const negativeControlsRemoved = !tracker.remainingListeners()
+      .some((record) => controlIds.has(record.listenerId));
+    return { container, modeler, svg, keyboard, diagramTargetId,
+      expectedRetainedListeners, controlsAreDistinct, negativeControlsRemoved,
+      remainingListeners: tracker.remainingListeners };
+  },
+  focusJourney: async (state) => {
+    const { container, modeler, svg, keyboard } = state;
+    const editor = container.querySelector('.djs-direct-editing-content');
+    if (!editor) throw new Error('Label editing should create a contenteditable editor.');
+    editor.focus();
+    editor.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Escape', keyCode: 27, bubbles: true
+    }));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const cancelRestoredFocus = document.activeElement === svg;
+    keyboard('e');
+    const reopenedEditor = container.querySelector('.djs-direct-editing-content');
+    const keyboardReopenedEditing = Boolean(reopenedEditor);
+    reopenedEditor?.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Enter', keyCode: 13, bubbles: true
+    }));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const completeRestoredFocus = document.activeElement === svg;
+    keyboard('a', { ctrlKey: true });
+    return { cancelRestoredFocus, completeRestoredFocus, keyboardReopenedEditing,
+      selectedByKeyboard: modeler.get('selection').get().length >= 2 };
+  },
+  cleanupJourney: async (state) => {
+    const { container, modeler, remainingListeners, svg, keyboard } = state;
+    const element = modeler.get('elementRegistry').get('node-component');
+    const contextPad = modeler.get('contextPad');
+    modeler.get('selection').select(element);
+    contextPad.open(element, true);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const contextOpened = contextPad.isOpen();
+    const popupMenu = modeler.get('popupMenu');
+    popupMenu.open(element, 'text-options', { x: 0, y: 0, cursor: { x: 0, y: 0 } });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const popupOpened = Boolean(container.querySelector('.djs-popup'));
+    popupMenu.close();
+    contextPad.close();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const popupRestoredFocus = document.activeElement === svg;
+    const contextClosed = contextOpened && !contextPad.isOpen() &&
+      !container.querySelector('.djs-popup');
+    keyboard('e');
+    const editingBeforeClear = Boolean(container.querySelector('.djs-direct-editing-content'));
+    modeler.clear();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const clearRemovedEditing = !container.querySelector('.djs-direct-editing-parent');
+    const listenerCountBeforeDestroy = remainingListeners().length;
+    modeler.destroy();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const destroyRemovedDom = !container.querySelector('.djs-direct-editing-parent') &&
+      !container.querySelector('svg');
+    const detachedSvgUnreachable = !document.body.contains(svg);
+    const retainedListeners = remainingListeners();
+    container.remove();
+    return { popupOpened, popupRestoredFocus, contextClosed, editingBeforeClear,
+      clearRemovedEditing, destroyRemovedDom, detachedSvgUnreachable,
+      listenerCountBeforeDestroy, retainedListeners };
+  }
+};
+`;
 
 const server = createServer((request: { url?: string }, response: {
   setHeader(name: string, value: string): void;
@@ -167,90 +280,14 @@ try {
   await page.goto(origin, { waitUntil: 'domcontentloaded' });
   await page.addStyleTag({ url: '/diagram.css' });
   await page.addScriptTag({ content: listenerTrackerScript });
+  await page.addScriptTag({ content: focusHelpersScript });
   await page.addScriptTag({ url: '/focus-interactions-test.js' });
 
   await page.evaluate(async () => {
-    const api = (window as unknown as {
-      FocusInteractionsTest: { Modeler: new (options: { container: HTMLElement }) => {
-        importXML(xml: string): Promise<unknown>;
-        get(name: string): any;
-        clear(): void;
-        destroy(): void;
-      };
-      };
-    }).FocusInteractionsTest;
-    const tracker = (window as any).__focusListenerTracker as { remainingListeners(): Array<{
-      targetId: string; type: string; listenerId: number; capture: boolean; count: number;
-      registrationOrigin: string;
-    }>; targetId(target: EventTarget): string };
     const xml = await (await fetch('/synthetic.xml')).text();
-    const container = document.createElement('div');
-    container.style.width = '800px';
-    container.style.height = '500px';
-    document.body.append(container);
-    const modeler = new api.Modeler({ container });
-    await modeler.importXML(xml);
-    const canvas = modeler.get('canvas');
-    const svg = container.querySelector('svg');
-    if (!svg) throw new Error('Modeler SVG should be mounted.');
-    canvas.focus();
-    const registry = modeler.get('elementRegistry');
-    const editableElement = registry.get('node-component');
-    modeler.get('selection').select(editableElement);
-    const keyboard = (key: string, modifiers: KeyboardEventInit = {}) =>
-      svg.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...modifiers }));
-    const diagramTargetId = tracker.targetId(svg);
-    const expectedRetainedListeners = tracker.remainingListeners()
-      .filter((record) => record.targetId === diagramTargetId &&
-        [ 'focusin', 'focusout', 'mouseout', 'mouseover' ].includes(record.type) &&
-        record.registrationOrigin.includes('/diagram-js/lib/core/Canvas.js'))
-      .sort((left, right) => left.listenerId - right.listenerId);
-    if (expectedRetainedListeners.length !== 4) {
-      throw new Error(`Expected exact diagram-js retained listener registrations: ${
-        JSON.stringify(tracker.remainingListeners().filter((record) =>
-          record.targetId === diagramTargetId))
-      }`);
-    }
-    if (new Set(expectedRetainedListeners.map((record) => record.type)).size !== 4 ||
-        new Set(expectedRetainedListeners.map((record) => record.listenerId)).size !== 4 ||
-        expectedRetainedListeners.some((record) =>
-          record.capture || record.count !== 1 ||
-          !record.registrationOrigin.includes('/diagram-js/lib/core/Canvas.js'))) {
-      throw new Error('Diagram-js retained listener identities do not match the canonical set.');
-    }
-    const sameSvgProjectListener = () => {};
-    const secondSvgProjectListener = () => {};
-    const secondSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    document.body.append(secondSvg);
-    const secondTargetId = tracker.targetId(secondSvg);
-    svg.addEventListener('focusin', sameSvgProjectListener);
-    secondSvg.addEventListener('focusout', secondSvgProjectListener, true);
-    const negativeControlsTracked = tracker.remainingListeners().filter((record) =>
-      !record.registrationOrigin.includes('diagram-js') &&
-      (record.targetId === diagramTargetId || record.targetId === secondTargetId));
-    const controlsAreDistinct = negativeControlsTracked.length === 2 &&
-      new Set(negativeControlsTracked.map((record) => record.listenerId)).size === 2 &&
-      negativeControlsTracked.some((record) =>
-        record.targetId === diagramTargetId && record.type === 'focusin' && record.capture === false) &&
-      negativeControlsTracked.some((record) =>
-        record.targetId === secondTargetId && record.type === 'focusout' && record.capture === true);
-    svg.removeEventListener('focusin', sameSvgProjectListener);
-    secondSvg.removeEventListener('focusout', secondSvgProjectListener, true);
-    secondSvg.remove();
-    const negativeControlIds = new Set(negativeControlsTracked.map((record) => record.listenerId));
-    const negativeControlsRemoved = !tracker.remainingListeners()
-      .some((record) => negativeControlIds.has(record.listenerId));
-    (window as any).__focusInteractions = {
-      container,
-      modeler,
-      remainingListeners: tracker.remainingListeners,
-      svg,
-      keyboard,
-      diagramTargetId,
-      expectedRetainedListeners,
-      controlsAreDistinct,
-      negativeControlsRemoved
-    };
+    const windowApi = window as any;
+    windowApi.__focusInteractions = await windowApi.__focusTestHelpers
+      .setup(windowApi.FocusInteractionsTest, xml);
   });
 
   await page.evaluate(() => {
@@ -259,82 +296,25 @@ try {
     state.modeler.get('directEditing').activate(element);
   });
 
-  const focusResult = await page.evaluate(async () => {
-    const state = (window as any).__focusInteractions;
-    const { container, modeler, svg, keyboard } = state;
-    const editor = container.querySelector('.djs-direct-editing-content') as HTMLElement | null;
-    if (!editor) throw new Error('Label editing should create a contenteditable editor.');
-    editor.focus();
-    editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }));
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    const cancelRestoredFocus = document.activeElement === svg;
-
-    keyboard('e');
-    const reopenedEditor = container.querySelector('.djs-direct-editing-content') as HTMLElement | null;
-    const keyboardReopenedEditing = Boolean(reopenedEditor);
-    reopenedEditor?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }));
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    const completeRestoredFocus = document.activeElement === svg;
-    keyboard('a', { ctrlKey: true });
-    const selectedByKeyboard = modeler.get('selection').get().length >= 2;
-    return { cancelRestoredFocus, completeRestoredFocus, keyboardReopenedEditing, selectedByKeyboard };
+  const focusResult = await page.evaluate(() => {
+    const windowApi = window as any;
+    return windowApi.__focusTestHelpers.focusJourney(windowApi.__focusInteractions);
   });
 
-  const cleanupResult = await page.evaluate(async () => {
+  const cleanupResult = await page.evaluate(() => {
+    const windowApi = window as any;
+    return windowApi.__focusTestHelpers.cleanupJourney(windowApi.__focusInteractions);
+  });
+  const setupResult = await page.evaluate(() => {
     const state = (window as any).__focusInteractions;
-    const {
-      container, modeler, remainingListeners, svg, keyboard, diagramTargetId,
-      expectedRetainedListeners, controlsAreDistinct, negativeControlsRemoved
-    } = state;
-    const selection = modeler.get('selection'); const element = modeler.get('elementRegistry').get('node-component');
-    selection.select(element);
-    const contextPad = modeler.get('contextPad'); contextPad.open(element, true);
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    const contextOpened = contextPad.isOpen();
-    const popupMenu = modeler.get('popupMenu');
-    popupMenu.open(element, 'text-options', {
-      x: 0,
-      y: 0,
-      cursor: { x: 0, y: 0 }
-    });
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    const popupOpened = Boolean(container.querySelector('.djs-popup'));
-    popupMenu.close();
-    contextPad.close();
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    const popupRestoredFocus = document.activeElement === svg;
-    const contextClosed = contextOpened && !contextPad.isOpen() && !container.querySelector('.djs-popup');
-
-    keyboard('e');
-    const editingBeforeClear = Boolean(container.querySelector('.djs-direct-editing-content'));
-    modeler.clear();
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    const clearRemovedEditing = !container.querySelector('.djs-direct-editing-parent');
-    const listenerCountBeforeDestroy = remainingListeners().length;
-    modeler.destroy();
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    const destroyRemovedDom = !container.querySelector('.djs-direct-editing-parent') && !container.querySelector('svg');
-    const detachedSvgUnreachable = !document.body.contains(svg);
-    const retainedListeners = remainingListeners();
-    container.remove();
-    delete (window as any).__focusInteractions;
     return {
-      popupOpened,
-      popupRestoredFocus,
-      contextClosed,
-      editingBeforeClear,
-      clearRemovedEditing,
-      destroyRemovedDom,
-      detachedSvgUnreachable,
-      listenerCountBeforeDestroy,
-      retainedListeners,
-      diagramTargetId,
-      expectedRetainedListeners,
-      controlsAreDistinct,
-      negativeControlsRemoved
+      diagramTargetId: state.diagramTargetId,
+      expectedRetainedListeners: state.expectedRetainedListeners,
+      controlsAreDistinct: state.controlsAreDistinct,
+      negativeControlsRemoved: state.negativeControlsRemoved
     };
   });
-  const result = { ...focusResult, ...cleanupResult };
+  const result = { ...setupResult, ...focusResult, ...cleanupResult };
 
   assert.equal(result.cancelRestoredFocus, true);
   assert.equal(result.completeRestoredFocus, true);
