@@ -16,6 +16,8 @@ if (opened.eligible) {
   modeler.execute({ type: 'move', viewId: opened.viewId!, nodeId: 'node-component', x: 40, y: 50 });
   modeler.execute({ type: 'move-many', viewId: opened.viewId!,
     moves: [{ nodeId: 'node-component', x: 60, y: 70 }, { nodeId: 'node-service', x: 260, y: 70 }] });
+  const { patch, metrics } = await modeler.optimizeDiagram();
+  // modeler.undo() reverses the entire optimization; modeler.redo() reapplies it.
   const { xml: meffXml, dtoJson } = modeler.save();
   // Write artifacts only after save() returns both validated outputs.
 }
@@ -74,6 +76,23 @@ deterministic caller-provided IDs and commit semantic and presentation records
 atomically; see [the DTO command boundary](diagram-adapter.md) for payloads and
 validation. Adapter gesture routing remains pending #372, and creation UI
 remains EE-M9/#351.
+
+`await modeler.optimizeDiagram(options?)` computes layout from the active view
+of the detached DTO model and commits only its geometry patch via one
+`apply-layout-patch` command. The default is the built-in full strategy; it
+returns `{ patch, metrics }` as plain values. `undo()` restores the preceding
+DTO geometry and `redo()` reapplies it; `save()` exports the resulting DTO/MEFF.
+Routed waypoints are rounded to MEFF-compatible integer coordinates and
+typed as source attachment, bendpoints, and target attachment. The facade
+rejects a layout that cannot round-trip through MEFF before committing it.
+For explicit patch replay or reversal, call
+`modeler.applyLayoutPatch(patch, 'after' | 'before')`. Each call is a separate
+undoable edit and requires the current geometry to match the opposite side of
+the patch. Stale patches are rejected. Missing/ineligible sessions and
+unsupported options throw content-free coded errors; `elk-layered` is not
+available. If the session closes or is replaced during layout, the result is
+discarded. The direct legacy `lib/Modeler.ts` optimizer remains a separate
+diagram-js command-stack compatibility path, not the DTO facade.
 
 `project()` returns an engine-neutral `CanvasProjection` with DTO identifiers,
 geometry, labels, style, and selected IDs. Viewport methods route through the

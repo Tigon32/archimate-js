@@ -276,9 +276,9 @@ for persistent edits in DTO sessions.
 ## Layout
 
 Keep the existing layout functions: `optimizeDiagram`,
-`routeViewConnections`, and `applyLayoutPatch`. Keep commandStack integration
-while legacy `Modeler.optimizeDiagram` needs it, but migrate it to execute a
-DTO `apply-layout-patch` command in EE-M6.
+`routeViewConnections`, and `applyLayoutPatch`. The public modeler facade now
+commits optimization via a DTO `apply-layout-patch` command (EE-M6); direct
+legacy `Modeler.optimizeDiagram` retains commandStack compatibility.
 
 `src/layout/types.ts` already defines `LayoutOptions.strategy` as `'builtin' |
 'elk-layered'`, plus `LayoutPatch` and `LayoutResult`. ELK.js belongs behind
@@ -317,7 +317,7 @@ Dependency reversals or legacy couplings today:
 | `lib/import/Importer.js` and legacy import path | Builds diagram-js/moddle objects directly from XML. | EE-M13 |
 | `BaseViewer.saveXML()` | Serializes moddle mutated by legacy command handlers. | EE-M13 |
 | `lib/features/modeling/cmd/*` | Mutates moddle/businessObject state through diagram-js commands. | EE-M13 |
-| `lib/Modeler.ts` | `optimizeDiagram` reads `canvas`, `elementRegistry`, and executes `commandStack`. | EE-M6 |
+| `lib/Modeler.ts` | Direct legacy `optimizeDiagram` reads `canvas`, `elementRegistry`, and executes `commandStack`; the public facade uses DTO layout intents. | EE-M6 (legacy compatibility retained) |
 | `lib/features/rules/ArchimateRules.js` | Gesture authority lives in diagram-js `RuleProvider`. | EE-M7 |
 | Renderer and feature modules reading `businessObject` | Rendering depends on moddle objects attached to shapes. | EE-M13 |
 
@@ -486,7 +486,7 @@ flowchart TD
 | EE-M3 Relocate diagram-js adapter out of engine-neutral model-dto entry (with re-export deprecation) — Implemented | Move `DiagramJsCanvasPort` and `DtoModelerSession` exports behind modeler/adapter area. | Keep `model-dto` engine-neutral. | Package exports, DTO index, docs. | `src/model-dto/index.ts`, future modeler entry, docs/releases notes. | EE-M1. | Package export and packed-consumer tests. | Old re-export warns/deprecates; new path works. | Deprecation window for early users. | M |
 | EE-M4 Public `archimate-js/modeler` entry, lifecycle, events, TypeScript declarations, packed-consumer test — Implemented | Expose experimental public modeler API. | Move consumers from internal paths to supported boundary. | Package exports, declarations, modeler facade. | `package.json`, `dist/modeler`, tests, docs. | EE-M3. | `test/smoke/package.test.mts`, packed consumer, type checks. | `import Modeler from 'archimate-js/modeler'` works. | Experimental under `0.y.z`; changelog must call breaks. | L |
 | EE-M5 Editor intents: batch/multi-select move/delete and apply-layout-patch implemented; create-element remains with #332 | Add missing serializable commands. | Support Miro-like editing without engine state. | DTO adapter, commands, validation, tests. | `src/model-dto/editor.ts`, `src/model-dto/editor-view.ts`, DTO types if needed. | EE-M2, #332 for creation. | Unit contract tests and browser gesture tests. | Multi-node move/delete, batch, and layout patch are undoable; create-element remains pending #332. | Preserve single-item command behavior. | L |
-| EE-M6 Route Modeler.optimizeDiagram through DTO apply-layout-patch | Make optimization use DTO authority. | Layout changes become reversible DTO edits. | Modeler, layout, adapter. | `lib/Modeler.ts`, `src/layout`, adapter command. | EE-M5, #100. | Layout apply/reverse tests and browser optimize smoke. | Optimize returns patch/metrics and commits through DTO command when eligible. | Legacy commandStack path remains for ineligible sessions. | M |
+| EE-M6 Route Modeler.optimizeDiagram through DTO apply-layout-patch — Implemented for eligible facade sessions | Make optimization use DTO authority. | Layout changes become reversible DTO edits. | Public modeler facade, layout, adapter. | `src/modeler/index.ts`, `src/layout`, adapter command. | EE-M5; #100 still defines advanced layout. | Layout apply/reverse tests and browser optimize smoke. | Optimize returns patch/metrics and commits through DTO command when eligible. | Direct legacy Modeler commandStack path remains; no ELK dependency included. | M |
 | EE-M7 Domain-authoritative relationship rules in diagram-js RuleProvider (with #102/#333) | Make live gesture affordance use domain decision service. | Remove duplicate relationship authority. | Rules, language services, tests. | `lib/features/rules/ArchimateRules.js`, generated utility path, `src/language`. | EE-M2, #102, #333. | Relationship matrix/projection tests plus browser connect tests. | Allowed/disallowed/unsupported decisions are consistent in UI and DTO adapter. | Legacy generated util can remain only as projection of domain service. | M |
 | EE-M8 Viewport & selection interaction pack (pan/zoom/pinch/space-drag/marquee/fit) | Add core whiteboard navigation and selection. | Keep canvas behavior adapter-local. | Diagram-js integration, keyboard/focus tests. | Modeler adapter modules, browser tests. | EE-M5, #97, #107. | Playwright focus/interactions and performance smoke. | Pan, zoom, pinch, space-drag, marquee, fit-to-view/selection work without leaking engine objects. | Preserve existing keyboard shortcuts. | M |
 | EE-M9 Searchable concept picker & create-at-pointer | Add modern concept creation workflow. | Creation starts from domain registry. | Shell/editor UI, concept registry, commands. | `src/language/concept-registry.mts`, modeler UI modules, tests. | EE-M5, #332. | Unit search tests and browser create-at-pointer test. | Double-click search creates semantic element and view node, then name edit. | Palette remains supported. | M |

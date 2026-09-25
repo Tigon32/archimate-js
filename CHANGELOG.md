@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with deterministic IDs, atomic validation, reviewed relationship semantics,
   one-step undo/redo, and MEFF/DTO round-trip preservation. Adapter gesture
   routing remains coordinated with #372; creation UI remains EE-M9/#351.
+* `FEAT`: route public modeler optimization through one undoable DTO layout
+  patch, with explicit reverse application and DTO/MEFF save consistency;
+  preserve the direct legacy command-stack optimizer.
 * `FEAT`: add DTO editor `move-many`, `delete-many`, and `apply-layout-patch`
   intents with atomic validation, one-step undo/redo, diagram-js batch gesture
   routing, and CanvasPort contract coverage.
