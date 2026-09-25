@@ -38,9 +38,10 @@ HTML file through a `file:` URL.
    **Elements**, and **Relationships**. Check that the example exposes the
    outline as a section with its visible heading. The example uses native
    headings, lists, and buttons; it does not implement an ARIA tree. The
-   elements list is programmatically labelled by its heading. Record how the
-   relationships heading and list are announced: unlike the elements list,
-   the relationships list has no explicit `aria-labelledby` relationship.
+   elements and relationships lists are programmatically labelled by their
+   visible headings. Record how each heading and list are announced without
+   requiring exact spoken wording; actual VoiceOver and NVDA results remain
+   `Not run` until a human performs the corresponding journey.
 3. Navigate the outline in reading order. Check that entries expose a useful
    name and element or relationship type. Element entries follow node preorder;
    relationship entries follow view order. The example adds stable

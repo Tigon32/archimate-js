@@ -36,10 +36,9 @@ journey. Do not open the HTML file directly through a `file:` URL.
 
 The page contains a native HTML outline and a rendered diagram. The outline
 uses headings, lists, buttons with pressed states, a search field, and a named
-section; it is not an ARIA tree. The relationships list is separate from the
-elements list and does not have its own explicit accessible label. The
-checked-in fixture has no groups, so there is no disclosure control to test on
-this page.
+section; it is not an ARIA tree. Both the elements and relationships lists are
+programmatically named by their visible headings. The checked-in fixture has
+no groups, so there is no disclosure control to test on this page.
 
 ## VoiceOver on macOS with Safari
 
@@ -61,8 +60,10 @@ and [webpage landmarks](https://support.apple.com/en-gb/guide/voiceover/vo35709/
    headings, outline status, search label, elements, and relationships. Entries
    should be exposed as list items containing buttons. Element button names
    include the element type, visible name, context, and view-instance ID.
-   Relationship button names include relationship type/name and source/target
-   names. Record omissions, duplicate context, or confusing reading order.
+   The relationships list should be identified by its visible **Relationships**
+   heading. Relationship button names include relationship type/name and
+   source/target names. Record omissions, duplicate context, or confusing
+   reading order.
 3. Move keyboard focus to an outline button (for example, with Tab from the
    search field). With the button focused, press **ArrowDown** and **ArrowUp**
    to check that focus moves between outline buttons. Press **Return** on a
@@ -122,9 +123,8 @@ browse mode for page reading; if a control does not accept input, use
    list items, and `b` to move among buttons. Check that element buttons
    include type, visible name, context, and view-instance ID, while
    relationship buttons include relationship type/name and source/target
-   names. The elements list is labelled by **Elements**; record whether the
-   relationships list has a useful announced label. Do not expect a tree
-   role.
+   names. Both lists are programmatically named by their visible **Elements**
+   and **Relationships** headings. Do not expect a tree role.
 3. Focus an outline button and press **ArrowDown** and **ArrowUp** to inspect
    button-to-button focus movement. Press **Enter** on a button. Record its
    pressed state before and after activation and whether NVDA reports the
