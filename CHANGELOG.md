@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+* `FEAT`: add DTO editor `move-many`, `delete-many`, and `apply-layout-patch`
+  intents with atomic validation, one-step undo/redo, diagram-js batch gesture
+  routing, and CanvasPort contract coverage.
 * `FEAT`: add the experimental `archimate-js/modeler` subpath with a public
   `Modeler` facade, TypeScript declarations, DTO-backed lifecycle/save/events,
   adapter-level `DiagramJsCanvasPort`/`DtoModelerSession` exports, and an

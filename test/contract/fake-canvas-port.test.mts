@@ -36,8 +36,18 @@ function createHarness(): CanvasPortHarness {
   return {
     port,
     emitCommand: (command) => port.emitCommand(command),
+    emitBatchMove: (ids, delta) => {
+      const rendered = port.readRendered();
+      port.emitCommand({ type: 'move-many', viewId: rendered.viewId!, moves: ids.map((id) => {
+        const node = rendered.nodes.find((item) => item.id === id)!;
+        return { nodeId: id, x: node.x + delta.x, y: node.y + delta.y };
+      }) });
+    },
+    emitDeleteMany: (ids) => port.emitCommand({ type: 'delete-many',
+      viewId: port.readRendered().viewId!, itemIds: ids }),
     emitSelection: (ids) => port.emitSelection(ids),
-    emitUnsupportedMultiMove: () => { throw new TypeError('Multi-node move is not supported.'); },
+    emitRejectedGesture: () => port.emitCommand({ type: 'move', viewId: port.readRendered().viewId!,
+      nodeId: 'missing-node', x: 0, y: 0 }),
     readRendered: () => port.readRendered()
   };
 }

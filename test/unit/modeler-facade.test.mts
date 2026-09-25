@@ -10,6 +10,7 @@ const state = vi.hoisted(() => {
     opened: [] as string[],
     sessions: [] as Array<{ closed: number }>,
     pendingOpens: [] as Array<{ session: { closed: number }; resolve(): void }>,
+    commands: [] as unknown[],
     createdModeler: undefined as undefined | { destroy(): void; get(serviceName: string): unknown },
     eligible: true,
     deferOpen: false,
@@ -29,9 +30,12 @@ vi.mock('../../src/diagram-js-adapter/index.js', () => {
         state.listeners.add(listener);
         return () => state.listeners.delete(listener);
       },
-      execute: () => state.listeners.forEach((listener) => listener({
+      execute: (command: unknown) => {
+        state.commands.push(command);
+        state.listeners.forEach((listener) => listener({
         type: 'changed', viewId: 'view-one', selectedIds: ['node-one'], model: state.model
-      })),
+        }));
+      },
       undo: () => true,
       redo: () => true,
       select: (_viewId: string, ids: string[]) => state.listeners.forEach((listener) => listener({
@@ -71,10 +75,23 @@ beforeEach(() => {
   state.opened = [];
   state.sessions = [];
   state.pendingOpens = [];
+  state.commands = [];
   state.eligible = true;
   state.deferOpen = false;
   state.reasons = [];
   state.listeners.clear();
+});
+
+it('delegates apply-layout-patch commands through the facade undo boundary', async () => {
+  const { default: Modeler } = await import('../../src/modeler/index.js');
+  const modeler = new Modeler({ container: {} as Element });
+  await modeler.open('<synthetic/>', { viewId: 'view-one' });
+  const patch = { viewId: 'view-one', nodes: [{ id: 'node-one',
+    before: { x: 0, y: 0, width: 100, height: 60 },
+    after: { x: 40, y: 20, width: 100, height: 60 } }], connections: [] };
+  modeler.execute({ type: 'apply-layout-patch', viewId: 'view-one', patch, side: 'after' });
+  expect(modeler.undo()).toBe(true);
+  expect(state.commands).toEqual([{ type: 'apply-layout-patch', viewId: 'view-one', patch, side: 'after' }]);
 });
 
 it('opens, delegates editor operations, emits plain events, and saves', async () => {

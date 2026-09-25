@@ -14,6 +14,8 @@ const opened = await modeler.open(xml, { viewId: 'view-dto-export' });
 
 if (opened.eligible) {
   modeler.execute({ type: 'move', viewId: opened.viewId!, nodeId: 'node-component', x: 40, y: 50 });
+  modeler.execute({ type: 'move-many', viewId: opened.viewId!,
+    moves: [{ nodeId: 'node-component', x: 60, y: 70 }, { nodeId: 'node-service', x: 260, y: 70 }] });
   const { xml: meffXml, dtoJson } = modeler.save();
   // Write artifacts only after save() returns both validated outputs.
 }
@@ -59,6 +61,15 @@ modeler.fitView();
 modeler.zoom(0.8);
 modeler.zoom('fit');
 ```
+
+Supported persistent command discriminants are `move`, `move-many`, `resize`,
+`connect`, `reconnect`, `delete`, `delete-many`, `apply-layout-patch`, `label`,
+`concept-name`, `concept-documentation`, and `property`. `move-many` uses
+absolute diagram-space target coordinates per node. `apply-layout-patch` accepts
+a DTO `LayoutPatch` and `side: 'after' | 'before'`; it applies node bounds and
+connection waypoints only, validates current geometry to reject stale patches,
+and commits as one undo step. `create-element` is intentionally not part of this
+surface yet; it remains tracked separately by #332.
 
 `project()` returns an engine-neutral `CanvasProjection` with DTO identifiers,
 geometry, labels, style, and selected IDs. Viewport methods route through the

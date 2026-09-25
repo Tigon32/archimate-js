@@ -1,12 +1,16 @@
 import type {
   ModelDto, PointDto, PropertyValueDto, RelationshipDto, StyleDto, ViewConnectionDto, ViewNodeDto
 } from './types.js';
+import type { LayoutPatch } from '../layout/types.js';
 import { exportModelDtoToMeff } from './meff-export.js';
 import { assessModelDtoEditingEligibility, editingIneligibleError } from './eligibility.js';
 import { invalid, isIdentifier, serializeModelDto, validateModelDto } from './validate.js';
 import { validateRelationshipSemantics } from '../language/relationship-semantics.mjs';
 import { rejectRelationshipEdit } from './editor-diagnostics.js';
 import type { RelationshipEditOperation } from './editor-diagnostics.js';
+import {
+  applyLayoutPatch, changeBounds, deleteItem, deleteMany, findNode, moveMany, nodesOf
+} from './editor-view.js';
 
 /** The canvas receives values and identifiers, never mutable diagram-js objects. */
 export interface CanvasProjection {
@@ -21,11 +25,14 @@ export interface CanvasProjection {
 
 export type EditorCommand =
   | { type: 'move'; viewId: string; nodeId: string; x: number; y: number }
+  | { type: 'move-many'; viewId: string; moves: Array<{ nodeId: string; x: number; y: number }> }
   | { type: 'resize'; viewId: string; nodeId: string; x: number; y: number; width: number; height: number }
   | { type: 'connect'; viewId: string; connection: ViewConnectionDto; relationship?: RelationshipDto }
   | { type: 'reconnect'; viewId: string; connectionId: string; sourceId?: string; targetId?: string;
       waypoints: PointDto[] }
   | { type: 'delete'; viewId: string; itemId: string }
+  | { type: 'delete-many'; viewId: string; itemIds: string[] }
+  | { type: 'apply-layout-patch'; viewId: string; patch: LayoutPatch; side: 'after' | 'before' }
   | { type: 'label'; viewId: string; itemId: string; label: string }
   | { type: 'concept-name'; viewId: string; conceptId: string; name?: string }
   | { type: 'concept-documentation'; viewId: string; conceptId: string; documentation?: string }
@@ -40,91 +47,6 @@ export interface CanvasPort {
   onCommand(handler: (command: EditorCommand) => void): () => void;
   onSelection(handler: (ids: string[]) => void): () => void;
   clear?(): void;
-}
-
-function findNode(nodes: ViewNodeDto[], id: string): ViewNodeDto | undefined {
-  for (const node of nodes) {
-    if (node.id === id) return node;
-    const child = findNode(node.nodes, id);
-    if (child) return child;
-  }
-  return undefined;
-}
-
-function nodesOf(nodes: ViewNodeDto[], elements: ModelDto['elements'], parentId?: string): CanvasProjection['nodes'] {
-  return nodes.flatMap((node): CanvasProjection['nodes'] => {
-    const element = elements.find((item) => item.id === node.elementId);
-    return [
-      { id: node.id, kind: node.kind, x: node.x, y: node.y, width: node.width, height: node.height,
-        ...(parentId !== undefined ? { parentId } : {}),
-        ...(node.elementId !== undefined ? { elementId: node.elementId } : {}),
-        ...(element?.type !== undefined ? { type: element.type } : {}),
-        ...(element?.name !== undefined ? { name: element.name } : {}),
-        ...(node.label !== undefined ? { label: node.label } : {}),
-        ...(node.style !== undefined ? { style: structuredClone(node.style) } : {}) },
-    ...nodesOf(node.nodes, elements, node.id)
-    ];
-  });
-}
-
-function moveChildren(node: ViewNodeDto, dx: number, dy: number): void {
-  node.x += dx;
-  node.y += dy;
-  node.nodes.forEach((child) => moveChildren(child, dx, dy));
-}
-
-function descendants(node: ViewNodeDto): Set<string> {
-  const ids = new Set([node.id]);
-  for (const child of node.nodes) for (const id of descendants(child)) ids.add(id);
-  return ids;
-}
-
-function removeNode(nodes: ViewNodeDto[], id: string): ViewNodeDto | undefined {
-  const index = nodes.findIndex((node) => node.id === id);
-  if (index !== -1) return nodes.splice(index, 1)[0];
-  for (const node of nodes) {
-    const removed = removeNode(node.nodes, id);
-    if (removed) return removed;
-  }
-  return undefined;
-}
-
-function changeBounds(view: ModelDto['views'][number], command: Extract<EditorCommand,
-  { type: 'move' | 'resize' }>): void {
-  const node = findNode(view.nodes, command.nodeId);
-  if (!node) invalid();
-  const dx = command.x - node.x;
-  const dy = command.y - node.y;
-  moveChildren(node, dx, dy);
-  if (command.type === 'resize') {
-    node.width = command.width;
-    node.height = command.height;
-  }
-  const movedIds = descendants(node);
-  for (const connection of view.connections) {
-    if (movedIds.has(connection.sourceId || '')) {
-      connection.waypoints[0].x += dx;
-      connection.waypoints[0].y += dy;
-    }
-    if (movedIds.has(connection.targetId || '')) {
-      const last = connection.waypoints.at(-1)!;
-      last.x += dx;
-      last.y += dy;
-    }
-  }
-}
-
-function deleteItem(view: ModelDto['views'][number], itemId: string): void {
-  const node = removeNode(view.nodes, itemId);
-  if (node) {
-    const deletedIds = descendants(node);
-    view.connections = view.connections.filter((item) => !deletedIds.has(item.sourceId || '') &&
-      !deletedIds.has(item.targetId || ''));
-    return;
-  }
-  const index = view.connections.findIndex((item) => item.id === itemId);
-  if (index === -1) invalid();
-  view.connections.splice(index, 1);
 }
 
 function editConcept(model: ModelDto, command: Extract<EditorCommand,
@@ -340,6 +262,9 @@ function apply(model: ModelDto, command: EditorCommand): ModelDto {
   case 'resize':
     changeBounds(view, command);
     break;
+  case 'move-many':
+    moveMany(view, command);
+    break;
   case 'connect':
     connect(next, view, command);
     break;
@@ -348,6 +273,12 @@ function apply(model: ModelDto, command: EditorCommand): ModelDto {
     break;
   case 'delete':
     deleteItem(view, command.itemId);
+    break;
+  case 'delete-many':
+    deleteMany(view, command);
+    break;
+  case 'apply-layout-patch':
+    applyLayoutPatch(view, command);
     break;
   case 'label': {
     const item = findNode(view.nodes, command.itemId) ||
