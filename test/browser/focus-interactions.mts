@@ -55,6 +55,10 @@ const server = createServer((request: { url?: string }, response: {
 }) => {
   const pathname = new URL(request.url || '/', 'http://localhost').pathname;
   requestPaths.push(pathname);
+  if (pathname === '/') {
+    response.setHeader('content-type', 'text/html; charset=utf-8');
+    return void response.writeHead(200).end('<!doctype html><html><body></body></html>');
+  }
   const route = routes.get(pathname);
   if (!route) return void response.writeHead(404).end();
   response.setHeader('content-type', route.endsWith('.css')
