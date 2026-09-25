@@ -20,6 +20,15 @@ throws a content-free `MODEL_DTO_DIFF_INELIGIBLE` error. Invalid DTOs retain
 `MODEL_DTO_INVALID`. Callers should decide whether to display returned names,
 documentation, and labels; the diff itself does not log them.
 
+Call `assessModelDtoDiffEligibility(before, after)` to inspect this boundary
+before requesting a diff. It returns a deterministic `eligible` flag and
+content-free diagnostics attributed to `before` or `after`. Stable codes
+distinguish lossy projection diagnostics, unsupported fields, and other
+non-canonical data; each diagnostic includes only a count, never field names,
+values, or source diagnostic messages. Invalid DTOs still raise
+`MODEL_DTO_INVALID`. `diffModelDto` keeps its existing lossless-only behavior
+and `MODEL_DTO_DIFF_INELIGIBLE` error contract.
+
 The CLI exposes this comparison as `archimate-js diff <before.xml> <after.xml>
 [--format json|human]`. Human output is the default; both formats go to stdout
 and write no files. JSON includes before/after DTO values, while human output
@@ -28,6 +37,8 @@ reveal model names, labels, documentation, or other values in the supported DTO
 subset, so only send it to destinations allowed to receive that model data.
 
 This API does not compare organization, properties, viewpoint metadata, or
-unparsed exchange fields. It does not infer renames when IDs change, render a
+unparsed exchange fields. Eligibility diagnostics prevent callers from
+mistaking such snapshots for complete comparisons, but do not preserve or diff
+the unsupported data. It does not infer renames when IDs change, render a
 visual overlay, or impose a large-model performance budget. Those remain in
 the [comparison umbrella](https://github.com/Tigon32/archimate-js/issues/105).
