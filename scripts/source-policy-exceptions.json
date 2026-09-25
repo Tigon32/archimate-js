@@ -13,7 +13,7 @@
     },
     {
       "path": "lib/draw/NotationAdapter.mjs",
-      "reason": "Issue #93 uses a small runtime adapter consumed by Node and the current Webpack bundle without a TypeScript loader.",
+      "reason": "Issues #93 and #277 use this small runtime compatibility adapter from the current Node and Webpack bundle, which cannot load typed source directly.",
       "removalCondition": "Move to a typed adapter once the browser package can emit and resolve TypeScript sources."
     },
     {
