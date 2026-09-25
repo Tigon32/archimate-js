@@ -1,6 +1,11 @@
 {
   "exceptions": [
     {
+      "path": "lib/util/RelationshipUtil.js",
+      "reason": "Issue #305 keeps a generated JavaScript artifact at the legacy import path so existing browser modules use the typed MTS implementation without a broad caller migration.",
+      "removalCondition": "Remove after the remaining legacy canvas callers migrate to typed modules and the browser bundle can import the typed utility directly."
+    },
+    {
       "path": "lib/draw/ArchimateRenderer.js",
       "reason": "Issue #93 integrates the supplied notation with a legacy renderer whose full TypeScript migration and decomposition is separate work.",
       "removalCondition": "Migrate and split ArchimateRenderer into typed modules under the #92/#94 editor contracts.",

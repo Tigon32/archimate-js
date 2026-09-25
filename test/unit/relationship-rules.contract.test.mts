@@ -18,6 +18,24 @@ import {
 } from '../../lib/util/RelationshipUtil.mjs';
 import { RELATIONSHIP_SEMANTIC_ROWS } from '../../src/language/relationship-decisions.mjs';
 
+function expectCreateOptionsToMatchReviewedRows(): void {
+  const pairs = new Set(RELATIONSHIP_SEMANTIC_ROWS.map((row) => `${row.sourceType}|${row.targetType}`));
+  for (const key of pairs) {
+    const [sourceType, targetType] = key.split('|');
+    const expected = RELATIONSHIP_SEMANTIC_ROWS
+      .filter((row) => row.sourceType === sourceType && row.targetType === targetType && row.decision === 'allowed')
+      .map((row) => row.relationshipType.replace(/Relationship$/, ''));
+    expect(getRelationshipsAllowed(sourceType, targetType)).toEqual(expected);
+  }
+}
+
+function expectReconnectChoicesToMatchReviewedRows(): void {
+  for (const row of RELATIONSHIP_SEMANTIC_ROWS) {
+    expect(isRelationshipAllowed(row.sourceType, row.targetType,
+      row.relationshipType.replace(/Relationship$/, ''))).toBe(row.decision === 'allowed');
+  }
+}
+
 describe('relationship rule utility', () => {
   it('returns allowed relationship kinds for an application component and service', () => {
     expect(getRelationshipsAllowed('ApplicationComponent', 'ApplicationService')).toEqual([
@@ -50,19 +68,8 @@ describe('relationship rule utility', () => {
   });
 
   it('uses only explicitly allowed registry rows for covered endpoint pairs', () => {
-    const pairs = new Set(RELATIONSHIP_SEMANTIC_ROWS.map((row) => `${row.sourceType}|${row.targetType}`));
-    for (const key of pairs) {
-      const [sourceType, targetType] = key.split('|');
-      const expected = RELATIONSHIP_SEMANTIC_ROWS
-        .filter((row) => row.sourceType === sourceType && row.targetType === targetType && row.decision === 'allowed')
-        .map((row) => row.relationshipType.replace(/Relationship$/, ''));
-      expect(getRelationshipsAllowed(sourceType, targetType)).toEqual(expected);
-      for (const row of RELATIONSHIP_SEMANTIC_ROWS.filter((candidate) =>
-        candidate.sourceType === sourceType && candidate.targetType === targetType)) {
-        expect(isRelationshipAllowed(sourceType, targetType,
-          row.relationshipType.replace(/Relationship$/, ''))).toBe(row.decision === 'allowed');
-      }
-    }
+    expectCreateOptionsToMatchReviewedRows();
+    expectReconnectChoicesToMatchReviewedRows();
     expect(getRelationshipsAllowed('ApplicationFunction', 'ApplicationComponent')).toEqual([]);
     expect(isRelationshipAllowed('ApplicationFunction', 'ApplicationComponent', RELATIONSHIP_ASSIGNMENT)).toBe(false);
     expect(isRelationshipAllowed('ApplicationFunction', 'ApplicationComponent', RELATIONSHIP_ASSOCIATION)).toBe(false);

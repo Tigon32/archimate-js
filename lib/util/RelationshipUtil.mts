@@ -1,6 +1,6 @@
 // @ts-expect-error Legacy JavaScript utility; migrated separately.
 import { getRelationshipMap, is } from './ModelUtil.js';
-import { RELATIONSHIP_SEMANTIC_ROWS } from './relationship-semantic-projection.mjs';
+import { RELATIONSHIP_SEMANTIC_ROWS } from './relationship-semantic-projection.generated.mjs';
 
 const relationTab: Readonly<Record<string, string>> = Object.freeze({
   s: 'Specialization',
