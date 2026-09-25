@@ -127,7 +127,7 @@ async function defaultExportTest(directory: string): Promise<void> {
     const pdf = await readFile(path.join(directory, 'Quarter-View.pdf'));
     assert.match(svg, /^<svg[^>]+role="graphics-document document"/);
     assert.ok(svg.includes('<rect width="100%" height="100%" fill="#ffffff"/>'));
-    assert.deepEqual(pngDimensions(png), { width: 1020, height: 340 });
+    assert.deepEqual(pngDimensions(png), { width: 1000, height: 320 });
     assert.equal(pdf.subarray(0, 5).toString('ascii'), '%PDF-');
 }
 
@@ -142,9 +142,9 @@ async function reportExportTest(directory: string): Promise<void> {
     const reportSvg = await readFile(path.join(directory, 'report.svg'), 'utf8');
     const reportPng = await readFile(path.join(directory, 'report.png'));
     const reportPdf = await readFile(path.join(directory, 'report.pdf'));
-    assert.match(reportSvg, /viewBox="3 3 534 194"/);
+    assert.match(reportSvg, /viewBox="8 8 524 184"/);
     assert.match(reportSvg, /preserveAspectRatio="xMidYMid meet"/);
-    assert.deepEqual(pngDimensions(reportPng), { width: 1068, height: 388 });
+    assert.deepEqual(pngDimensions(reportPng), { width: 1048, height: 368 });
     assert.equal(reportPdf.subarray(0, 5).toString('ascii'), '%PDF-');
 }
 
@@ -156,7 +156,7 @@ async function transparentExportTest(directory: string): Promise<void> {
     ], 0);
     assert.deepEqual(transparent.json.formats, ['png']);
     assert.deepEqual(pngDimensions(await readFile(path.join(directory, 'transparent.png'))),
-      { width: 510, height: 170 });
+      { width: 500, height: 160 });
 }
 
 async function invalidLayoutTest(directory: string): Promise<void> {

@@ -23,7 +23,7 @@ try {
     entry: entryPath,
     output: { path: path.join(root, '.ci-build'), filename: 'dto-save-test.js' },
     module: { rules: [{ test: /\.(css|svg|ttf|woff2?)$/, type: 'asset/inline' }] },
-    resolve: { extensions: ['.js', '.json'] }, stats: 'errors-warnings' });
+    resolve: { extensions: ['.ts', '.js', '.json'] }, stats: 'errors-warnings' });
   stats = await new Promise<import('webpack').Stats>((resolve, reject) => {
     compiler.run((error, result) => compiler.close((closeError) => {
       if (error || closeError || !result) reject(error || closeError || new Error('Browser compile failed.'));

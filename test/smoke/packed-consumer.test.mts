@@ -28,7 +28,7 @@ try {
   run('npm', ['run', 'compile:model-dto'], { cwd: root });
   run('npm', ['run', 'compile:layout'], { cwd: root });
   run('npm', ['run', 'compile:export'], { cwd: root });
-  run(process.execPath, ['test/smoke/compile.mjs'], { cwd: root });
+  run(process.execPath, ['test/smoke/compile.mts'], { cwd: root });
   run('npm', ['run', 'compile:cli'], { cwd: root });
   const packOutput = run('npm', [
     'pack', '--ignore-scripts', '--json', '--pack-destination', temp
@@ -69,7 +69,6 @@ try {
     target: 'node',
     entry: consumerEntry,
     output: { path: consumer, filename: path.basename(bundlePath), library: { type: 'commonjs2' } },
-    resolve: { modules: [ path.join(consumer, 'node_modules') ] }
   }, (error: WebpackError | null, stats?: Stats) => {
     if (error || !stats || stats.hasErrors()) {
       reject(new Error('Bundler could not resolve the packed root API.'));
