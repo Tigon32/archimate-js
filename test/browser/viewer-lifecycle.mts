@@ -16,6 +16,7 @@ interface LifecycleResult {
   cycles: Array<{ mountedSvgCount: number; mountedNodeIds: string[]; mountedConnectionIds: string[];
     remainingObservableListeners: number; eventBusListenerRemoved: boolean;
     destroyedViewerNodes: number }>;
+  unexpectedNodeIdRejected: boolean;
 }
 
 declare global {
@@ -96,16 +97,41 @@ try {
     const cycles: LifecycleResult['cycles'] = [];
     const expectedNodeIds = ['node-component', 'node-service', 'node-service-nested'];
     const expectedConnectionIds = ['serving-connection'];
+    // diagram-js also uses djs-shape for label objects; the renderer's visual kind identifies node shapes.
+    const mountedNodeIdsFor = (container: ParentNode) => Array.from(
+      container.querySelectorAll<SVGElement>('.djs-element.djs-shape[data-element-id]'))
+      .filter((element) => element.querySelector(':scope > .djs-visual[data-export-kind="node"]'))
+      .map((element) => element.getAttribute('data-element-id') ?? '').sort();
+    const hasExpectedNodeIds = (ids: string[]) => JSON.stringify(ids) === JSON.stringify(expectedNodeIds);
+    let unexpectedNodeIdRejected = false;
     for (let cycle = 0; cycle < 8; cycle++) {
       tracker.enabled = true;
       const viewer = await api.mountViewer({ xml, viewId: 'view-dto-export', container: host,
         width: '800px', height: '500px' });
       const mountedSvgCount = host.querySelectorAll('.djs-container > svg').length;
-      const mountedNodeIds = Array.from(host.querySelectorAll<SVGElement>('.djs-element[data-element-id^="node-"]'),
-        (element) => element.getAttribute('data-element-id') ?? '').sort();
+      if (cycle === 0) {
+        const svg = host.querySelector('.djs-container > svg');
+        if (!svg) throw new Error('The mounted viewer must expose its diagram SVG.');
+        const unexpectedShape = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        unexpectedShape.classList.add('djs-element', 'djs-shape');
+        unexpectedShape.setAttribute('data-element-id', 'unexpected-shape');
+        const visual = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        visual.classList.add('djs-visual');
+        visual.setAttribute('data-export-kind', 'node');
+        unexpectedShape.append(visual);
+        svg.append(unexpectedShape);
+        const idsWithUnexpectedShape = mountedNodeIdsFor(host);
+        unexpectedNodeIdRejected = idsWithUnexpectedShape.includes('unexpected-shape') &&
+          !hasExpectedNodeIds(idsWithUnexpectedShape);
+        unexpectedShape.remove();
+        if (!unexpectedNodeIdRejected) {
+          throw new Error('The exact node-shape check must reject a synthetic unexpected non-node-prefixed ID.');
+        }
+      }
+      const mountedNodeIds = mountedNodeIdsFor(host);
       const mountedConnectionIds = Array.from(host.querySelectorAll<SVGElement>('.djs-connection[data-element-id]'),
         (element) => element.getAttribute('data-element-id') ?? '').sort();
-      if (mountedSvgCount !== 1 || JSON.stringify(mountedNodeIds) !== JSON.stringify(expectedNodeIds) ||
+      if (mountedSvgCount !== 1 || !hasExpectedNodeIds(mountedNodeIds) ||
           JSON.stringify(mountedConnectionIds) !== JSON.stringify(expectedConnectionIds)) {
         throw new Error(`Unexpected synthetic diagram structure: node IDs ${mountedNodeIds.join(',')}; ` +
           `connections ${mountedConnectionIds.join(',')}.`);
@@ -133,9 +159,11 @@ try {
         eventBusListenerRemoved, destroyedViewerNodes });
     }
     host.remove();
-    return { cycles };
+    return { cycles, unexpectedNodeIdRejected };
   });
   assert.equal(result.cycles.length, 8, 'the same connected container should complete eight mount/destroy cycles');
+  assert.equal(result.unexpectedNodeIdRejected, true,
+    'the diagram-js shape selector should include and reject an unexpected non-node-prefixed ID');
   const expectedNodeIds = ['node-component', 'node-service', 'node-service-nested'];
   const expectedConnectionIds = ['serving-connection'];
   for (const [index, cycle] of result.cycles.entries()) {
@@ -150,7 +178,7 @@ try {
     assert.equal(cycle.eventBusListenerRemoved, true,
       `cycle ${index + 1} should stop delivering viewer event-bus callbacks after destroy`);
   }
-  console.log('viewer lifecycle browser check passed: 8 same-container cycles; verified node IDs node-component, node-service, node-service-nested, connection ID serving-connection, DOM removal, connected-target listeners, and event-bus callbacks; no heap-size claim');
+  console.log('viewer lifecycle browser check passed: 8 same-container cycles; verified all rendered node-shape IDs, rejected an unexpected shape ID, checked connection ID serving-connection, DOM removal, connected-target listeners, and event-bus callbacks; no heap-size claim');
 } finally {
   if (browser) await browser.close();
   await new Promise<void>((resolve) => server.close(() => resolve()));
