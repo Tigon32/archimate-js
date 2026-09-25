@@ -1,5 +1,6 @@
 import type {
-  DtoDiagnostic, ElementDto, ModelDto, PointDto, RelationshipDto,
+  ConceptPropertyDto, DtoDiagnostic, ElementDto, ModelDto, PointDto, PropertyDefinitionDto,
+  PropertyValueDto, RelationshipDto,
   StyleDto, ViewConnectionDto, ViewDto, ViewNodeDto
 } from './types.js';
 
@@ -67,8 +68,34 @@ function point(value: unknown): PointDto {
 function element(value: unknown): ElementDto {
   const data = record(value);
   if (typeof data.type !== 'string' || !TYPE.test(data.type)) invalid();
+  const properties = data.properties === undefined ? undefined : list(data.properties).map(property);
+  if (properties?.length === 0) invalid();
   return { id: identifier(data.id), type: data.type,
+    name: optionalText(data.name), documentation: optionalText(data.documentation),
+    ...(properties ? { properties } : {}) };
+}
+
+function propertyDefinition(value: unknown): PropertyDefinitionDto {
+  const data = record(value);
+  const types = ['string', 'boolean', 'integer', 'real'];
+  if (typeof data.type !== 'string' || !types.includes(data.type)) invalid();
+  return { id: identifier(data.id), type: data.type as PropertyDefinitionDto['type'],
     name: optionalText(data.name), documentation: optionalText(data.documentation) };
+}
+
+function propertyValue(value: unknown): PropertyValueDto {
+  const data = record(value);
+  const language = optionalText(data.language);
+  const text = optionalText(data.value);
+  if (text === undefined || language === '') invalid();
+  return { language, value: text };
+}
+
+function property(value: unknown): ConceptPropertyDto {
+  const data = record(value);
+  const values = list(data.values).map(propertyValue);
+  if (!values.length) invalid();
+  return { propertyDefinitionId: identifier(data.propertyDefinitionId), values };
 }
 
 function relationship(value: unknown): RelationshipDto {
@@ -154,8 +181,15 @@ function unique(ids: string[]): Set<string> {
 export function validateModelDto(input: unknown): ModelDto {
   const data = record(input);
   if (data.schemaVersion !== 1) invalid();
+  const propertyDefinitions = data.propertyDefinitions === undefined ? undefined :
+    list(data.propertyDefinitions).map(propertyDefinition);
+  const definitionIds = unique((propertyDefinitions || []).map((item) => item.id));
+  if (propertyDefinitions && propertyDefinitions.length === 0) invalid();
   const elements = list(data.elements).map(element);
   const relationships = list(data.relationships).map(relationship);
+  for (const concept of [...elements, ...relationships]) {
+    if (concept.properties?.some((item) => !definitionIds.has(item.propertyDefinitionId))) invalid();
+  }
   const elementIds = unique(elements.map((item) => item.id));
   const relationshipIds = unique(relationships.map((item) => item.id));
   const conceptIds = new Set([...elementIds, ...relationshipIds]);
@@ -166,6 +200,7 @@ export function validateModelDto(input: unknown): ModelDto {
   unique(views.map((item) => item.id));
   const diagnostics = list(data.diagnostics).map(diagnostic);
   return { schemaVersion: 1, id: identifier(data.id), name: optionalText(data.name),
+    ...(propertyDefinitions ? { propertyDefinitions } : {}),
     elements, relationships, views, diagnostics };
 }
 

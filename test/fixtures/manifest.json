@@ -177,6 +177,23 @@
     "content_sha256": "46e1280b9b67fac2fa7d6fe69d5e36035367f1390af2b95e8d06c872eeedd206"
   },
   {
+    "id": "synthetic-meff-dto-editable-profile",
+    "path": "test/fixtures/synthetic/dto-editable-profile.xml",
+    "classification": "SYNTHETIC",
+    "purpose": "Exercise lossless DTO editing of concept names, documentation, and defined properties with authored Diagram presentation.",
+    "provenance": "Hand-authored from public MEFF 3.1 Model and Diagram record descriptions; no official example or private model content copied.",
+    "contains_private_data": false,
+    "expected_coverage": [
+      "element and relationship names and documentation",
+      "property definition and ordered values",
+      "view label separate from concept name",
+      "authored node geometry and style",
+      "DTO command export and reimport"
+    ],
+    "review_after": "2026-12-23",
+    "content_sha256": "2a7633bee9e3d5f35f8fde3d1c1e0d6b68356a43a51c5149d724f8951801ab23"
+  },
+  {
     "id": "synthetic-meff-xsd-valid-model",
     "path": "test/fixtures/meff-schema/valid-model.xml",
     "classification": "SYNTHETIC",
