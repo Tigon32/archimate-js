@@ -53,8 +53,7 @@ No third-party notice changes are required.
 
 Measurements use Node `v26.8.2`, npm `11.19.1`, macOS, clean detached
 worktrees for baseline and accepted alignment, and their committed
-`package-lock.json` files. The tiny-svg experiment is a copy of the accepted
-worktree with the stated one-package mutation. The browser artifact is
+`package-lock.json` files. The browser artifact is
 `.ci-build/archimate-js.js`; the byte count command is:
 
 ```sh
@@ -65,13 +64,15 @@ wc -c .ci-build/archimate-js.js
 | --- | --- | --- | ---: | --- |
 | Baseline | `2d502dbd03901d0aa1325713bc173ebfa489e95f` | `npm ci --ignore-scripts && npm run compile:browser && npm run test:browser` | 3,936,153 | pass |
 | Accepted alignment | `26ee0c7bdd3460aae58a25e9c0d430411b546e73` | `npm ci --ignore-scripts && npm run compile:browser && npm run test:browser` | 3,900,900 | pass |
-| Rejected tiny-svg experiment | `26ee0c7bdd3460aae58a25e9c0d430411b546e73`, with only `package.json` `tiny-svg` set to `^4.1.4` and lockfile regenerated via `npm install --package-lock-only --ignore-scripts` | `npm ci --ignore-scripts && npm run compile:browser && npm run test:browser` | 3,882,444 | fail |
 
 The accepted alignment reduces the development browser artifact by 35,253
-bytes (0.9%). The rejected tiny-svg experiment reduces it by 53,709 bytes
-(1.4%) from baseline, but `npm run test:browser` exits 1 in
-`test/browser/smoke.mjs` during `import and export named and unnamed
-connections`; it is not accepted.
+bytes (0.9%).
+
+`tiny-svg` remains unchanged. Its major-version upgrade was not assessed with
+a committed lockfile and retained browser log, so this record makes no
+compatibility, bundle-size, or failure claim about version 4. A future update
+must be evaluated as a separate, reproducible dependency change rather than
+being inferred from this alignment.
 
 `npm run test:browser` is the canonical browser command. It first runs
 `compile:model-dto`, `compile:browser`, `compile:model-dto:browser`, and
@@ -86,4 +87,3 @@ The captured canonical logs have SHA-256 digests:
 | --- | --- |
 | Baseline | `e70e45a0c0c9793793ecee48bb567dfcd77b9dff8fa7ef45f7a4c86139841620` |
 | Accepted alignment | `424c036a43d3a924a4926f71406aee6ac7db8eb48b57cfadf2b4fe5d6920106f` |
-| Rejected tiny-svg experiment | `c222ff671a8ccff72f7db446d56ae258f296f0fb2b7209e8da90889edd93bdbb` |
