@@ -19,6 +19,7 @@
     "test/release/consumer-verification.test.mts",
     "test/release/packed-assets.test.mts",
     "scripts/check-packed-assets.mts",
+    "scripts/drain-agent-pr.mts",
     "scripts/verify-release-evidence.mts",
     "test/unit/cli-export.test.mts",
     "test/browser/export-api.mts",
@@ -29,6 +30,7 @@
     "test/security/check-secrets.test.mts",
     "test/security/codeowners.test.mts",
     "scripts/check-tracked-paths.mts",
+    "scripts/check-public-source-exceptions.mts",
     "scripts/local-verification.mts",
     "scripts/finalize-agent-pr.mts",
     "test/security/check-tracked-paths.test.mts",
@@ -36,6 +38,8 @@
     "test/unit/local-verification-process.test.mts",
     "scripts/relationship-matrix-document.mts",
     "test/unit/relationship-matrix-document.test.mts"
+    "test/security/public-source-exceptions.test.mts",
+    "test/unit/local-verification-process.test.mts"
   ],
   "exclude": ["node_modules", "dist", "coverage", "test-results"]
 }

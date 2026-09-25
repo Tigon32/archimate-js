@@ -147,6 +147,10 @@ is shared between harnesses, so its assignment alone does not identify a run.
   exist; the lease record disambiguates runs and prevents stale workers from
   mutating the issue through the controller. Existing GitHub API clients that
   write directly remain outside this guarantee and need migration/enforcement.
+- Until `main` has merge-time independent-review protection, the trusted PR
+  drain does not automatically merge `agent/*` branches. Only explicitly
+  allowlisted Dependabot groups can use automatic draining after their checks;
+  agent PRs require independent human review and the configured branch rules.
 - Two-hour leases reduce abandoned claims but require heartbeats through CI and
   long investigations. An offline worker may lose the claim and must stop,
   inspect the new owner, and hand off rather than silently resume.
@@ -184,3 +188,6 @@ is shared between harnesses, so its assignment alone does not identify a run.
   recovery rules in [#157](https://github.com/Tigon32/archimate-js/issues/157).
   Status remains `Accepted`; detailed operator procedures live in the linked
   contribution documents.
+- 2026-09-25 — Recorded that the trusted drain excludes agent PRs until
+  independent review is enforced at merge time; see
+  [#239](https://github.com/Tigon32/archimate-js/issues/239).

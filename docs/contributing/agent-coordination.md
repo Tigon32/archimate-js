@@ -212,6 +212,17 @@ touching it:
   required takeover path is complete. Absence of a recent commit alone never
   proves orphaning.
 
+### Automatic merge policy
+
+The trusted PR drain may automatically merge only its explicitly allowlisted
+Dependabot groups after their required checks pass. `agent/*` PRs are ineligible
+for automatic merge. CI success is not evidence of independent review, and an
+API review snapshot cannot make review state atomic with a merge request.
+Merge an agent PR only after appropriate independent human review and the
+repository's required branch protections are in force. Re-enable agent PR
+auto-drain only after those protections enforce review at merge time and the
+drain policy and tests are updated together.
+
 Before any recovery decision, re-read the issue and PR and verify the lease
 record, owner/actor, branch and worktree, commit ancestry, check results,
 review state, linked dependencies, and file overlap with other active PRs.

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-// @ts-expect-error Runtime script is intentionally plain ESM without a declaration file.
-import { classifyAutomergeCandidate, evaluateDrainState, latestRunsByName } from '../../scripts/drain-agent-pr.mjs';
+import { classifyAutomergeCandidate, evaluateDrainState, latestRunsByName } from '../../scripts/drain-agent-pr.mts';
 
 const repository = 'Tigon32/archimate-js';
 const basePr = {
@@ -12,6 +11,11 @@ const basePr = {
   base: { ref: 'main' },
   head: { ref: 'agent/example/issue-1', sha: 'abc123', repo: { full_name: repository } },
   labels: []
+};
+const dependabotPr = {
+  ...basePr,
+  user: { login: 'dependabot[bot]' },
+  head: { ...basePr.head, ref: 'dependabot/npm_and_yarn/npm-minor-and-patch-acde1234' }
 };
 
 function run(
@@ -33,18 +37,18 @@ describe('agent PR drain workflow state', () => {
     expect(latest.get('CI')?.conclusion).toBe('success');
   });
 
-  it('merges a ready same-repo agent PR after exact-head workflows succeed', () => {
+  it('never auto-merges an agent PR even when all exact-head workflows succeed', () => {
     const decision = evaluateDrainState({
       pr: basePr,
       repository,
       runs: [run('CI', 10), run('Automated security analysis', 11), run('MEFF XSD validation', 12, 'completed', 'skipped')]
     });
-    expect(decision).toEqual({ action: 'merge', reason: 'all-exact-head-workflows-green:agent' });
+    expect(decision).toEqual({ action: 'skip', reason: 'agent-pr-requires-human-review' });
   });
 
   it('does not treat skipped required workflows as qualification', () => {
     const decision = evaluateDrainState({
-      pr: basePr,
+      pr: dependabotPr,
       repository,
       runs: [run('CI', 10), run('Automated security analysis', 11, 'completed', 'skipped')]
     });
@@ -55,7 +59,7 @@ describe('agent PR drain workflow state', () => {
 describe('agent PR drain failure handling', () => {
   it('waits while an exact-head workflow is still running', () => {
     const decision = evaluateDrainState({
-      pr: basePr,
+      pr: dependabotPr,
       repository,
       runs: [run('CI', 10), run('Automated security analysis', 11, 'in_progress', null)]
     });
@@ -64,7 +68,7 @@ describe('agent PR drain failure handling', () => {
 
   it('blocks on any failed pull-request workflow', () => {
     const decision = evaluateDrainState({
-      pr: basePr,
+      pr: dependabotPr,
       repository,
       runs: [run('CI', 10), run('Automated security analysis', 11), run('MEFF XSD validation', 12, 'completed', 'failure')]
     });
@@ -73,7 +77,7 @@ describe('agent PR drain failure handling', () => {
 
   it('supports the no-auto-merge emergency brake', () => {
     const decision = evaluateDrainState({
-      pr: { ...basePr, labels: [{ name: 'no-auto-merge' }] },
+      pr: { ...dependabotPr, labels: [{ name: 'no-auto-merge' }] },
       repository,
       runs: [run('CI', 10), run('Automated security analysis', 11)]
     });
@@ -93,6 +97,20 @@ describe('Dependabot drain eligibility', () => {
       kind: 'dependabot',
       group: 'npm-security-minor-and-patch'
     });
+  });
+
+  it('preserves Dependabot drain behavior', () => {
+    const safe = {
+      ...basePr,
+      user: { login: 'dependabot[bot]' },
+      head: { ...basePr.head, ref: 'dependabot/npm_and_yarn/npm-minor-and-patch-acde1234' }
+    };
+    const decision = evaluateDrainState({
+      pr: safe,
+      repository,
+      runs: [run('CI', 10), run('Automated security analysis', 11)]
+    });
+    expect(decision).toEqual({ action: 'merge', reason: 'all-exact-head-workflows-green:dependabot' });
   });
 
   it('keeps unknown Dependabot updates manual', () => {
