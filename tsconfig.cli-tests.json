@@ -19,6 +19,7 @@
     "test/release/consumer-verification.test.mts",
     "test/release/packed-assets.test.mts",
     "scripts/check-packed-assets.mts",
+    "scripts/drain-agent-pr.mts",
     "scripts/verify-release-evidence.mts",
     "test/unit/cli-export.test.mts",
     "test/browser/export-api.mts",
