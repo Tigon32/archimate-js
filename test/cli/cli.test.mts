@@ -127,7 +127,7 @@ async function defaultExportTest(directory: string): Promise<void> {
     const pdf = await readFile(path.join(directory, 'Quarter-View.pdf'));
     assert.match(svg, /^<svg[^>]+role="graphics-document document"/);
     assert.ok(svg.includes('<rect width="100%" height="100%" fill="#ffffff"/>'));
-    assert.deepEqual(pngDimensions(png), { width: 1020, height: 340 });
+    assert.deepEqual(pngDimensions(png), { width: 1000, height: 320 });
     assert.equal(pdf.subarray(0, 5).toString('ascii'), '%PDF-');
 }
 
