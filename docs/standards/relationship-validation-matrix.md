@@ -29,36 +29,49 @@ and does not copy the specification's relationship table. The current decision
 set intentionally covers a bounded application and technology integration subset. Each row carries the public
 evidence ID `opengroup-archimate-3.2-reference-cards`.
 
-The additional #64 rows below are independently authored interpretations of
+The additional #64 rows are independently authored interpretations of
 the [public reference-card definitions](https://www.opengroup.org/sites/default/files/docs/downloads/n221p.pdf),
 not a reproduction of the specification's complete relationship table. Each
-new row carries an `interpretation` sentence; matched API results return it
-along with `decision`, `reasonCode`, and `evidenceSourceId`. An unsupported
-result has no row interpretation.
+additional row carries an `interpretation` sentence; matched API results return it
+along with `decision`, `reasonCode`, and `evidenceSourceId`. Earlier reviewed
+rows do not have row-specific interpretations. An unsupported result has no
+row interpretation.
 
-## Application and integration additions (#64)
+## Reviewed relationship rows (generated)
 
-| Source | Relationship | Target | Decision | Generated-model use |
-|---|---|---|---|---|
-| ApplicationComponent | Flow | ApplicationComponent | allowed | Directional transfer between components. |
-| ApplicationProcess | Flow | ApplicationProcess | allowed | Directional transfer between processes. |
-| ApplicationProcess | Triggering | ApplicationProcess | allowed | Temporal or causal process succession. |
-| ApplicationEvent | Triggering | ApplicationProcess | allowed | Event propagation into a process. |
-| ApplicationComponent | Assignment | ApplicationProcess | allowed | Allocate a process to its performer. |
-| ApplicationProcess | Realization | ApplicationService | allowed | Process implements exposed service behavior. |
-| ApplicationProcess | Access | DataObject | allowed | Process reads or writes passive data. |
-| ApplicationService | Serving | ApplicationComponent | allowed | An exposed service supplies a consuming component. |
-| TechnologyService | Serving | ApplicationComponent | allowed | Technology functionality supports an application component. |
-| Node | Assignment | Artifact | allowed | Deployment of an artifact on a node. |
+The table below is generated from `src/language/relationship-decisions.mts`.
+Run `npm run generate:relationship-matrix` to update it; CI fails if the
+checked-in table differs from the source rows.
 
-The corresponding explicit reverse rows are `disallowed` for Assignment
-(process → component and artifact → node), Realization (service → process),
-Access (data → process), and Serving (component → technology service).
-ApplicationComponent → ApplicationService Serving remains `unsupported`: the
-public reference-card definition alone does not establish a prohibition for
-that exact tuple, and existing synthetic samples use it. Flow and Triggering are directional, but the opposite
-direction could itself have a valid meaning, so there are no blanket reverse
-denials for those types. The fixture enumerates every additional row:
+<!-- BEGIN GENERATED RELATIONSHIP REGISTRY -->
+| ArchiMate version | Source type | Relationship type | Target type | Decision | Evidence source | Interpretation |
+|---|---|---|---|---|---|---|
+| 3.2 | `ApplicationComponent` | `AssignmentRelationship` | `ApplicationFunction` | allowed | `opengroup-archimate-3.2-reference-cards` | — |
+| 3.2 | `ApplicationFunction` | `AssignmentRelationship` | `ApplicationComponent` | disallowed | `opengroup-archimate-3.2-reference-cards` | — |
+| 3.2 | `ApplicationFunction` | `RealizationRelationship` | `ApplicationService` | allowed | `opengroup-archimate-3.2-reference-cards` | — |
+| 3.2 | `ApplicationService` | `RealizationRelationship` | `ApplicationFunction` | disallowed | `opengroup-archimate-3.2-reference-cards` | — |
+| 3.2 | `ApplicationFunction` | `AccessRelationship` | `DataObject` | allowed | `opengroup-archimate-3.2-reference-cards` | — |
+| 3.2 | `DataObject` | `AccessRelationship` | `ApplicationFunction` | disallowed | `opengroup-archimate-3.2-reference-cards` | — |
+| 3.2 | `ApplicationService` | `ServingRelationship` | `BusinessProcess` | allowed | `opengroup-archimate-3.2-reference-cards` | — |
+| 3.2 | `BusinessProcess` | `ServingRelationship` | `ApplicationService` | disallowed | `opengroup-archimate-3.2-reference-cards` | — |
+| 3.2 | `ApplicationComponent` | `FlowRelationship` | `ApplicationComponent` | allowed | `opengroup-archimate-3.2-reference-cards` | Transfer between application components; direction follows the transferred item. |
+| 3.2 | `ApplicationProcess` | `FlowRelationship` | `ApplicationProcess` | allowed | `opengroup-archimate-3.2-reference-cards` | Transfer between application processes; this does not assert a causal sequence. |
+| 3.2 | `ApplicationProcess` | `TriggeringRelationship` | `ApplicationProcess` | allowed | `opengroup-archimate-3.2-reference-cards` | The source process precedes or causes the target process. |
+| 3.2 | `ApplicationEvent` | `TriggeringRelationship` | `ApplicationProcess` | allowed | `opengroup-archimate-3.2-reference-cards` | An application state change starts or affects a process. |
+| 3.2 | `ApplicationComponent` | `AssignmentRelationship` | `ApplicationProcess` | allowed | `opengroup-archimate-3.2-reference-cards` | The component performs the application process. |
+| 3.2 | `ApplicationProcess` | `RealizationRelationship` | `ApplicationService` | allowed | `opengroup-archimate-3.2-reference-cards` | The application process implements exposed application behavior. |
+| 3.2 | `ApplicationProcess` | `AccessRelationship` | `DataObject` | allowed | `opengroup-archimate-3.2-reference-cards` | The process observes or changes the data object. |
+| 3.2 | `ApplicationService` | `ServingRelationship` | `ApplicationComponent` | allowed | `opengroup-archimate-3.2-reference-cards` | The service supplies functionality to a consuming component. |
+| 3.2 | `TechnologyService` | `ServingRelationship` | `ApplicationComponent` | allowed | `opengroup-archimate-3.2-reference-cards` | The technology service supplies functionality to an application component. |
+| 3.2 | `Node` | `AssignmentRelationship` | `Artifact` | allowed | `opengroup-archimate-3.2-reference-cards` | The node hosts a deployed artifact. |
+| 3.2 | `ApplicationProcess` | `AssignmentRelationship` | `ApplicationComponent` | disallowed | `opengroup-archimate-3.2-reference-cards` | The performed behavior cannot be assigned responsibility for its performer. |
+| 3.2 | `ApplicationService` | `RealizationRelationship` | `ApplicationProcess` | disallowed | `opengroup-archimate-3.2-reference-cards` | The exposed service cannot implement the concrete process. |
+| 3.2 | `DataObject` | `AccessRelationship` | `ApplicationProcess` | disallowed | `opengroup-archimate-3.2-reference-cards` | The passive data object does not access the process. |
+| 3.2 | `ApplicationComponent` | `ServingRelationship` | `TechnologyService` | disallowed | `opengroup-archimate-3.2-reference-cards` | A technology service provides the functionality to its application consumer, not conversely. |
+| 3.2 | `Artifact` | `AssignmentRelationship` | `Node` | disallowed | `opengroup-archimate-3.2-reference-cards` | A deployed artifact is not the host that executes or stores the artifact. |
+<!-- END GENERATED RELATIONSHIP REGISTRY -->
+
+The fixture enumerates every additional row:
 [`application-integration-semantics.json`](../../test/fixtures/synthetic/application-integration-semantics.json).
 
 ### Choosing a relationship
