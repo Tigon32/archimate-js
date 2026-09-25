@@ -4,6 +4,7 @@ dist/
 coverage/
 test-results/
 /examples/read-only/viewer.js
+/examples/read-only/outline-bridge.js
 .idea
 *.iml
 .DS_Store
