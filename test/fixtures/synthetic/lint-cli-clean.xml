@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Classification: SYNTHETIC
+  Provenance: Hand-authored for this public repository from generic MEFF
+  structure descriptions; contains no private data or copied model content.
+-->
+<model
+  xmlns="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:archimate="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  identifier="model-synthetic-lint-clean">
+  <name xml:lang="en">Synthetic Lint Clean</name>
+  <elements>
+    <element identifier="element-synthetic-function" xsi:type="archimate:ApplicationFunction">
+      <name xml:lang="en">Synthetic Function</name>
+    </element>
+  </elements>
+</model>

@@ -22,6 +22,7 @@
     "scripts/drain-agent-pr.mts",
     "scripts/verify-release-evidence.mts",
     "test/unit/cli-export.test.mts",
+    "test/unit/lint-cli.test.mts",
     "test/browser/export-api.mts",
     "test/browser/theme-contrast.mts",
     "test/performance/browser-benchmark.mts",
