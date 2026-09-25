@@ -1,4 +1,4 @@
-import type { ModelDto, ViewNodeDto } from './types.js';
+import type { ElementDto, ModelDto, ViewNodeDto } from './types.js';
 import { validateModelDto } from './validate.js';
 
 export type ModelDiffArea = 'semantic' | 'presentation';
@@ -19,7 +19,15 @@ export interface ModelDiffChange {
 export interface ModelDtoDiff {
   schemaVersion: 1;
   changes: ModelDiffChange[];
+  renameCandidates?: ModelDtoRenameCandidate[];
   impactedViewIds: string[];
+}
+
+/** A review hint only; stable IDs remain authoritative for change classification. */
+export interface ModelDtoRenameCandidate {
+  beforeId: string;
+  afterId: string;
+  reason: 'unique-content-match-except-id-and-name';
 }
 
 export type ModelDtoDiffEligibilityCode =
@@ -196,6 +204,56 @@ function compareRecords(
   }
 }
 
+function elementContentKey(element: ElementDto): string {
+  const content = Object.fromEntries(Object.entries(element).filter(([key]) =>
+    key !== 'id' && key !== 'name'));
+  return stable(content);
+}
+
+function groupByContent(elements: ElementDto[]): Map<string, ElementDto[]> {
+  const groups = new Map<string, ElementDto[]>();
+  for (const element of elements) {
+    const key = elementContentKey(element);
+    const group = groups.get(key) ?? [];
+    group.push(element);
+    groups.set(key, group);
+  }
+  return groups;
+}
+
+function inferElementRenameCandidates(
+  before: ModelDto, after: ModelDto, changes: ModelDiffChange[]
+): ModelDtoRenameCandidate[] {
+  const beforeById = new Map(before.elements.map((element) => [element.id, element]));
+  const afterById = new Map(after.elements.map((element) => [element.id, element]));
+  const removed = changes.filter((change) => change.area === 'semantic' &&
+    change.entity === 'element' && change.kind === 'removed').flatMap((change) => {
+    const element = beforeById.get(change.id);
+    return element ? [element] : [];
+  });
+  const added = changes.filter((change) => change.area === 'semantic' &&
+    change.entity === 'element' && change.kind === 'added').flatMap((change) => {
+    const element = afterById.get(change.id);
+    return element ? [element] : [];
+  });
+  const oldGroups = groupByContent(removed);
+  const newGroups = groupByContent(added);
+  const candidates: ModelDtoRenameCandidate[] = [];
+  for (const key of [...oldGroups.keys()].filter((value) => newGroups.has(value)).sort()) {
+    const oldGroup = oldGroups.get(key)!;
+    const newGroup = newGroups.get(key)!;
+    if (oldGroup.length !== 1 || newGroup.length !== 1) continue;
+    const oldElement = oldGroup[0];
+    const newElement = newGroup[0];
+    if (!oldElement.name || !newElement.name || oldElement.name === newElement.name) continue;
+    candidates.push({ beforeId: oldElement.id, afterId: newElement.id,
+      reason: 'unique-content-match-except-id-and-name' });
+  }
+  return candidates.sort((left, right) => left.beforeId < right.beforeId ? -1 :
+    left.beforeId > right.beforeId ? 1 : left.afterId < right.afterId ? -1 :
+      left.afterId > right.afterId ? 1 : 0);
+}
+
 function flattenNodes(nodes: ViewNodeDto[], viewId: string, parentId?: string): NodeRecord[] {
   const result: NodeRecord[] = [];
   for (const { nodes: children, ...node } of nodes) {
@@ -258,5 +316,8 @@ export function diffModelDto(beforeInput: unknown, afterInput: unknown): ModelDt
     const right = stable([b.area, b.entity, b.viewId ?? '', b.id]);
     return left < right ? -1 : left > right ? 1 : 0;
   });
-  return { schemaVersion: 1, changes, impactedViewIds: impactedViews(changes, before, after) };
+  const renameCandidates = inferElementRenameCandidates(before, after, changes);
+  return { schemaVersion: 1, changes,
+    ...(renameCandidates.length ? { renameCandidates } : {}),
+    impactedViewIds: impactedViews(changes, before, after) };
 }
