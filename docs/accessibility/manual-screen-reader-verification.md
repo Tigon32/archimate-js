@@ -2,9 +2,11 @@
 
 This procedure records manual assistive-technology observations for the
 existing read-only example and its exported SVG. It complements the automated
-browser checks; those checks do not run a screen reader. A completed checklist
-is evidence for only the recorded OS, browser, assistive technology, fixture,
-and commit. It does not establish general browser support or WCAG conformance.
+browser checks; those checks do not run a screen reader. For platform-specific
+VoiceOver and NVDA steps, see [the tool-specific journeys](voiceover-nvda-journeys.md).
+A completed checklist is evidence for only the recorded OS, browser, assistive
+technology, fixture, and commit. It does not establish general browser support
+or WCAG conformance.
 
 ## Public synthetic example
 

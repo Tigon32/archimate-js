@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "id": "confidential-classification",
+      "pattern": "\\b(?:company confidential|internal use only|internal only|proprietary and confidential|restricted distribution)\\b",
+      "flags": "i"
+    },
+    {
+      "id": "private-collaboration-link",
+      "pattern": "\\bhttps?://[a-z0-9-]+\\.(?:atlassian\\.net|sharepoint\\.com|visualstudio\\.com)\\b",
+      "flags": "i"
+    },
+    {
+      "id": "private-network-host",
+      "pattern": "(?:https?://|ftp://|@|\\bhost(?:name)?\\s{0,4}[=:]\\s{0,4}[\\\"']?)[a-z0-9-][a-z0-9.-]{0,15}\\.(?:local|internal|intranet|corp|lan)\\b",
+      "flags": "i"
+    },
+    {
+      "id": "private-network-ipv4-10",
+      "pattern": "(?:^|[^\\w.]|[^\\d]\\.)10\\.(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\.(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\.(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(?:$|[^\\w.]|\\.(?:$|\\D))"
+    },
+    {
+      "id": "private-network-ipv4-172",
+      "pattern": "(?:^|[^\\w.]|[^\\d]\\.)172\\.(?:1[6-9]|2\\d|3[01])\\.(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\.(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(?:$|[^\\w.]|\\.(?:$|\\D))"
+    },
+    {
+      "id": "private-network-ipv4-192-168",
+      "pattern": "(?:^|[^\\w.]|[^\\d]\\.)192\\.168\\.(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\.(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(?:$|[^\\w.]|\\.(?:$|\\D))"
+    }
+  ]
+}

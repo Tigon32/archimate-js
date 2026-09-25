@@ -28,6 +28,7 @@
     "test/performance/browser-benchmark.mts",
     "test/browser/accessible-outline.mts",
     "scripts/check-secrets.mts",
+    "scripts/content-markers.mts",
     "test/security/check-secrets.test.mts",
     "test/security/codeowners.test.mts",
     "scripts/check-tracked-paths.mts",
