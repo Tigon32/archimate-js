@@ -23,7 +23,10 @@ The opt-in `archimate-js/model-dto` subpath exposes the DTO JSON validation,
 serialization, and parsing functions, `importMeffToModelDto(unknown)` and
 `exportModelDtoToMeff(unknown)` for the declared MEFF subset. Import applies
 the existing XML preflight byte, depth, node, attribute, and DTD limits before
-either legacy parser runs. Input errors
+the strict TypeScript MEFF model and view parsers run. The DTO exporter also
+uses a bounded strict TypeScript serializer so importing the public DTO API
+does not load the legacy root/browser serializer. Those ESM modules are emitted
+under the package's `dist/model-dto/` module boundary. Input errors
 use a fixed `MEFF_DTO_IMPORT_INVALID` diagnostic without XML content. The
 Package export rejects DTOs with any diagnostics, fields the DTO validator would
 discard, presentation Container/Label/Line records, relationship-to-relationship
@@ -35,10 +38,15 @@ use the fixed `MEFF_DTO_EXPORT_INVALID` code and contain no model text. The
 package root's viewer and existing MEFF exporter retain their prior behavior.
 
 This is **not yet a replacement for the existing public XML import/export
-path**. Remaining issue #92 work includes migrating the legacy MEFF parsers
-and exporter to TypeScript under ADR-0004, wiring the existing root export and
-editor persistence through this contract, defining lossless representation
+path**. The DTO subpath uses its typed MEFF parser and serializer paths; the
+existing root and browser importer and serializer remain legacy JavaScript
+compatibility adapters and keep their prior behavior. These paths are
+maintained separately until a later change can converge them while preserving
+browser behavior and public exports. Remove the legacy adapters only after the
+root/browser importer and exporter are migrated and their interoperability
+tests pass. Remaining issue #92 work includes wiring the existing root export
+and editor persistence through this contract, defining lossless representation
 for currently omitted exchange fields and language-version semantics, and
 testing real editor save/export and reload. Consumers must inspect diagnostics;
-the DTO exporter refuses any imported DTO with omitted exchange fields. Synthetic
-MEFF fixtures exercise the accepted semantic and diagram subsets.
+the DTO exporter refuses any imported DTO with omitted exchange fields.
+Synthetic MEFF fixtures exercise the accepted semantic and diagram subsets.

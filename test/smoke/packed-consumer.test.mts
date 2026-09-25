@@ -42,6 +42,16 @@ try {
     'install', '--ignore-scripts', '--no-audit', '--no-fund', '--package-lock=false', archive
   ], { cwd: consumer });
 
+  const dtoImportProbe = spawnSync(process.execPath, [
+    '--input-type=module', '-e', `
+      import { importMeffToModelDto } from 'archimate-js/model-dto';
+      const model = importMeffToModelDto('<model xmlns="http://www.opengroup.org/xsd/archimate/3.0/" identifier="probe"><name>Probe</name></model>');
+      if (model.id !== 'probe') process.exitCode = 1;
+    `
+  ], { cwd: consumer, encoding: 'utf8' });
+  assert.equal(dtoImportProbe.status, 0, 'packed model DTO API must import directly in Node');
+  assert.equal(dtoImportProbe.stderr, '', 'packed model DTO API must not emit module warnings');
+
   const packageRoot = path.join(consumer, 'node_modules', 'archimate-js');
 
   const consumerEntry = path.join(consumer, 'consumer-entry.mjs');

@@ -1,11 +1,6 @@
-// Legacy parser interop for issue #92: migrate these modules to TypeScript when
-// the complete public MEFF importer is moved behind the typed DTO boundary.
-// @ts-expect-error MeffModel.js is untyped first-party JavaScript.
-import { parseMeffModel } from '../../lib/import/MeffModel.js';
-// @ts-expect-error MeffView.js is untyped first-party JavaScript.
-import { parseMeffViews } from '../../lib/import/MeffView.js';
-// @ts-expect-error XmlPreflight.js is untyped first-party JavaScript.
-import { preflightImportXml } from '../../lib/import/XmlPreflight.js';
+import { parseMeffModel } from './import/meff-model.js';
+import { parseMeffViews } from './import/meff-view.js';
+import { preflightImportXml } from './import/xml-preflight.js';
 import type { ModelDto } from './types.js';
 import { projectImportedModelDto } from './project.js';
 import { list, record } from './validate.js';
@@ -24,7 +19,7 @@ export function importMeffToModelDto(xml: unknown): ModelDto {
       return importFailure();
     }
     const parsed: unknown = parseMeffModel(xml, {
-      create: (_type: string, attrs: object = {}) => ({ ...attrs })
+      create: (_type: string, attrs: Record<string, unknown> = {}) => ({ ...attrs })
     });
     const result = record(parsed);
     const model = record(result.rootElement);
