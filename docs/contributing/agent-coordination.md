@@ -100,12 +100,19 @@ Synthetic deterministic cases live in
 `test/unit/agent-claim-record.fixtures.mts` and
 `test/unit/agent-claim-record.test.mts`.
 
-The parser does not read GitHub, establish which record is the newest valid
-record for a lease, resolve ownership from comment history, verify that an
-acknowledgement comment exists, or decide whether a lease is still live now.
-Callers must apply the complete fail-closed procedure above. It does not
-serialize operations or implement the controller and automatic expiry planned
-for [#140](https://github.com/Tigon32/archimate-js/issues/140).
+`src/coordination/agent-claim-history.mts` resolves a complete, caller-fetched
+comment history to `unclaimed`, `active`, `expired`, `released`, or
+`ambiguous`. It checks comment identity, lease transitions, monotonically
+increasing epochs, takeover lineage, and acknowledgement-comment presence.
+Deterministic synthetic cases live in
+`test/unit/agent-claim-history.test.mts`.
+
+The history resolver does not read GitHub, verify the author or authority of
+an acknowledgement, detect a closed/merged issue, serialize operations, or
+perform automatic expiry. Callers must fetch the complete history and still
+apply the complete fail-closed procedure above. The serialized controller and
+automatic expiry planned for
+[#140](https://github.com/Tigon32/archimate-js/issues/140) remain unimplemented.
 
 ## Operator procedure
 
