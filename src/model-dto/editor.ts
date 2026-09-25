@@ -54,9 +54,12 @@ function nodesOf(nodes: ViewNodeDto[], elements: ModelDto['elements'], parentId?
     const element = elements.find((item) => item.id === node.elementId);
     return [
       { id: node.id, kind: node.kind, x: node.x, y: node.y, width: node.width, height: node.height,
-        ...(parentId ? { parentId } : {}), ...(node.elementId ? { elementId: node.elementId } : {}),
-        ...(element?.type ? { type: element.type } : {}), ...(element?.name ? { name: element.name } : {}),
-        ...(node.label ? { label: node.label } : {}), ...(node.style ? { style: structuredClone(node.style) } : {}) },
+        ...(parentId !== undefined ? { parentId } : {}),
+        ...(node.elementId !== undefined ? { elementId: node.elementId } : {}),
+        ...(element?.type !== undefined ? { type: element.type } : {}),
+        ...(element?.name !== undefined ? { name: element.name } : {}),
+        ...(node.label !== undefined ? { label: node.label } : {}),
+        ...(node.style !== undefined ? { style: structuredClone(node.style) } : {}) },
     ...nodesOf(node.nodes, elements, node.id)
     ];
   });
@@ -301,13 +304,13 @@ export class DiagramAdapter {
       const relationship = this.model.relationships.find((candidate) => candidate.id === item.relationshipId);
       return {
         id: item.id, waypoints: structuredClone(item.waypoints),
-        ...(item.sourceId ? { sourceId: item.sourceId } : {}),
-        ...(item.targetId ? { targetId: item.targetId } : {}),
-        ...(item.relationshipId ? { relationshipId: item.relationshipId } : {}),
-        ...(relationship?.type ? { type: relationship.type } : {}),
-        ...(relationship?.name ? { name: relationship.name } : {}),
-        ...(item.label ? { label: item.label } : {}),
-        ...(item.style ? { style: structuredClone(item.style) } : {})
+        ...(item.sourceId !== undefined ? { sourceId: item.sourceId } : {}),
+        ...(item.targetId !== undefined ? { targetId: item.targetId } : {}),
+        ...(item.relationshipId !== undefined ? { relationshipId: item.relationshipId } : {}),
+        ...(relationship?.type !== undefined ? { type: relationship.type } : {}),
+        ...(relationship?.name !== undefined ? { name: relationship.name } : {}),
+        ...(item.label !== undefined ? { label: item.label } : {}),
+        ...(item.style !== undefined ? { style: structuredClone(item.style) } : {})
       };
     }), selectedIds: [...(this.selection.get(viewId) || [])] };
   }

@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import {
   DiagramAdapter, importMeffToModelDto
 } from '../../src/model-dto/index.js';
-import type { CanvasPort, CanvasProjection, EditorCommand } from '../../src/model-dto/index.js';
+import type { CanvasPort, CanvasProjection, EditorCommand, ModelDto } from '../../src/model-dto/index.js';
 import {
   defineCanvasPortContract, summarizeProjection, type CanvasPortHarness,
   type ContractAssert
@@ -55,3 +55,15 @@ defineCanvasPortContract('CanvasPort contract: headless fake port', {
   fixtureXml: readFileSync('test/fixtures/synthetic/dto-export-view.xml', 'utf8'),
   createHarness
 }, { describe, it, assert });
+
+it('preserves validator-accepted empty string names and labels in projection', () => {
+  const model = importMeffToModelDto(readFileSync('test/fixtures/synthetic/dto-export-view.xml', 'utf8')) as ModelDto;
+  model.elements.find((element) => element.id === 'component-one')!.name = '';
+  model.relationships.find((relationship) => relationship.id === 'serving-one-two')!.name = '';
+  model.views[0].nodes.find((node) => node.id === 'node-component')!.label = '';
+  model.views[0].connections.find((connection) => connection.id === 'serving-connection')!.label = '';
+  const projection = new DiagramAdapter(model).project('view-dto-export');
+  expect(projection.nodes.find((node) => node.id === 'node-component')).toMatchObject({ name: '', label: '' });
+  expect(projection.connections.find((connection) => connection.id === 'serving-connection'))
+    .toMatchObject({ name: '', label: '' });
+});
