@@ -1,0 +1,13 @@
+# Human review ownership for clean-room and supply-chain governance paths.
+/.github/CODEOWNERS @Tigon32
+/AGENTS.md @Tigon32
+/docs/adr/0001-public-clean-room-boundary.md @Tigon32
+/test/fixtures/manifest.json @Tigon32
+/docs/research/sources.yaml @Tigon32
+/docs/research/okf/** @Tigon32
+/scripts/check-* @Tigon32
+/scripts/create-release-evidence.* @Tigon32
+/scripts/verify-release-evidence.* @Tigon32
+/scripts/source-policy-exceptions.json @Tigon32
+/scripts/dependency-maintenance-queue.mjs @Tigon32
+/.github/workflows/** @Tigon32
