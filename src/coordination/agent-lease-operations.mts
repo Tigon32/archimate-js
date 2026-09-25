@@ -29,11 +29,20 @@ export type AgentLeaseOperation =
   | ({ type: 'claim' } & Omit<AgentLeaseToken, 'claim_comment_id' | 'epoch'>)
   | ({ type: 'heartbeat'; last_work_observed_at: string } & AgentLeaseToken)
   | ({ type: 'release' } & AgentLeaseToken)
+  | ({ type: 'takeover-request' } & Omit<AgentLeaseToken, 'claim_comment_id' | 'epoch'>)
+  | ({
+    type: 'takeover-active';
+    supersedes_claim_comment_id: string;
+    observation_ended_at: string;
+    maintainer_ack_comment_id: string;
+  } & Omit<AgentLeaseToken, 'claim_comment_id'>)
   | { type: 'reconcile-closed'; current_assignees: readonly string[] };
 
 type ClaimOperation = Extract<AgentLeaseOperation, { type: 'claim' }>;
 type HeartbeatOperation = Extract<AgentLeaseOperation, { type: 'heartbeat' }>;
 type ReleaseOperation = Extract<AgentLeaseOperation, { type: 'release' }>;
+type TakeoverRequestOperation = Extract<AgentLeaseOperation, { type: 'takeover-request' }>;
+type TakeoverActiveOperation = Extract<AgentLeaseOperation, { type: 'takeover-active' }>;
 type ReconcileOperation = Extract<AgentLeaseOperation, { type: 'reconcile-closed' }>;
 
 export interface AgentLeaseOperationInput {
@@ -55,6 +64,8 @@ export type AgentLeaseOperationCode =
   | 'NO_ACTIVE_LEASE'
   | 'EXPIRED_LEASE'
   | 'STALE_TOKEN'
+  | 'TAKEOVER_REQUEST_REQUIRED'
+  | 'ACKNOWLEDGEMENT_REQUIRED'
   | 'REACK_REQUIRED'
   | 'INVALID_TRANSITION';
 
@@ -79,7 +90,7 @@ export interface ClosedIssueAssigneeMetadata {
 export type AgentLeaseOperationResult =
   | {
     status: 'proposed';
-    operation: 'claim' | 'heartbeat' | 'release' | 'reconcile-closed';
+    operation: 'claim' | 'heartbeat' | 'release' | 'takeover-request' | 'takeover-active' | 'reconcile-closed';
     record: AgentClaimRecord;
     expected_history: AgentLeaseHistoryFence;
     audit: AgentLeaseAudit;
@@ -109,6 +120,12 @@ export function proposeAgentLeaseOperation(input: AgentLeaseOperationInput): Age
   if (input.issue_state === 'closed') return rejected('ISSUE_CLOSED');
   if (input.operation.type === 'claim') return proposeClaim(withOperation(input, input.operation), history);
   if (input.operation.type === 'heartbeat') return proposeHeartbeat(withOperation(input, input.operation), history, now);
+  if (input.operation.type === 'takeover-request') {
+    return proposeTakeoverRequest(withOperation(input, input.operation), history);
+  }
+  if (input.operation.type === 'takeover-active') {
+    return proposeActiveTakeover(withOperation(input, input.operation), history, now);
+  }
   return proposeRelease(withOperation(input, input.operation), history);
 }
 
@@ -215,6 +232,116 @@ function proposeRelease(
   return proposed(input, 'release', record, 'CURRENT_LEASE_RELEASED');
 }
 
+function proposeTakeoverRequest(
+  input: InputWithOperation<TakeoverRequestOperation>,
+  history: AgentClaimHistoryResult
+): AgentLeaseOperationResult {
+  if (!isNonEmpty(input.operation.actor_id) || !isNonEmpty(input.operation.github_login)
+    || !isNonEmpty(input.operation.lease_id) || !isNonEmpty(input.operation.branch)) {
+    return rejected('INVALID_REQUEST');
+  }
+  if (history.status !== 'expired') {
+    return rejected(history.status === 'active' ? 'ACTIVE_LEASE' : 'NO_ACTIVE_LEASE');
+  }
+  if (!('expires_at' in history.record) || typeof history.record.expires_at !== 'string') {
+    return rejected('INVALID_TRANSITION');
+  }
+  const record: AgentClaimRecord = {
+    schema: AGENT_CLAIM_SCHEMA,
+    record_type: 'takeover',
+    issue: input.issue,
+    claim_comment_id: null,
+    actor_id: input.operation.actor_id,
+    github_login: input.operation.github_login,
+    lease_id: input.operation.lease_id,
+    epoch: history.record.epoch + 1,
+    supersedes_claim_comment_id: history.claim_comment_id,
+    observed_expired_at: history.record.expires_at,
+    observation_started_at: input.now,
+    branch: input.operation.branch,
+    state: 'takeover-requested'
+  };
+  return proposed(input, 'takeover-request', record, 'EXPIRED_LEASE_TAKEOVER_REQUESTED');
+}
+
+function proposeActiveTakeover(
+  input: InputWithOperation<TakeoverActiveOperation>,
+  history: AgentClaimHistoryResult,
+  now: number
+): AgentLeaseOperationResult {
+  if (history.status !== 'expired') {
+    return rejected(history.status === 'active' ? 'ACTIVE_LEASE' : 'NO_ACTIVE_LEASE');
+  }
+  const request = findMatchingTakeoverRequest(input, history);
+  if (!request) return rejected('TAKEOVER_REQUEST_REQUIRED');
+  if (!isUtcTimestamp(input.operation.observation_ended_at)
+    || Date.parse(input.operation.observation_ended_at) > now
+    || Date.parse(input.operation.observation_ended_at) - Date.parse(request.record.observation_started_at) < 15 * 60 * 1000
+    || now - Date.parse(request.created_at) < 15 * 60 * 1000) {
+    return rejected('INVALID_TIME');
+  }
+  const acknowledgement = input.comments.find((comment) => comment.id === input.operation.maintainer_ack_comment_id);
+  if (!acknowledgement || Date.parse(acknowledgement.created_at) < Date.parse(input.operation.observation_ended_at)
+    || Date.parse(acknowledgement.created_at) >= now) {
+    return rejected('ACKNOWLEDGEMENT_REQUIRED');
+  }
+  const record: AgentClaimRecord = {
+    schema: AGENT_CLAIM_SCHEMA,
+    record_type: 'takeover',
+    issue: input.issue,
+    claim_comment_id: null,
+    actor_id: input.operation.actor_id,
+    github_login: input.operation.github_login,
+    lease_id: input.operation.lease_id,
+    epoch: input.operation.epoch,
+    supersedes_claim_comment_id: input.operation.supersedes_claim_comment_id,
+    observed_expired_at: request.record.observed_expired_at,
+    observation_started_at: request.record.observation_started_at,
+    observation_ended_at: input.operation.observation_ended_at,
+    maintainer_ack_comment_id: input.operation.maintainer_ack_comment_id,
+    claimed_at: input.now,
+    heartbeat_at: input.now,
+    expires_at: timestampAfter(input.now, LEASE_MS),
+    lease_started_at: input.now,
+    last_work_observed_at: input.now,
+    branch: input.operation.branch,
+    state: 'active'
+  };
+  return proposed(input, 'takeover-active', record, 'EXPIRED_LEASE_TAKEOVER_ACTIVATED');
+}
+
+function findMatchingTakeoverRequest(
+  input: InputWithOperation<TakeoverActiveOperation>,
+  history: Extract<AgentClaimHistoryResult, { status: 'expired' }>
+): {
+  record: Extract<AgentClaimRecord, { record_type: 'takeover'; state: 'takeover-requested' }>;
+  created_at: string;
+} | undefined {
+  const match = input.comments
+    .filter((comment) => Date.parse(comment.created_at) <= Date.parse(input.now))
+    .sort((left, right) => {
+      const difference = Date.parse(left.created_at) - Date.parse(right.created_at);
+      return difference || compareIds(left.id, right.id);
+    })
+    .reverse()
+    .map((comment) => ({ created_at: comment.created_at, parsed: parseAgentClaimComment(comment.body, input.issue) }))
+    .find((candidate): candidate is {
+      created_at: string;
+      parsed: { status: 'valid'; record: Extract<AgentClaimRecord, { record_type: 'takeover'; state: 'takeover-requested' }> };
+    } =>
+      candidate.parsed.status === 'valid'
+      && candidate.parsed.record.record_type === 'takeover'
+      && candidate.parsed.record.state === 'takeover-requested'
+      && candidate.parsed.record.actor_id === input.operation.actor_id
+      && candidate.parsed.record.github_login === input.operation.github_login
+      && candidate.parsed.record.lease_id === input.operation.lease_id
+      && candidate.parsed.record.epoch === input.operation.epoch
+      && candidate.parsed.record.branch === input.operation.branch
+      && candidate.parsed.record.supersedes_claim_comment_id === input.operation.supersedes_claim_comment_id
+      && candidate.parsed.record.supersedes_claim_comment_id === history.claim_comment_id);
+  return match && { record: match.parsed.record, created_at: match.created_at };
+}
+
 function proposeClosedReconciliation(
   input: InputWithOperation<ReconcileOperation>,
   history: AgentClaimHistoryResult
@@ -262,7 +389,7 @@ function matchesToken(history: Extract<AgentClaimHistoryResult, { status: 'activ
 
 function proposed(
   input: AgentLeaseOperationInput,
-  operation: 'claim' | 'heartbeat' | 'release' | 'reconcile-closed',
+  operation: 'claim' | 'heartbeat' | 'release' | 'takeover-request' | 'takeover-active' | 'reconcile-closed',
   record: AgentClaimRecord,
   reasonCode: string
 ): AgentLeaseOperationResult {
