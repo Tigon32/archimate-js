@@ -86,9 +86,17 @@ claim of ownership or a winner selection.
 
 Unknown fields, duplicate keys, invalid JSON, invalid record-type fields, or a
 record outside the fenced JSON block invalidate that record. Do not silently
-ignore unknown fields. If an invalid record could affect ownership, treat the
-issue as ambiguous and fail closed until a maintainer posts a valid
-`supersede` or release record.
+ignore unknown fields. The history resolver has one narrow recovery case for a
+schema-valid `release` whose claim ID, actor, GitHub login, lease ID, and epoch
+match a known valid claim but whose branch does not. It keeps that transition
+ambiguous until a later same-lease `release` with the claim's exact branch and
+a reason, or a valid `supersede` naming the exact claim ID, epoch, and branch,
+resolves it. This recovery does not apply to malformed JSON, unknown fields,
+invalid roots, other identity mismatches, duplicate or unknown comment IDs,
+or unrelated protocol errors; those histories remain ambiguous. Supersede
+records state an intended maintainer resolution, but the history resolver has
+no commenter-authorship data. A caller must independently verify the GitHub
+author's maintainer authority before performing any write.
 
 ### TypeScript parser boundary
 
