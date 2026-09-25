@@ -16,6 +16,7 @@ type Finding = { record: number | null; rule: string };
 const REQUIRED_FIELDS = ['approver', 'expiresOn', 'path', 'rationale', 'reviewedOn'];
 const GITHUB_LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+export const MAX_EXCEPTION_PATH_LENGTH = 512;
 
 function isDate(value: unknown): value is string {
   if (typeof value !== 'string' || !ISO_DATE.test(value)) return false;
@@ -24,7 +25,8 @@ function isDate(value: unknown): value is string {
 }
 
 function isRepoFilePath(value: unknown): value is string {
-  if (typeof value !== 'string' || !value || value.startsWith('/') || value.endsWith('/')) return false;
+  if (typeof value !== 'string' || !value || Array.from(value).length > MAX_EXCEPTION_PATH_LENGTH ||
+      value.startsWith('/') || value.endsWith('/') || /^[A-Za-z]:/.test(value)) return false;
   if (value.includes('\\') || /[*?{}[\]]/.test(value) || /[\u0000-\u001f\u007f]/.test(value) || value.includes('//')) return false;
   return value.split('/').every((segment) => segment !== '' && segment !== '.' && segment !== '..');
 }
