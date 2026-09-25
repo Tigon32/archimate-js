@@ -91,7 +91,7 @@ function applyEvent(event: ParsedEvent, context: HistoryContext): string | undef
   if (record.record_type === 'claim' || (record.record_type === 'takeover' && record.state === 'active')) {
     return applyRootEvent(event, context);
   }
-  if (record.record_type === 'takeover') return applyTakeoverRequest(record, context);
+  if (record.record_type === 'takeover') return applyTakeoverRequest(event, context);
   return applyTransition(event, context);
 }
 
@@ -119,6 +119,10 @@ function applyRootEvent(event: ParsedEvent, context: HistoryContext): string | u
 function validateActiveTakeover(event: ParsedEvent, context: HistoryContext): string | undefined {
   if (event.record.record_type !== 'takeover' || event.record.state !== 'active') return 'invalid active takeover';
   const record = event.record;
+  if (event.at < Date.parse(record.observation_ended_at)) return 'active takeover was posted before its observation window ended';
+  const requested = findMatchingTakeoverRequest(event, context.events);
+  if (!requested) return 'active takeover has no preceding matching request without intervening transitions';
+  if (event.at - requested.at < 15 * 60 * 1000) return 'takeover request observation window is shorter than 15 minutes';
   const oldLease = context.byClaimId.get(record.supersedes_claim_comment_id);
   if (!oldLease || oldLease !== context.previousLease || oldLease.terminal || oldLease.expiry === null
     || oldLease.expiry > Date.parse(record.observed_expired_at)) return 'takeover does not identify the current expired lease';
@@ -126,9 +130,6 @@ function validateActiveTakeover(event: ParsedEvent, context: HistoryContext): st
   if (!context.ids.has(record.maintainer_ack_comment_id) || ackAt === undefined || ackAt >= event.at) {
     return 'takeover maintainer acknowledgement comment is missing';
   }
-  const requested = findMatchingTakeoverRequest(event, context.events);
-  if (!requested) return 'active takeover has no preceding matching takeover request';
-  if (event.at - requested.at < 15 * 60 * 1000) return 'takeover request observation window is shorter than 15 minutes';
   if (ackAt < Date.parse(record.observation_ended_at) || ackAt > Date.parse(record.claimed_at)) {
     return 'maintainer acknowledgement is outside the takeover observation and claim window';
   }
@@ -138,7 +139,34 @@ function validateActiveTakeover(event: ParsedEvent, context: HistoryContext): st
 
 function findMatchingTakeoverRequest(event: ParsedEvent, events: ParsedEvent[]): ParsedEvent | undefined {
   if (event.record.record_type !== 'takeover' || event.record.state !== 'active') return undefined;
-  return events.find((candidate) => compareIds(candidate.id, event.id) < 0 && matchesTakeoverRequest(candidate.record, event.record));
+  const requests = events.filter((candidate) => isBefore(candidate, event) && matchesTakeoverRequest(candidate.record, event.record));
+  for (const request of requests.reverse()) {
+    if (!hasTransitionAfterRequest(request, event, event.record.supersedes_claim_comment_id, events)) return request;
+  }
+  return undefined;
+}
+
+function hasTransitionAfterRequest(
+  request: ParsedEvent,
+  active: ParsedEvent,
+  priorClaimId: string,
+  events: ParsedEvent[]
+): boolean {
+  return events.some((event) => isAfter(event, request) && isBefore(event, active) && referencesTransition(event.record, priorClaimId));
+}
+
+function referencesTransition(record: AgentClaimRecord, claimId: string): boolean {
+  return (record.record_type === 'heartbeat' || record.record_type === 'release'
+    || record.record_type === 'handoff' || record.record_type === 'supersede')
+    && record.claim_comment_id === claimId;
+}
+
+function isBefore(left: ParsedEvent, right: ParsedEvent): boolean {
+  return left.at < right.at || (left.at === right.at && compareIds(left.id, right.id) < 0);
+}
+
+function isAfter(left: ParsedEvent, right: ParsedEvent): boolean {
+  return isBefore(right, left);
 }
 
 function matchesTakeoverRequest(candidate: AgentClaimRecord, active: AgentClaimRecord): boolean {
@@ -154,7 +182,13 @@ function matchesTakeoverRequest(candidate: AgentClaimRecord, active: AgentClaimR
     && candidate.observation_started_at === active.observation_started_at;
 }
 
-function applyTakeoverRequest(record: Extract<AgentClaimRecord, { record_type: 'takeover' }>, context: HistoryContext): string | undefined {
+function applyTakeoverRequest(event: ParsedEvent, context: HistoryContext): string | undefined {
+  if (event.record.record_type !== 'takeover' || event.record.state !== 'takeover-requested') return 'invalid takeover request';
+  const record = event.record;
+  if (event.at < Date.parse(record.observed_expired_at)
+    || event.at < Date.parse(record.observation_started_at)) {
+    return 'takeover request was posted before expiry or the observation window began';
+  }
   const oldLease = context.byClaimId.get(record.supersedes_claim_comment_id);
   if (!oldLease || oldLease.terminal || oldLease.expiry === null
     || oldLease.expiry > Date.parse(record.observed_expired_at)) return 'takeover request does not identify an expired prior lease';
