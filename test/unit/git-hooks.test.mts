@@ -61,7 +61,7 @@ describe('local verification gate', () => {
 
     expect(packageJson.scripts.prepare).toBe('node scripts/install-git-hooks.mjs');
     expect(packageJson.scripts['hooks:install']).toBe('node scripts/install-git-hooks.mjs');
-    expect(packageJson.scripts['verify:wip']).toBe('run-s check:source-policy lint test:typecheck test:validator-build');
+    expect(packageJson.scripts['verify:wip']).toBe('run-s check:source-policy test:relationship-matrix lint test:typecheck test:validator-build');
     expect(packageJson.scripts['verify:local']).toBe('node scripts/local-verification.mts ensure');
     expect(packageJson.scripts['verify:local:run']).toBe('run-s check:source-policy lint test compile');
     expect(packageJson.scripts['verify:local:start']).toBe('node scripts/local-verification.mts start');

@@ -31,8 +31,8 @@ The action's job summary names the changed package and finding; the workflow
 does not post a pull-request comment or need write permission.
 
 The current lockfile also contains legacy metadata outside this set:
-`argparse` has `Python-2.0`, `bpmn-font` has non-SPDX `SIL`, and `type-fest`
-has `(MIT OR CC0-1.0)`. `archimate-font`, `component-event`, `indexof`, and
+`argparse` has `Python-2.0`, and `type-fest` has `(MIT OR CC0-1.0)`.
+`archimate-font`, `component-event`, `indexof`, and
 `memorystream` have no lockfile license field. These unchanged entries are
 not blanket approvals; an update to any of them is reviewed like a new entry.
 GitHub's detected license may differ from lockfile metadata, so both checks
