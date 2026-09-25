@@ -2,7 +2,8 @@
 import { expect, it } from 'vitest';
 // @ts-expect-error Node types are excluded from the browser project.
 import { readFileSync } from 'node:fs';
-import { DtoModelerSession, importMeffToModelDto, serializeModelDto } from '../../src/model-dto/index.js';
+import { DtoModelerSession } from '../../src/diagram-js-adapter/index.js';
+import { importMeffToModelDto, serializeModelDto } from '../../src/model-dto/index.js';
 
 const supported = readFileSync('test/fixtures/synthetic/dto-export-view.xml', 'utf8');
 const unsupported = readFileSync('test/fixtures/meff-schema/valid-view-presentation.xml', 'utf8');
