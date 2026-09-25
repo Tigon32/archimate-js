@@ -13,7 +13,7 @@ interface ViewerApi {
 }
 
 interface LifecycleResult {
-  cycles: Array<{ mountedSvgCount: number; mountedElements: number;
+  cycles: Array<{ mountedSvgCount: number; mountedNodeIds: string[]; mountedConnectionIds: string[];
     remainingObservableListeners: number; eventBusListenerRemoved: boolean;
     destroyedViewerNodes: number }>;
 }
@@ -94,14 +94,21 @@ try {
     host.style.height = '500px';
     document.body.append(host);
     const cycles: LifecycleResult['cycles'] = [];
+    const expectedNodeIds = ['node-component', 'node-service', 'node-service-nested'];
+    const expectedConnectionIds = ['serving-connection'];
     for (let cycle = 0; cycle < 8; cycle++) {
       tracker.enabled = true;
       const viewer = await api.mountViewer({ xml, viewId: 'view-dto-export', container: host,
         width: '800px', height: '500px' });
       const mountedSvgCount = host.querySelectorAll('.djs-container > svg').length;
-      const mountedElements = host.querySelectorAll('.djs-element').length;
-      if (mountedSvgCount !== 1 || mountedElements < 3) {
-        throw new Error('The synthetic view must render one SVG with its expected diagram elements.');
+      const mountedNodeIds = Array.from(host.querySelectorAll<SVGElement>('.djs-element[data-element-id^="node-"]'),
+        (element) => element.getAttribute('data-element-id') ?? '').sort();
+      const mountedConnectionIds = Array.from(host.querySelectorAll<SVGElement>('.djs-connection[data-element-id]'),
+        (element) => element.getAttribute('data-element-id') ?? '').sort();
+      if (mountedSvgCount !== 1 || JSON.stringify(mountedNodeIds) !== JSON.stringify(expectedNodeIds) ||
+          JSON.stringify(mountedConnectionIds) !== JSON.stringify(expectedConnectionIds)) {
+        throw new Error(`Unexpected synthetic diagram structure: node IDs ${mountedNodeIds.join(',')}; ` +
+          `connections ${mountedConnectionIds.join(',')}.`);
       }
       const eventBus = viewer.get('eventBus');
       let eventCount = 0;
@@ -122,23 +129,28 @@ try {
       }
       // Drop instrumentation references to detached diagram nodes between cycles.
       tracker.listeners.length = 0;
-      cycles.push({ mountedSvgCount, mountedElements, remainingObservableListeners,
+      cycles.push({ mountedSvgCount, mountedNodeIds, mountedConnectionIds, remainingObservableListeners,
         eventBusListenerRemoved, destroyedViewerNodes });
     }
     host.remove();
     return { cycles };
   });
   assert.equal(result.cycles.length, 8, 'the same connected container should complete eight mount/destroy cycles');
+  const expectedNodeIds = ['node-component', 'node-service', 'node-service-nested'];
+  const expectedConnectionIds = ['serving-connection'];
   for (const [index, cycle] of result.cycles.entries()) {
     assert.equal(cycle.mountedSvgCount, 1, `cycle ${index + 1} should mount exactly one viewer SVG`);
-    assert.ok(cycle.mountedElements >= 3, `cycle ${index + 1} should render the synthetic diagram nodes`);
+    assert.deepEqual(cycle.mountedNodeIds, expectedNodeIds,
+      `cycle ${index + 1} should render exactly the three synthetic node IDs`);
+    assert.deepEqual(cycle.mountedConnectionIds, expectedConnectionIds,
+      `cycle ${index + 1} should render exactly the synthetic connection ID`);
     assert.equal(cycle.destroyedViewerNodes, 0, `cycle ${index + 1} should remove viewer-owned DOM`);
     assert.equal(cycle.remainingObservableListeners, 0,
       `cycle ${index + 1} should remove tracked listeners from connected page targets`);
     assert.equal(cycle.eventBusListenerRemoved, true,
       `cycle ${index + 1} should stop delivering viewer event-bus callbacks after destroy`);
   }
-  console.log('viewer lifecycle browser check passed: 8 same-container mount/destroy cycles; measured viewer DOM removal, connected-target listeners, and event-bus callbacks, not heap size');
+  console.log('viewer lifecycle browser check passed: 8 same-container cycles; verified node IDs node-component, node-service, node-service-nested, connection ID serving-connection, DOM removal, connected-target listeners, and event-bus callbacks; no heap-size claim');
 } finally {
   if (browser) await browser.close();
   await new Promise<void>((resolve) => server.close(() => resolve()));
