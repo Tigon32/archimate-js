@@ -310,22 +310,25 @@ function sameData(source: unknown, target: unknown): boolean {
     Reflect.has(right, key) && sameData(left[key as string], right[key as string]));
 }
 
+function viewForCommand(model: ModelDto, command: EditorCommand): ModelDto['views'][number] {
+  const view = model.views.find((item) => item.id === command.viewId);
+  if (view) return view;
+  if (command.type === 'connect' || command.type === 'reconnect') {
+    rejectRelationshipEdit('DTO_RELATIONSHIP_VIEW_NOT_FOUND', command.type, {
+      viewId: command.viewId,
+      connectionId: command.type === 'connect' ? command.connection.id : command.connectionId,
+      relationshipId: command.type === 'connect' ? command.connection.relationshipId : undefined,
+      sourceId: command.type === 'connect' ? command.connection.sourceId : command.sourceId,
+      targetId: command.type === 'connect' ? command.connection.targetId : command.targetId
+    });
+  }
+  invalid();
+}
+
 function apply(model: ModelDto, command: EditorCommand): ModelDto {
   if (command.type === 'connect' || command.type === 'reconnect') checkRelationshipIds(command);
   const next = structuredClone(model);
-  const view = next.views.find((item) => item.id === command.viewId);
-  if (!view) {
-    if (command.type === 'connect' || command.type === 'reconnect') {
-      rejectRelationshipEdit('DTO_RELATIONSHIP_VIEW_NOT_FOUND', command.type, {
-        viewId: command.viewId,
-        connectionId: command.type === 'connect' ? command.connection.id : command.connectionId,
-        relationshipId: command.type === 'connect' ? command.connection.relationshipId : undefined,
-        sourceId: command.type === 'connect' ? command.connection.sourceId : command.sourceId,
-        targetId: command.type === 'connect' ? command.connection.targetId : command.targetId
-      });
-    }
-    invalid();
-  }
+  const view = viewForCommand(next, command);
 
   switch (command.type) {
   case 'move':
