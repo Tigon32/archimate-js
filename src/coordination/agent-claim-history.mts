@@ -108,6 +108,9 @@ function applyRootEvent(event: ParsedEvent, context: HistoryContext): string | u
   if (record.record_type === 'claim' && record.epoch !== 1 && !context.previousLease?.terminal) {
     return 'a non-initial claim has no released predecessor';
   }
+  if ('heartbeat_at' in record && Date.parse(record.heartbeat_at) > at) {
+    return `heartbeat ${id} claims a time after its comment was posted`;
+  }
   const state = makeLeaseState(id, at, record);
   context.leases.set(record.lease_id, state);
   context.byClaimId.set(id, state);

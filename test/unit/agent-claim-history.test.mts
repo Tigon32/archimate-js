@@ -62,6 +62,17 @@ it('rejects a heartbeat timestamp later than its GitHub comment time', () => {
   expect(result).toMatchObject({ status: 'ambiguous', reason: 'heartbeat 1002 claims a time after its comment was posted' });
 });
 
+it('rejects a claim whose heartbeat timestamp is later than its GitHub comment time', () => {
+  const futureClaim = {
+    ...claim, heartbeat_at: '2026-09-25T13:00:00Z', expires_at: '2026-09-25T15:00:00Z',
+    last_work_observed_at: '2026-09-25T12:59:00Z'
+  };
+  const result = resolveAgentClaimHistory([
+    comment('1001', futureClaim, '2026-09-25T11:59:00Z')
+  ], 140, '2026-09-25T13:00:00Z');
+  expect(result).toMatchObject({ status: 'ambiguous', reason: 'heartbeat 1001 claims a time after its comment was posted' });
+});
+
 it('fails closed on malformed protocol attempts, unknown lineage, concurrent roots, and late stale writes', () => {
   const malformed = { id: '1001', created_at: '2026-09-25T10:00:00Z', body: 'archimate-js.agent-claim/v1' };
   expect(resolveAgentClaimHistory([malformed], 140, '2026-09-25T10:01:00Z').status).toBe('ambiguous');
@@ -140,6 +151,29 @@ it('accepts a takeover only after the matching request, observation window, and 
     { id: '1003', created_at: '2026-09-25T10:46:00Z', body: 'Synthetic maintainer acknowledgement.' },
     comment('1004', active, '2026-09-25T10:46:01Z')
   ], 140, '2026-09-25T10:50:00Z')).toMatchObject({ status: 'active', claim_comment_id: '1004', record: { epoch: 2 } });
+});
+
+it('rejects an active takeover whose heartbeat timestamp is later than its GitHub comment', () => {
+  const expiredClaim = { ...claim, expires_at: '2026-09-25T10:30:00Z' };
+  const takeoverBase = {
+    schema: claim.schema, record_type: 'takeover', issue: 140, claim_comment_id: null,
+    actor_id: 'synthetic-run-b', github_login: 'example-bot', lease_id: 'synthetic-lease-b', epoch: 2,
+    supersedes_claim_comment_id: '1001', observed_expired_at: '2026-09-25T10:30:00Z',
+    observation_started_at: '2026-09-25T10:31:00Z', branch: 'agent/synthetic/issue-140-b'
+  };
+  const active = {
+    ...takeoverBase, state: 'active', observation_ended_at: '2026-09-25T10:46:00Z',
+    maintainer_ack_comment_id: '1003', claimed_at: '2026-09-25T10:46:00Z',
+    heartbeat_at: '2026-09-25T13:00:00Z', expires_at: '2026-09-25T15:00:00Z',
+    lease_started_at: '2026-09-25T10:46:00Z', last_work_observed_at: '2026-09-25T12:59:00Z'
+  };
+  const result = resolveAgentClaimHistory([
+    comment('1001', expiredClaim, '2026-09-25T10:00:01Z'),
+    comment('1002', { ...takeoverBase, state: 'takeover-requested' }, '2026-09-25T10:31:01Z'),
+    { id: '1003', created_at: '2026-09-25T10:46:00Z', body: 'Synthetic maintainer acknowledgement.' },
+    comment('1004', active, '2026-09-25T11:59:00Z')
+  ], 140, '2026-09-25T13:00:00Z');
+  expect(result).toMatchObject({ status: 'ambiguous', reason: 'heartbeat 1004 claims a time after its comment was posted' });
 });
 
 it('rejects an active takeover comment posted before the observation window ends', () => {
