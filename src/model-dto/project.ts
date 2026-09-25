@@ -1,5 +1,6 @@
 import type {
-  DtoDiagnostic, ElementDto, ModelDto, PointDto, RelationshipDto,
+  ConceptPropertyDto, DtoDiagnostic, ElementDto, ModelDto, PointDto, PropertyDefinitionDto,
+  PropertyValueDto, RelationshipDto,
   StyleDto, ViewConnectionDto, ViewDto, ViewNodeDto
 } from './types.js';
 import { identifier, invalid, list, optionalText, record, validateModelDto } from './validate.js';
@@ -26,8 +27,30 @@ function type(value: unknown): string {
 
 function concept(value: unknown): ElementDto {
   const data = record(value);
+  const assignments = properties(data.properties);
   return { id: identifier(data.id), type: type(data.conceptType || data.type),
+    name: optionalText(data.name), documentation: optionalText(data.documentation),
+    ...(assignments ? { properties: assignments } : {}) };
+}
+
+function propertyDefinition(value: unknown): PropertyDefinitionDto {
+  const data = record(value);
+  return { id: identifier(data.id), type: type(data.type) as PropertyDefinitionDto['type'],
     name: optionalText(data.name), documentation: optionalText(data.documentation) };
+}
+
+function properties(value: unknown): ConceptPropertyDto[] | undefined {
+  const entries = optionalList(value);
+  if (!entries.length) return undefined;
+  return entries.map((entry) => {
+    const data = record(entry);
+    const values = optionalList(data.values).map((raw): PropertyValueDto => {
+      const item = record(raw);
+      const language = item.language === null ? undefined : optionalText(item.language);
+      return { ...(language === undefined ? {} : { language }), value: optionalText(item.value)! };
+    });
+    return { propertyDefinitionId: identifier(data.propertyDefinitionRef), values };
+  });
 }
 
 function relationship(value: unknown): RelationshipDto {
@@ -125,11 +148,34 @@ function localizedLoss(data: Record<string, unknown>, field: string): boolean {
   });
 }
 
+function documentationLoss(data: Record<string, unknown>): boolean {
+  const values = optionalList(data.localizedDocumentation);
+  return values.length > 1 || values.some((value) => {
+    const language = record(value).language;
+    return language !== undefined && language !== null && language !== '';
+  });
+}
+
+function propertyFieldsUnsupported(value: unknown): boolean {
+  return optionalList(value).some((entry) => {
+    const property = record(entry);
+    const values = optionalList(property.values);
+    return Reflect.ownKeys(property).some((key) =>
+      !['propertyDefinitionRef', 'propertyDefinition', 'values'].includes(String(key))) ||
+      values.some((raw) => Reflect.ownKeys(record(raw)).some((key) =>
+        !['language', 'value'].includes(String(key))));
+  });
+}
+
 function unsupportedItem(value: unknown, depth = 0, diagram = true): boolean {
   if (depth > 64) return invalid();
   const data = record(value);
   const supported = supportedNode(value) || supportedConnection(value);
-  return diagram && !supported || present(data.properties) || present(data.meffProperties) ||
+  const unsupportedProperties = diagram ? present(data.properties) :
+    propertyFieldsUnsupported(data.properties);
+  return diagram && !supported || unsupportedProperties ||
+    present(data.meffProperties) ||
+    documentationLoss(data) ||
     present(data.meffDocumentation) || present(data.viewRefs) || present(data.viewRef) ||
     present(data.resolvedViewRefs) || present(data.meffLabel) ||
     (diagram ? present(data.documentation) :
@@ -145,7 +191,12 @@ function unsupportedItem(value: unknown, depth = 0, diagram = true): boolean {
 function hasUnsupported(model: Record<string, unknown>, rawViews: unknown[]): boolean {
   if (model.metadata || present(model.documentation) || present(model.version) ||
       localizedLoss(model, 'localizedNames') ||
-      optionalList(model.propertyDefinitions).length ||
+      propertyFieldsUnsupported(model.properties) ||
+      optionalList(model.propertyDefinitions).some((raw) => {
+        const definition = record(raw);
+        return localizedLoss(definition, 'localizedNames') ||
+          documentationLoss(definition);
+      }) ||
       optionalList(model.organizations).length || present(model.properties) ||
       present(optionalRecord(optionalRecord(model.views)?.viewpoints)?.viewpointsList)) return true;
   const elements = optionalList(optionalRecord(model.elementsNode)?.baseElements);
@@ -164,6 +215,7 @@ function hasUnsupported(model: Record<string, unknown>, rawViews: unknown[]): bo
 export function projectImportedModelDto(input: unknown): ModelDto {
   const data = record(input);
   const model = record(data.rootElement || input);
+  const definitions = optionalList(model.propertyDefinitions).map(propertyDefinition);
   const elements = optionalList(optionalRecord(model.elementsNode)?.baseElements).map(concept);
   const relationships = optionalList(optionalRecord(model.relationshipsNode)?.relationships).map(relationship);
   const diagrams = optionalRecord(optionalRecord(model.views)?.diagrams);
@@ -175,5 +227,6 @@ export function projectImportedModelDto(input: unknown): ModelDto {
   });
   if (hasUnsupported(model, rawViews)) diagnostics.push(omitted);
   return validateModelDto({ schemaVersion: 1, id: model.id, name: model.name,
+    ...(definitions.length ? { propertyDefinitions: definitions } : {}),
     elements, relationships, views, diagnostics });
 }

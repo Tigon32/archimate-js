@@ -1,4 +1,6 @@
-import type { ModelDto, PointDto, RelationshipDto, StyleDto, ViewConnectionDto, ViewNodeDto } from './types.js';
+import type {
+  ModelDto, PointDto, PropertyValueDto, RelationshipDto, StyleDto, ViewConnectionDto, ViewNodeDto
+} from './types.js';
 import { exportModelDtoToMeff } from './meff-export.js';
 import { assessModelDtoEditingEligibility, editingIneligibleError } from './eligibility.js';
 import { invalid, serializeModelDto, validateModelDto } from './validate.js';
@@ -22,7 +24,11 @@ export type EditorCommand =
   | { type: 'reconnect'; viewId: string; connectionId: string; sourceId?: string; targetId?: string;
       waypoints: PointDto[] }
   | { type: 'delete'; viewId: string; itemId: string }
-  | { type: 'label'; viewId: string; itemId: string; label: string };
+  | { type: 'label'; viewId: string; itemId: string; label: string }
+  | { type: 'concept-name'; viewId: string; conceptId: string; name?: string }
+  | { type: 'concept-documentation'; viewId: string; conceptId: string; documentation?: string }
+  | { type: 'property'; viewId: string; conceptId: string;
+      propertyDefinitionId: string; values: PropertyValueDto[] };
 
 export type EditorEvent = { type: 'changed' | 'selection'; viewId: string; model: ModelDto;
   selectedIds: string[] };
@@ -112,6 +118,34 @@ function deleteItem(view: ModelDto['views'][number], itemId: string): void {
   const index = view.connections.findIndex((item) => item.id === itemId);
   if (index === -1) invalid();
   view.connections.splice(index, 1);
+}
+
+function editConcept(model: ModelDto, command: Extract<EditorCommand,
+  { type: 'concept-name' | 'concept-documentation' }>): void {
+  const concept = [...model.elements, ...model.relationships].find((item) => item.id === command.conceptId);
+  if (!concept) invalid();
+  if (command.type === 'concept-name') concept.name = command.name;
+  else concept.documentation = command.documentation;
+}
+
+function editProperty(model: ModelDto, command: Extract<EditorCommand, { type: 'property' }>): void {
+  if (!Array.isArray(command.values)) invalid();
+  if (!model.propertyDefinitions?.some((item) => item.id === command.propertyDefinitionId)) invalid();
+  const concept = [...model.elements, ...model.relationships].find((item) => item.id === command.conceptId);
+  if (!concept) invalid();
+  const properties = concept.properties || [];
+  const matches = properties.filter((item) => item.propertyDefinitionId === command.propertyDefinitionId);
+  if (matches.length > 1) invalid();
+  if (!command.values.length) {
+    concept.properties = properties.filter((item) => item.propertyDefinitionId !== command.propertyDefinitionId);
+    if (!concept.properties.length) delete concept.properties;
+    return;
+  }
+  const replacement = { propertyDefinitionId: command.propertyDefinitionId,
+    values: structuredClone(command.values) };
+  concept.properties = matches.length ? properties.map((item) =>
+    item.propertyDefinitionId === command.propertyDefinitionId ? replacement : item) :
+    [...properties, replacement];
 }
 
 function conceptAt(view: ModelDto['views'][number], nodeId: string | undefined): string {
@@ -224,6 +258,13 @@ function apply(model: ModelDto, command: EditorCommand): ModelDto {
     item.label = command.label;
     break;
   }
+  case 'concept-name':
+  case 'concept-documentation':
+    editConcept(next, command);
+    break;
+  case 'property':
+    editProperty(next, command);
+    break;
   default:
     invalid();
   }

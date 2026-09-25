@@ -72,6 +72,11 @@ function view(value: ViewDto, elements: Map<string, ElementDto>,
   return { id: value.id, name: value.name, meffType: 'Diagram', viewElements };
 }
 
+function properties(value: ElementDto['properties']): Record<string, unknown>[] | undefined {
+  return value?.map((item) => ({ propertyDefinitionRef: item.propertyDefinitionId,
+    values: item.values }));
+}
+
 /** Build only records the existing MEFF serializer can emit without omission. */
 export function toMeffShape(dto: ModelDto): Record<string, unknown> {
   const elements = new Map(dto.elements.map((item) => [item.id, item]));
@@ -80,8 +85,10 @@ export function toMeffShape(dto: ModelDto): Record<string, unknown> {
     if (!elements.has(item.sourceId) || !elements.has(item.targetId)) return invalid();
   }
   return { id: dto.id, name: dto.name,
-    elementsNode: { baseElements: dto.elements },
+    propertyDefinitionsNode: dto.propertyDefinitions ? { propertyDefinitions: dto.propertyDefinitions } : undefined,
+    elementsNode: { baseElements: dto.elements.map((item) => ({ ...item, properties: properties(item.properties) })) },
     relationshipsNode: { relationships: dto.relationships.map((item) => ({ ...item,
+      properties: properties(item.properties),
       sourceRefId: item.sourceId, targetRefId: item.targetId })) },
     views: { diagrams: { viewsList: dto.views.map((item) => view(item, elements, relationships)) } } };
 }

@@ -268,7 +268,7 @@ class ModelParser {
       frame.record![frame.field] = value;
     } else if (frame.field === 'value') {
       ensureArray(frame.record!, 'values').push({ language: frame.language, value });
-    } else if (value.trim()) {
+    } else if (value.trim() || frame.field === 'name' || frame.field === 'documentation') {
       this.finishLocalizedField(frame, value.trim());
     }
     this.textField = null;
@@ -282,6 +282,9 @@ class ModelParser {
       ensureArray(frame.record!, 'localizedLabels').push({ language: frame.language, value });
       if (preferLanguage(frame.record!, 'label', frame.language)) frame.record!.label = value;
     } else {
+      ensureArray(frame.record!, 'localizedDocumentation').push({
+        language: frame.language, value
+      });
       const prior = frame.record!.documentation;
       frame.record!.documentation = prior ? `${String(prior)}\n${value}` : value;
     }
