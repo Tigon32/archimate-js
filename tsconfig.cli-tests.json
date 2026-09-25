@@ -27,6 +27,7 @@
     "test/browser/theme-export-invariance.mts",
     "test/performance/browser-benchmark.mts",
     "test/browser/accessible-outline.mts",
+    "test/browser/viewer-lifecycle.mts",
     "scripts/check-secrets.mts",
     "scripts/content-markers.mts",
     "test/security/check-secrets.test.mts",
