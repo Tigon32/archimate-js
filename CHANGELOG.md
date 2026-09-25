@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+* `FEAT`: add the experimental `archimate-js/modeler` subpath with a public
+  `Modeler` facade, TypeScript declarations, DTO-backed lifecycle/save/events,
+  adapter-level `DiagramJsCanvasPort`/`DtoModelerSession` exports, and an
+  explicitly unstable diagram-js escape hatch.
 * `DEPRECATION`: `DiagramJsCanvasPort`, `DtoModelerSession`, and related diagram-js adapter service/result types remain available from `archimate-js/model-dto` but are deprecated pending the EE-M4 `archimate-js/modeler` entry.
 
 ## 0.0.4

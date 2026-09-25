@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { parse } from '@babel/parser';
 
 const SCOPED_ROOTS = [
-  'src/model-dto', 'src/language', 'src/validator', 'src/layout',
+  'src/model-dto', 'src/modeler', 'src/language', 'src/validator', 'src/layout',
   'src/lint', 'src/export', 'src/cli', 'src/coordination', 'src/verification'
 ];
 const SOURCE_EXTENSIONS = new Set(['.js', '.mjs', '.cjs', '.jsx', '.ts', '.mts', '.cts', '.tsx']);
