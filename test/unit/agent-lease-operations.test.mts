@@ -124,6 +124,34 @@ it('increments the epoch after an explicit release and fails closed on ambiguous
   expect(ambiguous).toMatchObject({ status: 'rejected', code: 'AMBIGUOUS_HISTORY' });
 });
 
+it('rejects a release proposed before the active lease last known heartbeat/claim activity', () => {
+  const beforeClaim = '2026-09-25T09:59:59Z';
+  const result = proposeAgentLeaseOperation(input({ type: 'release', ...token() }, activeHistory(), 'open', beforeClaim));
+  expect(result).toMatchObject({ status: 'rejected', code: 'INVALID_TIME' });
+});
+
+it('accepts a release proposed at or after the active lease last known heartbeat/claim activity', () => {
+  const atClaim = claim.heartbeat_at;
+  const result = proposeAgentLeaseOperation(input({ type: 'release', ...token() }, activeHistory(), 'open', atClaim));
+  expect(result).toMatchObject({ status: 'proposed', record: { record_type: 'release' } });
+});
+
+it('rejects closed-issue reconciliation proposed before the last known heartbeat', () => {
+  const heartbeatRecord = {
+    schema: claim.schema, record_type: 'heartbeat', issue: 282, claim_comment_id: '1001',
+    actor_id: claim.actor_id, github_login: claim.github_login, lease_id: claim.lease_id,
+    epoch: 1, heartbeat_at: '2026-09-25T10:15:00Z', expires_at: '2026-09-25T12:15:00Z',
+    lease_started_at: claim.lease_started_at, last_work_observed_at: '2026-09-25T10:14:00Z',
+    supersedes_claim_comment_id: null, branch: claim.branch, state: 'active'
+  };
+  const history = [comment('1001', claim), comment('1002', heartbeatRecord, '2026-09-25T10:15:01Z')];
+  const beforeHeartbeat = '2026-09-25T10:10:00Z';
+  const result = proposeAgentLeaseOperation(input(
+    { type: 'reconcile-closed', current_assignees: ['example-bot'] }, history, 'closed', beforeHeartbeat
+  ));
+  expect(result).toMatchObject({ status: 'rejected', code: 'INVALID_TIME' });
+});
+
 it('does not mutate caller-owned history or assignee inputs', () => {
   const history = activeHistory();
   const assignees = ['example-bot', 'human'];
