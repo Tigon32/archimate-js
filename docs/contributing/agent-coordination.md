@@ -115,6 +115,16 @@ an acknowledgement, detect a closed/merged issue, serialize operations, or
 perform automatic expiry. Callers must fetch the complete history and still
 apply the complete fail-closed procedure above.
 
+`readGithubClaimSnapshot` in `src/coordination/agent-claim-github-reader.mts`
+is a read-only REST adapter. A trusted caller injects its `fetch` implementation;
+the adapter performs GETs for the issue and every paginated comment page, checks
+response identity and pagination bounds, resolves the history, and returns only
+issue state plus a sanitized claim status. It never returns raw comment bodies
+or transport responses. It does not verify comment authorship, maintainer
+acknowledgement authority, or authorize writes. An `ambiguous` result must be
+treated as unresolved, not as evidence that any actor may mutate GitHub. The
+reader follows at most 100 comment pages and fails closed when more are needed.
+
 `src/coordination/agent-lease-controller.mts` provides the bounded in-memory
 controller layer for tests and process-local integrations. It serializes every
 claim, heartbeat, release, takeover request/finalization, closed-issue
