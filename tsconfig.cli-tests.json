@@ -33,7 +33,9 @@
     "scripts/finalize-agent-pr.mts",
     "test/security/check-tracked-paths.test.mts",
     "test/security/supply-chain.test.mts",
-    "test/unit/local-verification-process.test.mts"
+    "test/unit/local-verification-process.test.mts",
+    "scripts/relationship-matrix-document.mts",
+    "test/unit/relationship-matrix-document.test.mts"
   ],
   "exclude": ["node_modules", "dist", "coverage", "test-results"]
 }
