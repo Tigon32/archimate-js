@@ -7,6 +7,7 @@ import { parseArguments } from './arguments.mjs';
 import { renderArtifacts, renderBatchArtifacts, renderBatchOutcomes } from './browser.mjs';
 import { failedBatchEntry, partialManifest, prepareBatch, preparePartialView } from './batch.mjs';
 import { diagnostic, safeErrorCode } from './diagnostics.mjs';
+import { executeDiff } from './diff.mjs';
 import { readBoundedXml, writeArtifacts, writeAtomic, writeBatchArtifacts, writePartialBatchArtifacts } from './io.mjs';
 import { listBatchViews } from './views.mjs';
 import type { CliOptions, CliResult, ExportOptions, RenderOptions } from './types.mjs';
@@ -20,6 +21,7 @@ function emit(value: CliResult): void {
 function usage(): void {
   process.stdout.write(`Usage:
   archimate-js validate <model.xml>
+  archimate-js diff <before.xml> <after.xml> [--format json|human]
   archimate-js render <model.xml> (--view-id <id> | --view-name <name>) --output <view.svg> [--chrome <path>]
   archimate-js export <model.xml> (--view-id <id> | --view-name <name> | --all-views) --format <svg,png,pdf> --output-dir <dir>
     [--basename <name>] [--scale <1..4>] [--background <transparent|white|black|#RRGGBB>]
@@ -28,7 +30,7 @@ function usage(): void {
     [--pdf-title <text>] [--pdf-footer <text>] [--chrome <path>]
     [--continue-on-error (requires --all-views)]
 
-Commands emit structured JSON. Rendering requires an existing Chrome or Chromium installation.
+Diff defaults to concise human output. Rendering requires an existing Chrome or Chromium installation.
 `);
 }
 
@@ -74,7 +76,7 @@ async function exportCommand(xml: string, options: ExportOptions): Promise<boole
   return true;
 }
 
-async function execute(options: Exclude<CliOptions, { command: 'help' }>, xml: string): Promise<number> {
+async function execute(options: Exclude<CliOptions, { command: 'help' | 'diff' }>, xml: string): Promise<number> {
   type Validate = (xml: string) => {
     valid: boolean;
     diagnostics: CliResult['diagnostics'];
@@ -131,6 +133,7 @@ async function main(): Promise<number> {
     usage();
     return 0;
   }
+  if (options.command === 'diff') return executeDiff(options);
   try {
     return await execute(options, await readBoundedXml(options.input));
   } catch (error) {

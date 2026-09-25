@@ -142,7 +142,10 @@ CHROME_BIN=/usr/bin/chromium npx archimate-js export ./model.xml \
   --pdf-orientation landscape
 ```
 
-Use `--view-name` in place of `--view-id` when names are unique, or `--chrome /path/to/chrome` in place of `CHROME_BIN`. The CLI does not download a browser or make model requests. Its browser context blocks all network traffic, and its JSON output omits model XML, model summaries, identifiers, local paths, parser details, browser exception text, and stacks. Models are validated before rendering. Text and binary outputs are written atomically, and a failed multi-format request restores or removes any files it changed.
+Use `--view-name` in place of `--view-id` when names are unique, or `--chrome /path/to/chrome` in place of `CHROME_BIN`. The CLI does not download a browser or make model requests. Its browser context blocks all network traffic. The validate, render, and export JSON diagnostics omit model XML, model summaries, identifiers, local paths, parser details, browser exception text, and stacks. Models are validated before rendering. Text and binary outputs are written atomically, and a failed multi-format request restores or removes any files it changed.
+
+The explicit `diff --format json` output includes DTO values and identifiers; see
+the [diff disclosure warning](docs/editor/model-dto-diff.md) before sharing it.
 
 PDF export requires an opaque background. The default is `white`; an explicit
 `--background transparent` is rejected when PDF is requested. See

@@ -58,6 +58,27 @@ describe('export arguments', () => {
   });
 });
 
+describe('diff arguments', () => {
+  test('defaults to human output and accepts explicit JSON output', () => {
+    assert.deepEqual(parseArguments(['diff', 'before.xml', 'after.xml']), {
+      command: 'diff', before: 'before.xml', after: 'after.xml', format: 'human'
+    });
+    assert.deepEqual(parseArguments(['diff', 'before.xml', 'after.xml', '--format', 'json']), {
+      command: 'diff', before: 'before.xml', after: 'after.xml', format: 'json'
+    });
+  });
+
+  test('rejects malformed options and same-path inputs', () => {
+    for (const args of [
+      ['diff', 'before.xml'], ['diff', 'before.xml', 'after.xml', '--format'],
+      ['diff', 'before.xml', 'after.xml', '--format', 'xml'],
+      ['diff', 'before.xml', 'after.xml', '--format', 'json', '--format', 'human'],
+      ['diff', 'before.xml', 'before.xml'], ['diff', 'before.xml', './before.xml'],
+      ['diff', '-before.xml', 'after.xml'], ['diff', 'before.xml', 'after.xml', '--unknown']
+    ]) assert.throws(() => parseArguments(args), { message: 'CLI_USAGE' });
+  });
+});
+
 describe('batch selection', () => {
   test('accepts exclusive all-view selection and sorts sanitized collisions by ID', async () => {
     const fixture = await readFile(path.join(process.cwd(), 'test/fixtures/synthetic/batch-collisions.xml'), 'utf8');

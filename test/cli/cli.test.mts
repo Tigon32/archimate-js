@@ -11,6 +11,8 @@ const cli = path.join(root, 'dist/cli/main.mjs');
 const validFixture = path.join(root, 'test/fixtures/synthetic/minimal-application-view.xml');
 const invalidFixture = path.join(root, 'test/fixtures/synthetic/invalid-reference.xml');
 const batchFixture = path.join(root, 'test/fixtures/synthetic/batch-collisions.xml');
+const dtoFixture = path.join(root, 'test/fixtures/synthetic/dto-export-view.xml');
+const unsupportedDtoFixture = path.join(root, 'test/fixtures/meff-schema/valid-view-presentation.xml');
 
 type RunResult = { output: string; json: Record<string, unknown> };
 
@@ -21,6 +23,15 @@ function runCli(executable: string, args: string[], expectedStatus: number, env 
   assert.equal(result.status, expectedStatus, result.stderr);
   assert.equal(result.stderr, '');
   return { output: result.stdout, json: JSON.parse(result.stdout) };
+}
+
+function runCliText(executable: string, args: string[], expectedStatus: number): string {
+  const result = spawnSync(process.execPath, [executable, ...args], {
+    cwd: root, encoding: 'utf8', env: { ...process.env }
+  });
+  assert.equal(result.status, expectedStatus, result.stderr);
+  assert.equal(result.stderr, '');
+  return result.stdout;
 }
 
 function codes(result: RunResult): string[] {
@@ -45,6 +56,7 @@ async function validationTests(): Promise<void> {
   assert.equal(invalid.output.includes('missing-element'), false);
   const usage = runCli(cli, ['export', validFixture, '--view-id', 'view'], 2);
   assert.deepEqual(codes(usage), ['CLI_USAGE']);
+  await diffTests();
 
   await mkdir(path.join(root, 'test-results'), { recursive: true });
   const directory = await mkdtemp(path.join(root, 'test-results/archimate-cli-validation-'));
@@ -79,6 +91,53 @@ async function validationTests(): Promise<void> {
     ], 1);
     assert.equal(invalidBatch.json.valid, false);
     await assert.rejects(readdir(output));
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}
+
+async function diffTests(): Promise<void> {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'archimate-cli-diff-'));
+  try {
+    const before = path.join(directory, 'before.xml');
+    const after = path.join(directory, 'after.xml');
+    const source = await readFile(dtoFixture, 'utf8');
+    await writeFile(before, source);
+    await writeFile(after, source);
+    const unchanged = runCli(cli, ['diff', before, after, '--format', 'json'], 0);
+    assert.equal(unchanged.json.command, 'diff');
+    assert.equal(unchanged.json.result, 'unchanged');
+    assert.deepEqual(unchanged.json.changes, []);
+    assert.deepEqual(unchanged.json.impactedViewIds, []);
+    assert.deepEqual(runCli(cli, ['diff', before, after, '--format', 'json'], 0).json,
+      unchanged.json);
+
+    await writeFile(after, source.replace('<name>Component One</name>', '<name>Component Updated</name>'));
+    const changed = runCli(cli, ['diff', before, after, '--format', 'json'], 1);
+    assert.equal(changed.json.result, 'changed');
+    assert.ok(changed.output.includes('Component One'));
+    assert.deepEqual(changed.json.impactedViewIds, ['view-dto-export']);
+    const human = runCliText(cli, ['diff', before, after], 1);
+    assert.match(human, /Semantic changes:/);
+    assert.match(human, /Presentation changes:/);
+    assert.match(human, /Impacted views \(\d+\):/);
+    assert.ok(human.includes('view-dto-export'));
+
+    const invalid = path.join(directory, 'invalid.xml');
+    await writeFile(invalid, '<model><name>private model text</name>');
+    const invalidResult = runCli(cli, ['diff', before, invalid], 2);
+    assert.deepEqual(codes(invalidResult), ['DIFF_INPUT_INVALID']);
+    assert.equal(invalidResult.output.includes('private model text'), false);
+    assert.equal(invalidResult.output.includes(directory), false);
+    const ineligible = path.join(directory, 'ineligible.xml');
+    await writeFile(ineligible, await readFile(unsupportedDtoFixture, 'utf8'));
+    const ineligibleResult = runCli(cli, ['diff', before, ineligible], 2);
+    assert.deepEqual(codes(ineligibleResult), ['DIFF_INPUT_INELIGIBLE']);
+    assert.equal(ineligibleResult.output.includes('model-synthetic-presentation'), false);
+    const missing = runCli(cli, ['diff', before, path.join(directory, 'missing.xml')], 2);
+    assert.deepEqual(codes(missing), ['DIFF_INPUT_INVALID']);
+    const samePath = runCli(cli, ['diff', before, before], 2);
+    assert.deepEqual(codes(samePath), ['CLI_USAGE']);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
