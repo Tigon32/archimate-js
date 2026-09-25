@@ -87,13 +87,35 @@ try {
     modeler.close();
     await modeler.open(saved.xml, { viewId: 'view-dto-export' });
     const reopened = modeler.project().nodes.find((node: any) => node.id === 'node-component');
+    const initialDto = JSON.parse(modeler.save().dtoJson);
+    const initialProjection = modeler.project();
+    const optimized = await modeler.optimizeDiagram();
+    const optimizedProjection = modeler.project();
+    const optimizedSave = modeler.save();
+    const optimizedDto = api.importMeffToModelDto(optimizedSave.xml);
+    const semanticUnchanged = JSON.stringify(optimizedDto.elements) === JSON.stringify(initialDto.elements) &&
+      JSON.stringify(optimizedDto.relationships) === JSON.stringify(initialDto.relationships);
+    const geometryChanged = optimized.patch.nodes.length > 0 &&
+      JSON.stringify(optimizedDto.views[0]) !== JSON.stringify(initialDto.views[0]) &&
+      JSON.stringify(optimizedProjection.nodes.map((node: any) => [node.id, node.x, node.y])) !==
+        JSON.stringify(initialProjection.nodes.map((node: any) => [node.id, node.x, node.y]));
+    modeler.undo();
+    const restoredDto = api.importMeffToModelDto(modeler.save().xml);
+    const undoRestored = JSON.stringify(restoredDto) === JSON.stringify(initialDto);
+    modeler.redo();
+    const redoDto = api.importMeffToModelDto(modeler.save().xml);
+    const redoRestored = JSON.stringify(redoDto) === JSON.stringify(optimizedDto);
     modeler.destroy();
     return { opened, moved: before.x !== after.x && after.x === 44 && after.y === 52,
-      selected, same, reopened: reopened.x === 44, events };
+      selected, same, reopened: reopened.x === 44,
+      optimized: geometryChanged && semanticUnchanged &&
+        JSON.stringify(optimizedDto) === optimizedSave.dtoJson && undoRestored && redoRestored,
+      events };
   });
   assert.deepEqual(result, { opened: { eligible: true, reasons: [], viewId: 'view-dto-export' },
-    moved: true, selected: true, same: true, reopened: true,
-    events: ['opened:true', 'changed:0', 'changed:0', 'changed:0', 'opened:true'] });
+    moved: true, selected: true, same: true, reopened: true, optimized: true,
+    events: ['opened:true', 'changed:0', 'changed:0', 'changed:0', 'opened:true',
+      'changed:0', 'changed:0', 'changed:0'] });
 } finally {
   await browser?.close();
   await new Promise<void>((resolve) => server.close(() => resolve()));

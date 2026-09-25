@@ -55,7 +55,11 @@ export function dtoPatch(result: OptimizerOutput): LayoutPatch {
       before: dtoGeometry(entry.before), after: dtoGeometry(entry.after) })),
     connections: result.patch.connections.map((entry) => ({ id: entry.id,
       before: entry.before.map((point) => ({ ...point })),
-      after: entry.after.map((point) => ({ ...point })) })) };
+      after: entry.after.map((point, index) => ({
+        x: Math.round(point.x), y: Math.round(point.y),
+        kind: index === 0 ? 'sourceAttachment' :
+          index === entry.after.length - 1 ? 'targetAttachment' : 'bendpoint'
+      })) })) };
 }
 
 export function applyDtoPatch(view: ViewDto, patch: LayoutPatch): ViewDto {
