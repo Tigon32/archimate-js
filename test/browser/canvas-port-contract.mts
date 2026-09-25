@@ -17,23 +17,32 @@ import webpack from 'webpack';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const entryPath = path.join(root, 'test/browser/canvas-port-contract-entry.generated.js');
 
+async function runWebpack(entry: string, filename: string, library?: { name: string; type: 'umd' }): Promise<void> {
+  const compiler = webpack({ mode: 'development', target: 'web', entry,
+    output: { path: path.join(root, '.ci-build'), filename, ...(library ? { library } : {}) },
+    module: { rules: [{ test: /\.(css|svg|ttf|woff2?)$/, type: 'asset/inline' }] },
+    resolve: { extensions: ['.ts', '.mts', '.js', '.json'] }, stats: 'errors-warnings' });
+  const stats = await new Promise<import('webpack').Stats>((resolve, reject) => {
+    compiler.run((error, result) => compiler.close((closeError) => {
+      if (error || closeError || !result) reject(error || closeError || new Error('Browser compile failed.'));
+      else resolve(result);
+    }));
+  });
+  assert.equal(stats.hasErrors(), false, JSON.stringify(stats.toJson({ all: false, errors: true }).errors));
+}
+
 async function compileEntry(): Promise<void> {
   await copyFile(path.join(root, 'test/browser/canvas-port-contract-entry.ts'), entryPath);
   try {
-    const compiler = webpack({ mode: 'development', target: 'web', entry: entryPath,
-      output: { path: path.join(root, '.ci-build'), filename: 'canvas-port-contract-test.js' },
-      module: { rules: [{ test: /\.(css|svg|ttf|woff2?)$/, type: 'asset/inline' }] },
-      resolve: { extensions: ['.ts', '.mts', '.js', '.json'] }, stats: 'errors-warnings' });
-    const stats = await new Promise<import('webpack').Stats>((resolve, reject) => {
-      compiler.run((error, result) => compiler.close((closeError) => {
-        if (error || closeError || !result) reject(error || closeError || new Error('Browser compile failed.'));
-        else resolve(result);
-      }));
-    });
-    assert.equal(stats.hasErrors(), false, JSON.stringify(stats.toJson({ all: false, errors: true }).errors));
+    await runWebpack(entryPath, 'canvas-port-contract-test.js');
   } finally {
     await unlink(entryPath);
   }
+}
+
+async function restoreDtoBrowserBundle(): Promise<void> {
+  await runWebpack(path.join(root, 'dist/model-dto/index.js'), 'model-dto.js',
+    { name: 'ArchimateModelDto', type: 'umd' });
 }
 
 function serveFixture() {
@@ -87,4 +96,5 @@ try {
 } finally {
   await browser?.close();
   await new Promise<void>((resolve) => server.close(() => resolve()));
+  await restoreDtoBrowserBundle();
 }
