@@ -23,6 +23,7 @@ ADRs record consequential decisions for this fork. They should be short, dated, 
 | 0007 | Use local deterministic verification before remote CI escalation | Implemented |
 | 0008 | Establish a bounded third-party extension API boundary | Proposed |
 | 0009 | Apply fail-closed post-merge branch cleanup | Proposed |
+| 0010 | Keep diagram-js behind an engine-neutral editor boundary | Proposed |
 
 ## Template
 

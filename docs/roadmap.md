@@ -90,6 +90,32 @@ Exit criteria:
 - [x] Keep stable operational releases blocked until importer/exporter/render and Archi comparison evidence is recorded.
 - Publish a prerelease only after CI, tests, and package smoke tests pass.
 
+## Workstream: Miro-like editor on an engine-neutral boundary
+
+Status: proposed plan; this is planning only, with no implementation yet.
+
+This workstream grows the existing `diagram-js` Modeler into a supported,
+Miro-like ArchiMate editor. It extends Phase 4 editor hardening and falls under
+the browser embedding and live editing priority. `diagram-js` remains the
+engine, but only as an implementation behind an engine-neutral editor API. The
+DTO model/view state stays authoritative, so React Flow or another engine could
+replace the adapter later.
+
+- Plan and milestones EE-M0–EE-M15:
+  [Miro-like editor workstream](roadmap/miro-like-editor-workstream.md).
+- Decision record:
+  [ADR-0010](adr/0010-diagram-engine-boundary.md).
+- Future engine replacement analysis:
+  [React Flow migration path](editor/react-flow-migration-path.md).
+
+Exit criteria:
+
+- A public `archimate-js/modeler` entry delegates through the editor boundary.
+- Domain, application, and shell modules do not import `diagram-js`
+  internals; an automated boundary check enforces this.
+- Every persistent edit, including layout, uses an engine-neutral command.
+  Each such edit round-trips through MEFF/DTO and is undoable.
+
 ## Current known gaps
 
 - Import/export can still be partial, and cross-tool exchange/render interoperability evidence is not established; stable operational releases remain blocked.
