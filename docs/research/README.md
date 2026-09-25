@@ -43,3 +43,11 @@ review_after:
 - Deterministic SVG rendering.
 - Accessibility expectations for architecture diagrams.
 - Supply-chain and release security.
+
+## Research notes
+
+- [diagram-js 15 core migration](diagram-js-15-core-2026-09-25.md)
+- [Design Tokens 2025.10 implementation](dtcg-2025-10-implementation.md)
+- [Read-only shell resize and reflow check](read-only-reflow-browser-2026-09-24.md)
+- [Rendered read-only app contrast check](theme-contrast-browser-2026-09-24.md)
+- [Utility alignment after diagram-js 15](utility-alignment-2026-09-25.md)

@@ -16,7 +16,9 @@ try {
     schemaVersion: 1, package: { name: 'archimate-js', version: '0.0.4' },
     sourceSha: 'a'.repeat(40), checks: {
       releaseCheck: 'passed', packedInstall: 'passed', sbom: 'passed'
-    }, artifacts: {
+    }, provenance: { publicSourceExceptions: {
+      schemaVersion: 1, activeCount: 0, findingClasses: [], earliestExpiry: null
+    } }, artifacts: {
       tarball: { name: 'archimate-js-0.0.4.tgz', sha256: hash(tarball) },
       sbom: { name: 'sbom.spdx.json', sha256: hash(sbom) }
     }
@@ -31,6 +33,20 @@ try {
   ].join('\n') + '\n');
 
   assert.equal((await verifyReleaseEvidence(directory)).package.version, '0.0.4');
+  const parsedManifest = JSON.parse(manifest.toString('utf8'));
+  parsedManifest.provenance.publicSourceExceptions.path = 'synthetic/path';
+  const leakingManifest = Buffer.from(JSON.stringify(parsedManifest));
+  await writeFile(path.join(directory, 'manifest.json'), leakingManifest);
+  const leakingSums = (await readFile(path.join(directory, 'SHA256SUMS'), 'utf8'))
+    .replace(hash(manifest), hash(leakingManifest));
+  await writeFile(path.join(directory, 'SHA256SUMS'), leakingSums);
+  await assert.rejects(verifyReleaseEvidence(directory), /Release manifest must summarize/);
+  await writeFile(path.join(directory, 'manifest.json'), manifest);
+  await writeFile(path.join(directory, 'SHA256SUMS'), [
+    `${hash(tarball)}  archimate-js-0.0.4.tgz`,
+    `${hash(sbom)}  sbom.spdx.json`,
+    `${hash(manifest)}  manifest.json`
+  ].join('\n') + '\n');
   await writeFile(path.join(directory, 'archimate-js-0.0.4.tgz'), 'tampered');
   await assert.rejects(verifyReleaseEvidence(directory), /Checksum mismatch/);
   await writeFile(path.join(directory, 'archimate-js-0.0.4.tgz'), tarball);

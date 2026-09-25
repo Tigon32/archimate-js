@@ -6,6 +6,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { summarizePublicSourceExceptions } from './check-public-source-exceptions.mts';
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 function command(label, executable, args, cwd) {
@@ -42,6 +44,15 @@ export async function verifyReleaseEvidence(directory) {
   assert.equal(manifest.checks.releaseCheck, 'passed');
   assert.equal(manifest.checks.packedInstall, 'passed');
   assert.equal(manifest.checks.sbom, 'passed');
+  const exceptionSummary = manifest.provenance?.publicSourceExceptions;
+  assert.ok(exceptionSummary && exceptionSummary.schemaVersion === 1 &&
+    Number.isInteger(exceptionSummary.activeCount) && exceptionSummary.activeCount >= 0 &&
+    Array.isArray(exceptionSummary.findingClasses) &&
+    (exceptionSummary.earliestExpiry === null || /^\d{4}-\d{2}-\d{2}$/.test(exceptionSummary.earliestExpiry)),
+  'Release manifest must summarize active public-source exceptions.');
+  assert.deepEqual(Object.keys(exceptionSummary).sort(),
+    [ 'activeCount', 'earliestExpiry', 'findingClasses', 'schemaVersion' ],
+    'Release manifest must summarize exceptions without paths or rationale.');
   assert.match(sbom.spdxVersion, /^SPDX-/);
   assert.ok(sbom.packages?.some((item) => item.name === manifest.package.name &&
     item.versionInfo === manifest.package.version), 'SBOM must describe the packed package.');
@@ -58,6 +69,9 @@ export async function createReleaseEvidence(directory) {
   const packageJson = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
   const sourceSha = process.env.GITHUB_SHA || command('source revision', 'git', [ 'rev-parse', 'HEAD' ], root).trim();
   assert.match(sourceSha, /^[0-9a-f]{40}$/);
+  const exceptionPolicy = JSON.parse(await readFile(path.join(root, 'docs/security/public-source-exceptions.json'), 'utf8'));
+  const publicSourceExceptions = summarizePublicSourceExceptions(exceptionPolicy);
+  assert.ok(publicSourceExceptions, 'Public-source exception policy must validate before release evidence is created.');
   const runId = process.env.GITHUB_RUN_ID || null;
   if (runId !== null) assert.match(runId, /^[1-9][0-9]*$/);
   const temp = await mkdtemp(path.join(os.tmpdir(), 'archimate-release-evidence-'));
@@ -103,6 +117,7 @@ export async function createReleaseEvidence(directory) {
         packageLockSha256: digest(await readFile(path.join(root, 'package-lock.json')))
       },
       checks: { releaseCheck: 'passed', packedInstall: 'passed', sbom: 'passed' },
+      provenance: { publicSourceExceptions },
       sbomSource: 'committed package-lock.json, production dependencies',
       artifacts: { tarball: { name: filename, sha256: tarballHash }, sbom: { name: 'sbom.spdx.json', sha256: sbomHash } }
     };

@@ -27,6 +27,9 @@ try {
     sourceSha: expected.sourceSha,
     workflowRun: `https://github.com/Tigon32/archimate-js/actions/runs/${expected.runId}`,
     checks: { releaseCheck: 'passed', packedInstall: 'passed', sbom: 'passed' },
+    provenance: { publicSourceExceptions: {
+      schemaVersion: 1, activeCount: 0, findingClasses: [], earliestExpiry: null
+    } },
     artifacts: {
       tarball: { name: tarballName, sha256: hash(tarball) },
       sbom: { name: 'sbom.spdx.json', sha256: hash(sbom) }

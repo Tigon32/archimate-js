@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 type ExceptionRecord = {
   path?: unknown;
+  finding?: unknown;
   rationale?: unknown;
   expiresOn?: unknown;
   approver?: unknown;
@@ -12,8 +13,23 @@ type ExceptionRecord = {
 
 type Policy = { schemaVersion?: unknown; exceptions?: unknown };
 type Finding = { record: number | null; rule: string };
+export type PublicSourceException = {
+  path: string;
+  finding: 'unmanifested-model-or-media' | 'unmanifested-research-artifact';
+  rationale: string;
+  expiresOn: string;
+  approver: string;
+  reviewedOn: string;
+};
+export type PublicSourceExceptionSummary = {
+  schemaVersion: 1;
+  activeCount: number;
+  findingClasses: PublicSourceException['finding'][];
+  earliestExpiry: string | null;
+};
 
-const REQUIRED_FIELDS = ['approver', 'expiresOn', 'path', 'rationale', 'reviewedOn'];
+const REQUIRED_FIELDS = ['approver', 'expiresOn', 'finding', 'path', 'rationale', 'reviewedOn'];
+const FINDING_CLASSES = ['unmanifested-model-or-media', 'unmanifested-research-artifact'];
 const GITHUB_LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 export const MAX_EXCEPTION_PATH_LENGTH = 512;
@@ -58,6 +74,9 @@ export function validatePublicSourceExceptions(policy: unknown, today = new Date
       findings.push({ record: index, rule: 'invalid-record-fields' });
       continue;
     }
+    if (typeof record.finding !== 'string' || !FINDING_CLASSES.includes(record.finding)) {
+      findings.push({ record: index, rule: 'invalid-finding-class' });
+    }
     if (!isRepoFilePath(record.path)) findings.push({ record: index, rule: 'invalid-path' });
     if (typeof record.rationale !== 'string' || !record.rationale.trim()) {
       findings.push({ record: index, rule: 'invalid-rationale' });
@@ -80,6 +99,21 @@ export function validatePublicSourceExceptions(policy: unknown, today = new Date
     }
   }
   return findings;
+}
+
+/** Summarize only non-sensitive exception metadata for release evidence. */
+export function summarizePublicSourceExceptions(policy: unknown, today = new Date().toISOString().slice(0, 10)):
+  PublicSourceExceptionSummary | null {
+  if (validatePublicSourceExceptions(policy, today).length) return null;
+  const records = (policy as Policy).exceptions as PublicSourceException[];
+  const findingClasses = [...new Set(records.map((record) => record.finding))].sort() as PublicSourceException['finding'][];
+  const expiryDates = records.map((record) => record.expiresOn).sort();
+  return {
+    schemaVersion: 1,
+    activeCount: records.length,
+    findingClasses,
+    earliestExpiry: expiryDates[0] ?? null
+  };
 }
 
 export function formatPublicSourceExceptionFindings(findings: readonly Finding[]): string[] {

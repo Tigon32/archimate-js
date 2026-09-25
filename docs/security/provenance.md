@@ -110,7 +110,16 @@ legitimately new content:
    review.
 3. Scoped exception data is maintained separately in
    `docs/security/public-source-exceptions.json` and validated by
-   `scripts/check-public-source-exceptions.mts`. Do not use
+   `scripts/check-public-source-exceptions.mts`. Each record names one exact
+   repository-relative path and one supported finding class, with review and
+   expiry metadata. `scripts/check-tracked-paths.mts` applies it only to an
+   exact unmanifested model/media or research finding; malformed, expired,
+   duplicate, or unused entries fail closed. It cannot authorize a fixture
+   without its manifest, a forbidden path, a symlink, or another finding
+   class. Release evidence includes only the active count, finding classes,
+   and earliest expiry, never exception paths or rationale. These fields
+   document maintainer review but do not verify a GitHub approval event or
+   establish source legality. Do not use
    `scripts/source-policy-exceptions.json`, which governs the size/TypeScript
    policy. The record validator checks structure, file scope, approver metadata,
    review date, and expiry; it does not verify that a GitHub approval exists
