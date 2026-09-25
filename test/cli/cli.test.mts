@@ -168,6 +168,21 @@ async function diffTests(): Promise<void> {
     assert.match(human, /Impacted views \(\d+\):/);
     assert.ok(human.includes('view-dto-export'));
 
+    const renamedSource = source.replaceAll('component-one', 'component-renamed')
+      .replace('<name>Component One</name>', '<name>Component Renamed</name>');
+    await writeFile(after, renamedSource);
+    const renamedJson = runCli(cli, ['diff', before, after, '--format', 'json'], 1);
+    assert.deepEqual(renamedJson.json.renameCandidates, [{ beforeId: 'component-one',
+      afterId: 'component-renamed', reason: 'unique-content-match-except-id-and-name' }]);
+    const renamedChanges = renamedJson.json.changes as Array<{ id: string; kind: string }>;
+    assert.ok(renamedChanges.some((change) =>
+      change.id === 'component-one' && change.kind === 'removed'));
+    assert.ok(renamedChanges.some((change) =>
+      change.id === 'component-renamed' && change.kind === 'added'));
+    const renamedHuman = runCliText(cli, ['diff', before, after], 1);
+    assert.match(renamedHuman, /Advisory element rename candidates \(1\):/);
+    assert.match(renamedHuman, /component-one -> component-renamed/);
+
     const invalid = path.join(directory, 'invalid.xml');
     await writeFile(invalid, '<model><name>private model text</name>');
     const invalidResult = runCli(cli, ['diff', before, invalid], 2);

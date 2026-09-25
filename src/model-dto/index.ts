@@ -8,7 +8,7 @@ export { assessModelDtoDiffEligibility, diffModelDto } from './diff.js';
 export type {
   ModelDtoDiff, ModelDtoDiffEligibility, ModelDtoDiffEligibilityCode,
   ModelDtoDiffEligibilityDiagnostic, ModelDiffChange, ModelDiffArea,
-  ModelDiffKind, ModelDiffEntity
+  ModelDiffKind, ModelDiffEntity, ModelDtoRenameCandidate
 } from './diff.js';
 export type { AccessibleOutlineSearchResult } from './outline-search.js';
 export type { AccessibleOutline, AccessibleOutlineNode, AccessibleOutlineRelationship,

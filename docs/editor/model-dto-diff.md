@@ -8,6 +8,15 @@ inputs, or write logs. The returned JSON contains ordered `changes` and
 and detached before/after values. Node and connection changes include `viewId`.
 Collection order is ignored; waypoint order remains meaningful.
 
+The result also contains `renameCandidates`, an advisory list for unique
+element pairs whose canonical content matches after excluding ID and name,
+while the names differ. Candidates contain only the old ID, new ID, and a
+fixed reason code. The optional field is omitted when no candidate exists.
+Candidates never replace the ID-based add/remove records or change identity
+matching; duplicate fingerprints and edited content remain ordinary
+additions/removals. The CLI shows non-empty candidate lists in human output and
+includes them in JSON output.
+
 Semantic changes cover the model name, elements, and relationships.
 Presentation changes cover view names, node instances (including parent and
 bounds), and connections (including waypoints and styles). A changed element
@@ -39,6 +48,6 @@ subset, so only send it to destinations allowed to receive that model data.
 This API does not compare organization, properties, viewpoint metadata, or
 unparsed exchange fields. Eligibility diagnostics prevent callers from
 mistaking such snapshots for complete comparisons, but do not preserve or diff
-the unsupported data. It does not infer renames when IDs change, render a
-visual overlay, or impose a large-model performance budget. Those remain in
-the [comparison umbrella](https://github.com/Tigon32/archimate-js/issues/105).
+the unsupported data. It does not infer relationship, view, or connection
+renames, render a visual overlay, or impose a large-model performance budget.
+Those remain in the [comparison umbrella](https://github.com/Tigon32/archimate-js/issues/105).

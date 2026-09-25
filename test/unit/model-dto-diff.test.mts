@@ -1,8 +1,9 @@
 // SYNTHETIC: Hand-authored DTOs using invented IDs and labels only.
 import { expect, it } from 'vitest';
 import { assessModelDtoDiffEligibility, diffModelDto } from '../../src/model-dto/index.js';
+import type { ModelDto } from '../../src/model-dto/index.js';
 
-function fixture() {
+function fixture(): ModelDto {
   return {
     schemaVersion: 1 as const, id: 'model-example', diagnostics: [],
     elements: [
@@ -39,6 +40,7 @@ it('reports stable semantic and presentation changes across repeated appearances
   after.views[0].connections[0].waypoints[1].y = 70;
   const afterOriginal = JSON.stringify(after);
   const result = diffModelDto(before, after);
+  expect(result.renameCandidates).toBeUndefined();
   expect(result.impactedViewIds).toEqual(['view']);
   expect(result.changes.map(({ area, entity, id, changedFields }) =>
     [area, entity, id, changedFields])).toEqual([
@@ -88,6 +90,59 @@ it('ignores collection order but detects additions and removals by ID', () => {
     [entity, kind, id])).toEqual([
     ['node', 'removed', 'second'], ['element', 'added', 'new-app']
   ]);
+});
+
+it('reports a unique same-content element rename without changing ID-based changes', () => {
+  const before = fixture();
+  const after = structuredClone(before);
+  const originalBefore = JSON.stringify(before);
+  after.elements[1] = { ...after.elements[1], id: 'service-v2', name: 'Renamed Service' };
+  after.relationships[0].sourceId = 'service-v2';
+  for (const node of after.views[0].nodes) {
+    if (node.elementId === 'service') node.elementId = 'service-v2';
+  }
+  const originalAfter = JSON.stringify(after);
+  const result = diffModelDto(before, after);
+  expect(result.renameCandidates).toEqual([{
+    beforeId: 'service', afterId: 'service-v2',
+    reason: 'unique-content-match-except-id-and-name'
+  }]);
+  expect(result.changes.filter(({ entity }) => entity === 'element').map(({ id, kind }) =>
+    [kind, id])).toEqual([['removed', 'service'], ['added', 'service-v2']]);
+  expect(JSON.stringify(result.renameCandidates)).not.toContain('Renamed Service');
+  expect(JSON.stringify(before)).toBe(originalBefore);
+  expect(JSON.stringify(after)).toBe(originalAfter);
+  expect(result).toEqual(diffModelDto(before, after));
+});
+
+it('does not infer ambiguous or edited elements as rename candidates', () => {
+  const before = fixture();
+  before.elements.push(
+    { id: 'removed-a', type: 'archimate:ApplicationService', name: 'Old A' },
+    { id: 'removed-b', type: 'archimate:ApplicationService', name: 'Old B' }
+  );
+  const ambiguous = structuredClone(before);
+  ambiguous.elements = ambiguous.elements.filter((element) =>
+    element.id !== 'removed-a' && element.id !== 'removed-b');
+  ambiguous.elements.push(
+    { id: 'added-a', type: 'archimate:ApplicationService', name: 'New A' },
+    { id: 'added-b', type: 'archimate:ApplicationService', name: 'New B' }
+  );
+  const ambiguousDiff = diffModelDto(before, ambiguous);
+  expect(ambiguousDiff.renameCandidates).toBeUndefined();
+  expect(ambiguousDiff.changes.filter(({ entity }) => entity === 'element').map(({ id, kind }) =>
+    [kind, id])).toEqual([
+    ['added', 'added-a'], ['added', 'added-b'], ['removed', 'removed-a'], ['removed', 'removed-b']
+  ]);
+
+  const editedBefore = fixture();
+  editedBefore.elements.push({ id: 'old-detached', type: 'archimate:ApplicationService',
+    name: 'Old name', documentation: 'Same synthetic documentation' });
+  const editedAfter = structuredClone(editedBefore);
+  editedAfter.elements = editedAfter.elements.filter((element) => element.id !== 'old-detached');
+  editedAfter.elements.push({ id: 'new-detached', type: 'archimate:ApplicationService',
+    name: 'New name', documentation: 'Changed synthetic documentation' });
+  expect(diffModelDto(editedBefore, editedAfter).renameCandidates).toBeUndefined();
 });
 
 it('rejects unsupported fields and projection diagnostics without leaking content', () => {
