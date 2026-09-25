@@ -1,9 +1,18 @@
+// All canaries below are SYNTHETIC and assembled in memory so that tracked
+// content never contains a literal private-data marker.
+// @ts-expect-error Node types are not part of the browser package dependencies.
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+// @ts-expect-error Node types are not part of the browser package dependencies.
 import { tmpdir } from 'node:os';
+// @ts-expect-error Node types are not part of the browser package dependencies.
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { formatFindings, scanFixtureContent, scanFixtureTree } from '../security/scan-fixtures.mjs';
+
+const privateHost = ['https://', 'service', '.', 'internal'].join('');
+const privateAddress = (...octets: number[]) => octets.join('.');
+const credentialAssignment = ['pass', 'word', '=', 'example-only-value'].join('');
 
 describe('public fixture safety patterns', () => {
   it('allows the existing public standards namespace and synthetic names', () => {
@@ -17,9 +26,9 @@ describe('public fixture safety patterns', () => {
   it('detects common private data without returning matched content', () => {
     const findings = scanFixtureContent([
       'contact: sample.person@example.invalid',
-      'endpoint=https://service.internal',
-      'address=192.168.10.12',
-      'password=example-only-value',
+      `endpoint=${privateHost}`,
+      `address=${privateAddress(192, 168, 10, 12)}`,
+      `${credentialAssignment}`,
       'account is Example Program'
     ].join('\n'), [/Example Program/i]);
 
@@ -34,13 +43,22 @@ describe('public fixture safety patterns', () => {
   });
 
   it('recognizes private, loopback, and link-local IPv4 ranges', () => {
-    expect(scanFixtureContent('10.0.0.1\n172.20.1.2\n169.254.3.4\n8.8.8.8', [])).toEqual([
+    const content = [
+      privateAddress(10, 0, 0, 1),
+      privateAddress(172, 20, 1, 2),
+      privateAddress(169, 254, 3, 4),
+      privateAddress(8, 8, 8, 8)
+    ].join('\n');
+
+    expect(scanFixtureContent(content, [])).toEqual([
       { rule: 'private-ipv4', line: 1 },
       { rule: 'private-ipv4', line: 2 },
       { rule: 'private-ipv4', line: 3 }
     ]);
   });
+});
 
+describe('fixture tree scanning', () => {
   it('returns and formats findings without paths or configured terms', () => {
     const root = mkdtempSync(join(tmpdir(), 'fixture-scan-'));
     const fixtureDirectory = join(root, 'synthetic');
