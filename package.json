@@ -21,11 +21,12 @@
   },
   "scripts": {
     "all": "run-s test compile",
-    "compile": "run-s compile:validator compile:model-dto compile:lint compile:layout compile:browser compile:model-dto:browser compile:export compile:cli compile:read-only-example",
+    "compile": "run-s compile:validator compile:model-dto compile:modeler compile:lint compile:layout compile:browser compile:model-dto:browser compile:export compile:cli compile:read-only-example",
     "compile:export": "tsc -p tsconfig.export.json",
     "compile:cli": "tsc -p tsconfig.cli.json",
     "compile:validator": "node test/smoke/compile-validator.mjs",
     "compile:model-dto": "tsc -p tsconfig.model-dto.json && node scripts/mark-model-dto-esm.mjs",
+    "compile:modeler": "tsc -p tsconfig.modeler.json && node scripts/mark-modeler-esm.mjs",
     "compile:lint": "tsc -p tsconfig.lint.json",
     "compile:layout": "tsc -p tsconfig.layout.json && node scripts/mark-layout-esm.mjs",
     "compile:browser": "run-s generate:legacy-relationship-util compile:browser:bundle",
@@ -53,10 +54,10 @@
     "test:fixtures": "node test/security/scan-fixtures.mjs",
     "test:typecheck": "tsc --noEmit && tsc -p tsconfig.cli-tests.json",
     "test:validator-build": "node test/smoke/compile-validator.mjs",
-    "test:browser": "run-s compile:model-dto compile:browser compile:model-dto:browser compile:read-only-example test:browser:run",
+    "test:browser": "run-s compile:model-dto compile:modeler compile:browser compile:model-dto:browser compile:read-only-example test:browser:run",
     "compile:model-dto:browser": "node test/smoke/compile-model-dto-browser.mts",
     "compile:read-only-example": "tsc -p tsconfig.read-only-example.json",
-    "test:browser:run": "node test/browser/smoke.mjs && node test/browser/dto-save.mts && node test/browser/canvas-port-contract.mts && node test/browser/theme-contrast.mts && node test/browser/theme-export-invariance.mts && node test/browser/accessible-outline.mts && node test/browser/diagram-js-15-core.mts && node test/browser/focus-interactions.mts && node test/browser/viewer-lifecycle.mts && node test/browser/standalone-network.mts",
+    "test:browser:run": "node test/browser/smoke.mjs && node test/browser/dto-save.mts && node test/browser/canvas-port-contract.mts && node test/browser/modeler-entry.mts && node test/browser/theme-contrast.mts && node test/browser/theme-export-invariance.mts && node test/browser/accessible-outline.mts && node test/browser/diagram-js-15-core.mts && node test/browser/focus-interactions.mts && node test/browser/viewer-lifecycle.mts && node test/browser/standalone-network.mts",
     "test:export-api": "run-s compile:export compile:browser test:export-api:run",
     "test:export-api:run": "node test/browser/export-api.mts",
     "test:cli": "run-s compile:validator compile:model-dto compile:export compile:lint compile:cli compile:browser test:cli:validation",
@@ -114,6 +115,10 @@
     "./model-dto": {
       "types": "./dist/model-dto/index.d.ts",
       "import": "./dist/model-dto/index.js"
+    },
+    "./modeler": {
+      "types": "./dist/modeler/index.d.ts",
+      "import": "./dist/modeler/index.js"
     },
     "./lint": {
       "types": "./dist/lint/index.d.mts",

@@ -18,7 +18,12 @@ The package entry point exports the default `Viewer` class, the named `mountView
 | Viewer navigation | Selection, canvas movement, zoom, touch, and keyboard navigation are included in the Viewer modules. | This is a diagram viewer API, not a claim that every editor workflow is exposed. |
 | Read-only embedding | A locally served HTML example mounts the public Viewer API and loads a repository-owned synthetic fixture. | The example disables pointer input for presentation only; that is not an authorization or security boundary. |
 
-The source also contains a `Modeler` implementation with editor modules for palette-based creation, connecting, label editing, moving/resizing, copy/paste, alignment, and snapping. It is **not exported from the package root today**, so treat that implementation as internal rather than a stable public API.
+The experimental `archimate-js/modeler` subpath exposes a public browser
+`Modeler` facade for eligible DTO editing sessions, including lifecycle,
+engine-neutral events, serializable edit commands, undo/redo, selection,
+projection, save, and viewport helpers. It is documented in
+[`docs/editor/modeler-api.md`](docs/editor/modeler-api.md); the diagram-js
+escape hatch remains explicitly unstable.
 
 Supported imports, deep-import policy, version channels, and release criteria are documented in the [release policy](docs/releases.md).
 

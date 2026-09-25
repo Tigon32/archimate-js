@@ -74,6 +74,15 @@ test('rejects diagram-js service lookups by string literal', () => {
   ]);
 });
 
+test('scans the public modeler facade as engine-neutral source', () => {
+  assert.deepEqual(scan({
+    filePath: 'src/modeler/index.ts',
+    text: "export function leak(modeler) { return modeler.get('canvas'); }\n"
+  }), [
+    { filePath: 'src/modeler/index.ts', rule: 'engine-boundary/service-lookup', subject: 'canvas' }
+  ]);
+});
+
 test('formats deterministic content-free diagnostics', () => {
   const findings = scanEngineBoundarySources([
     { filePath: 'src/layout/z.mts', text: "modeler.get('selection');\n" },

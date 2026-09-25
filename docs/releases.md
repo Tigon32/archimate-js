@@ -8,6 +8,7 @@ Consumers should import only the package root or the documented subpaths:
 import Viewer, { mountViewer, renderViewToSvg } from 'archimate-js';
 import { validateArchimateXml, ARCHIMATE_LANGUAGE_VERSION } from 'archimate-js/validator';
 import { importMeffToModelDto, exportModelDtoToMeff, serializeModelDto, parseModelDto } from 'archimate-js/model-dto';
+import Modeler from 'archimate-js/modeler';
 import { layoutView } from 'archimate-js/layout';
 import { lintModel } from 'archimate-js/lint';
 import { createExportService } from 'archimate-js/export';
@@ -32,6 +33,13 @@ omitted exchange data. The JSON round trip is deterministic for the supported
 DTO subset; it is not a lossless MEFF round trip for arbitrary exchange files.
 Review
 `diagnostics` before using a projection; see the [DTO boundary scope](roadmap/model-dto-boundary.md).
+The opt-in `modeler` subpath exposes an experimental browser `Modeler` facade
+over eligible DTO editing sessions. It provides lifecycle, content-minimized
+open diagnostics, DTO-backed save, engine-neutral changed/selection/opened/closed
+events, serializable editor commands, selection/projection helpers, and
+adapter-level `DiagramJsCanvasPort`/`DtoModelerSession` exports. Its
+`getEngineCapabilities('diagram-js')` escape hatch is explicitly unstable and
+not covered by compatibility policy. See [the modeler API](editor/modeler-api.md).
 The opt-in `layout` subpath accepts a validated DTO model and selected view id;
 it computes a detached view and reversible geometry patch for explicit full
 built-in layout. See [layout facade scope](layout/diagram-optimization.md).
