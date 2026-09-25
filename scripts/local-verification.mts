@@ -33,6 +33,18 @@ interface LockOwner {
 const SCHEMA = 'archimate-js.local-verification/v1';
 const LOCK_WAIT_MS = 60 * 60 * 1000;
 const VERIFY_SCRIPT = fileURLToPath(import.meta.url);
+const GIT_LOCAL_ENVIRONMENT = [
+  'GIT_ALTERNATE_OBJECT_DIRECTORIES', 'GIT_CONFIG', 'GIT_CONFIG_PARAMETERS', 'GIT_CONFIG_COUNT',
+  'GIT_OBJECT_DIRECTORY', 'GIT_DIR', 'GIT_WORK_TREE', 'GIT_IMPLICIT_WORK_TREE', 'GIT_GRAFT_FILE',
+  'GIT_INDEX_FILE', 'GIT_NO_REPLACE_OBJECTS', 'GIT_REPLACE_REF_BASE', 'GIT_PREFIX',
+  'GIT_SHALLOW_FILE', 'GIT_COMMON_DIR'
+];
+
+export function verificationEnvironment(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const environment = { ...source };
+  for (const key of GIT_LOCAL_ENVIRONMENT) delete environment[key];
+  return environment;
+}
 
 function captureGit(root: string, args: string[]): string {
   return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -286,6 +298,7 @@ function launchWorker(
   const child = spawn(process.execPath, [VERIFY_SCRIPT, 'worker', runId], {
     cwd: paths.root,
     detached: true,
+    env: verificationEnvironment(process.env),
     stdio: 'ignore',
     windowsHide: true
   });
@@ -338,7 +351,11 @@ function runVerification(paths: Paths, logPath: string): number {
   const logDescriptor = openSync(logPath, 'a', 0o600);
   try {
     try {
-      const result = spawnSync('npm', ['run', 'verify:local:run'], { cwd: paths.root, stdio: ['ignore', logDescriptor, logDescriptor] });
+      const result = spawnSync('npm', ['run', 'verify:local:run'], {
+        cwd: paths.root,
+        env: verificationEnvironment(process.env),
+        stdio: ['ignore', logDescriptor, logDescriptor]
+      });
       return result.error || result.status === null ? 1 : result.status;
     } catch (error) {
       writeFileSync(logDescriptor, `\nVerification could not start: ${(error as Error).message}\n`);
@@ -434,7 +451,13 @@ function printStatus(paths: Paths): void {
 
 function triggerBackground(paths: Paths): void {
   try {
-    const child = spawn(process.execPath, [VERIFY_SCRIPT, 'start'], { cwd: paths.root, detached: true, stdio: 'ignore', windowsHide: true });
+    const child = spawn(process.execPath, [VERIFY_SCRIPT, 'start'], {
+      cwd: paths.root,
+      detached: true,
+      env: verificationEnvironment(process.env),
+      stdio: 'ignore',
+      windowsHide: true
+    });
     child.unref();
   } catch (error) {
     console.error(`archimate-js: could not start background verification: ${(error as Error).message}`);
