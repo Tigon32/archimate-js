@@ -197,6 +197,7 @@ function proposeRelease(
 ): AgentLeaseOperationResult {
   if (history.status !== 'active') return rejected(history.status === 'expired' ? 'EXPIRED_LEASE' : 'NO_ACTIVE_LEASE');
   if (!matchesToken(history, input.operation)) return rejected('STALE_TOKEN');
+  if (isBeforeLastKnownActivity(input.now, history.record)) return rejected('INVALID_TIME');
   const record: ReleaseRecord = {
     schema: AGENT_CLAIM_SCHEMA,
     record_type: 'release',
@@ -220,6 +221,7 @@ function proposeClosedReconciliation(
 ): AgentLeaseOperationResult {
   if (input.issue_state !== 'closed') return rejected('ISSUE_OPEN');
   if (history.status !== 'active') return noOp(history.status === 'expired' ? 'EXPIRED_LEASE' : 'NO_ACTIVE_LEASE');
+  if (isBeforeLastKnownActivity(input.now, history.record)) return rejected('INVALID_TIME');
   const record: ReleaseRecord = {
     schema: AGENT_CLAIM_SCHEMA,
     record_type: 'release',
@@ -300,6 +302,16 @@ function rejected(code: AgentLeaseOperationCode): AgentLeaseOperationResult {
 
 function noOp(code: AgentLeaseOperationCode): AgentLeaseOperationResult {
   return { status: 'no-op', code, audit: { reason_code: code, action: 'no-write' } };
+}
+
+/**
+ * Rejects a proposed timestamp that precedes the active lease's last known
+ * heartbeat/claim activity, preventing an out-of-order release or closed
+ * reconciliation from being proposed against a stale or invalid `now`.
+ */
+function isBeforeLastKnownActivity(candidateIso: string, record: AgentClaimRecord): boolean {
+  if (!('heartbeat_at' in record) || typeof record.heartbeat_at !== 'string') return false;
+  return Date.parse(candidateIso) < Date.parse(record.heartbeat_at);
 }
 
 function timestampAfter(value: string, duration: number): string {
