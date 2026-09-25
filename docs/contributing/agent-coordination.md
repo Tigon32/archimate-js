@@ -113,9 +113,23 @@ Deterministic synthetic cases live in
 The history resolver does not read GitHub, verify the author or authority of
 an acknowledgement, detect a closed/merged issue, serialize operations, or
 perform automatic expiry. Callers must fetch the complete history and still
-apply the complete fail-closed procedure above. The serialized controller and
-automatic expiry planned for
-[#140](https://github.com/Tigon32/archimate-js/issues/140) remain unimplemented.
+apply the complete fail-closed procedure above.
+
+`src/coordination/agent-lease-controller.mts` provides the bounded in-memory
+controller layer for tests and process-local integrations. It serializes every
+claim, heartbeat, release, takeover request/finalization, closed-issue
+reconciliation, and expiry sweep in one queue per issue. It owns an in-memory
+synthetic comment history, reuses the record/history parser and operation
+proposal layer, rejects stale lease tokens, and re-resolves state before a
+sweep can append an expiry release.
+
+This controller is not durable and performs no GitHub API calls, assignee
+changes, author/authority checks, or background scheduling. A trusted caller or
+worker must supply current issue state, persist and publish accepted records,
+keep all clients in one serialization domain, synchronize assignees without
+removing humans, and invoke sweeps periodically. Those production integration
+boundaries remain follow-up work for
+[#140](https://github.com/Tigon32/archimate-js/issues/140).
 
 ## Operator procedure
 
