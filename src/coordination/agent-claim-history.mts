@@ -108,6 +108,9 @@ function applyRootEvent(event: ParsedEvent, context: HistoryContext): string | u
   if (record.record_type === 'claim' && record.epoch !== 1 && !context.previousLease?.terminal) {
     return 'a non-initial claim has no released predecessor';
   }
+  if ('heartbeat_at' in record && Date.parse(record.heartbeat_at) > at) {
+    return `heartbeat ${id} claims a time after its comment was posted`;
+  }
   const state = makeLeaseState(id, at, record);
   context.leases.set(record.lease_id, state);
   context.byClaimId.set(id, state);
@@ -205,6 +208,8 @@ function applyTransition(event: ParsedEvent, context: HistoryContext): string | 
   if (!sameLease(state.root, record)) return `transition ${id} changes lease identity or epoch`;
   if (at < state.latestAt) return `transition ${id} is out of order`;
   if (record.record_type === 'heartbeat') {
+    if (state.expiry !== null && at >= state.expiry) return `heartbeat ${id} was posted after lease expiry`;
+    if (Date.parse(record.heartbeat_at) > at) return `heartbeat ${id} claims a time after its comment was posted`;
     const priorHeartbeat = 'heartbeat_at' in state.latest ? Date.parse(state.latest.heartbeat_at) : Number.NaN;
     if (state.expiry !== null && Number.isFinite(priorHeartbeat) && Date.parse(record.heartbeat_at) < priorHeartbeat) {
       return `heartbeat ${id} moves lease time backwards`;
