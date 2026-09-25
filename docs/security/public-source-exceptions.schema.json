@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Tigon32/archimate-js/blob/main/docs/security/public-source-exceptions.schema.json",
+  "title": "Reviewed public-source exception records",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "exceptions"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "exceptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "rationale", "expiresOn", "approver", "reviewedOn"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512,
+            "pattern": "^(?!/)(?!.*//)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*[*?{}\\[\\]])(?!.*\\\\)(?!.*[\\u0000-\\u001f\\u007f]).+[^/]$"
+          },
+          "rationale": { "type": "string", "minLength": 1 },
+          "expiresOn": { "type": "string", "format": "date" },
+          "approver": { "type": "string", "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$" },
+          "reviewedOn": { "type": "string", "format": "date" }
+        }
+      }
+    }
+  }
+}
