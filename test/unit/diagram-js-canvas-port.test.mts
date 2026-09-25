@@ -232,6 +232,10 @@ it('routes mixed top-level and nested batch moves without reparenting', () => {
   const { editor, port, modeling, shapes } = setup();
   const detach = editor.attach('view-dto-export', port);
   const original = editor.getModel();
+  expect(() => modeling.moveElements([shapes.get('node-service'), shapes.get('node-service-nested')],
+    { x: 4, y: 5 }, shapes.get('node-component'))).toThrow('The model DTO is invalid.');
+  expect(editor.getModel()).toEqual(original);
+  expect(editor.undo()).toBe(false);
   modeling.moveElements([shapes.get('node-service'), shapes.get('node-service-nested')], { x: 4, y: 5 });
   const view = editor.getModel().views[0];
   expect(view.nodes[1]).toMatchObject({ id: 'node-service', x: 304, y: 45 });

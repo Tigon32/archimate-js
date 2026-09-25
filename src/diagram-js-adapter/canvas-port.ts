@@ -255,7 +255,9 @@ export class DiagramJsCanvasPort implements CanvasPort {
     }
     for (const { shape, node } of items) {
       const expectedParent = node.parentId ? this.shapes.get(node.parentId) : root;
-      if (isElement(shape) && shape.parent !== expectedParent) invalid();
+      if (target != null && target !== expectedParent || isElement(shape) && shape.parent !== expectedParent) {
+        invalid();
+      }
     }
     handler({ type: 'move-many', viewId: this.viewId,
       moves: items.map(({ node }) => ({ nodeId: node.id, x: node.x + delta.x, y: node.y + delta.y })) });
