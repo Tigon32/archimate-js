@@ -62,7 +62,12 @@ export function normalizeLintConfig(input: unknown, knownRuleIds: ReadonlySet<st
   }
   const changedSubjectIds = data.changedSubjectIds === undefined
     ? [] : stringList(data.changedSubjectIds, 'changedSubjectIds').sort(compare);
-  return { enabledRuleIds, severityOverrides, mode: mode as LintRunMode, changedSubjectIds };
+  return {
+    enabledRuleIds: Object.freeze(enabledRuleIds),
+    severityOverrides: Object.freeze(severityOverrides),
+    mode: mode as LintRunMode,
+    changedSubjectIds: Object.freeze(changedSubjectIds)
+  };
 }
 
 function compare(left: string, right: string): number {

@@ -102,6 +102,29 @@ it('isolates throwing rules and keeps the original DTO unchanged', () => {
     expect(result.findings).toHaveLength(1);
 });
 
+it('keeps the changedSubjectIds context frozen so one rule cannot influence a later rule', () => {
+    const input = syntheticModel();
+    let capturedContext: { changedSubjectIds: readonly string[] } | undefined;
+    let laterRuleObservedIds: readonly string[] = [];
+    const injector: LintRule = { id: 'test.a-injector', evaluate: (_model, context) => {
+      capturedContext = context;
+      try {
+        (context.changedSubjectIds as string[]).push('injected');
+      } catch {
+        // Expected when frozen; swallow so the rule reports a clean (non-failure) result.
+      }
+      return [];
+    } };
+    const observer: LintRule = { id: 'test.b-observer', evaluate: (_model, context) => {
+      laterRuleObservedIds = context.changedSubjectIds;
+      return [];
+    } };
+    const result = createLintEngine([injector, observer]).run(input, { changedSubjectIds: [input.id] });
+    expect(result.diagnostics).toEqual([]);
+    expect(Object.isFrozen(capturedContext?.changedSubjectIds)).toBe(true);
+    expect(laterRuleObservedIds).toEqual([input.id]);
+});
+
 it('rejects findings for subjects outside the validated DTO as rule failures', () => {
     const rule: LintRule = { id: 'test.invalid-subject', evaluate: (model) => [{
       severity: 'warning', message: 'invalid subject',

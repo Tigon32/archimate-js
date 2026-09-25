@@ -45,11 +45,11 @@ function runRules(model: DeepReadonly<ModelDto>,
   reporter?: LintReporter): LintResult {
   const findings: LintFinding[] = [];
   const diagnostics: LintDiagnostic[] = [];
+  const changedSubjectIds = Object.freeze([...config.changedSubjectIds]);
   for (const ruleId of config.enabledRuleIds) {
     try {
       const rule = rules.get(ruleId)!;
-      const drafts = rule.evaluate(model, { mode: config.mode,
-        changedSubjectIds: config.changedSubjectIds });
+      const drafts = rule.evaluate(model, Object.freeze({ mode: config.mode, changedSubjectIds }));
       if (!Array.isArray(drafts)) throw new TypeError('Rule returned an invalid result.');
       findings.push(...drafts.map((draft) => normalizeFinding(ruleId, draft, model,
         config.severityOverrides[ruleId])));
