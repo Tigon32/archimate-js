@@ -1,6 +1,10 @@
+// @ts-expect-error Node types are intentionally excluded from browser-facing source.
 import assert from 'node:assert/strict';
+// @ts-expect-error Node types are intentionally excluded from browser-facing source.
 import path from 'node:path';
+// @ts-expect-error Node types are intentionally excluded from browser-facing source.
 import { fileURLToPath } from 'node:url';
+// @ts-expect-error Node types are intentionally excluded from browser-facing source.
 import { mkdir, copyFile } from 'node:fs/promises';
 import webpack from 'webpack';
 
@@ -40,11 +44,11 @@ const compiler = webpack({
   stats: 'errors-warnings'
 });
 
-const stats = await new Promise((resolve, reject) => {
+const stats = await new Promise<import('webpack').Stats>((resolve, reject) => {
   compiler.run((error, result) => {
     compiler.close((closeError) => {
-      if (error || closeError) {
-        reject(error || closeError);
+      if (error || closeError || !result) {
+        reject(error || closeError || new Error('Webpack did not return compilation stats.'));
         return;
       }
 
