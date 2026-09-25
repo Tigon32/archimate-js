@@ -57,7 +57,9 @@ const server = createServer((request: { url?: string }, response: {
   requestPaths.push(pathname);
   if (pathname === '/') {
     response.setHeader('content-type', 'text/html; charset=utf-8');
-    return void response.writeHead(200).end('<!doctype html><html><body></body></html>');
+    return void response.writeHead(200).end(
+      '<!doctype html><html><head><link rel="icon" href="data:,"></head><body></body></html>'
+    );
   }
   const route = routes.get(pathname);
   if (!route) return void response.writeHead(404).end();
