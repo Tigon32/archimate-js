@@ -166,14 +166,23 @@ function layoutPatchCase(options: CanvasPortContractOptions): ContractCase['run'
     const connection = projection.connections.find((item) => item.id === 'serving-connection')!;
     const patch = { viewId, nodes: [{ id: node.id,
       before: { x: node.x, y: node.y, width: node.width, height: node.height },
-      after: { x: node.x + 40, y: node.y + 20, width: node.width, height: node.height } }],
+      after: { x: node.x + 40.5, y: node.y + 20.25, width: node.width + 0.5, height: node.height } }],
     connections: [{ id: connection.id, before: connection.waypoints,
-      after: connection.waypoints.map((point) => ({ ...point, x: point.x + 40, y: point.y + 20 })) }] };
+      after: connection.waypoints.map((point) => ({ ...point, x: point.x + 40.5, y: point.y + 20.25 })) }] };
     editor.execute({ type: 'apply-layout-patch', viewId, patch, side: 'after' });
     assert.deepEqual(editor.project(viewId).nodes.find((item) => item.id === node.id),
-      { ...node, x: node.x + 40, y: node.y + 20 });
+      { ...node, x: node.x + 40.5, y: node.y + 20.25, width: node.width + 0.5 });
     assert.throws(() => editor.execute({ type: 'apply-layout-patch', viewId, patch, side: 'after' }));
     assert.equal(editor.undo(), true);
+    assert.deepEqual(editor.project(viewId), projection);
+    const duplicatePatch = { ...patch, nodes: [patch.nodes[0], patch.nodes[0]] };
+    assert.throws(() => editor.execute({ type: 'apply-layout-patch', viewId, patch: duplicatePatch,
+      side: 'after' }));
+    assert.deepEqual(editor.project(viewId), projection);
+    const duplicateConnectionPatch = { ...patch,
+      connections: [patch.connections[0], patch.connections[0]] };
+    assert.throws(() => editor.execute({ type: 'apply-layout-patch', viewId,
+      patch: duplicateConnectionPatch, side: 'after' }));
     assert.deepEqual(editor.project(viewId), projection);
   });
 }

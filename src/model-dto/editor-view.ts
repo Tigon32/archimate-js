@@ -8,6 +8,7 @@ type View = ModelDto['views'][number];
 export type EditorCommandErrorCode =
   | 'DTO_LAYOUT_PATCH_VIEW_MISMATCH'
   | 'DTO_LAYOUT_PATCH_ITEM_NOT_FOUND'
+  | 'DTO_LAYOUT_PATCH_DUPLICATE_ITEM'
   | 'DTO_LAYOUT_PATCH_STALE'
   | 'DTO_LAYOUT_PATCH_INVALID_GEOMETRY';
 
@@ -152,7 +153,7 @@ function flattenNodes(nodes: ViewNodeDto[]): ViewNodeDto[] {
 }
 
 function geometryValid(geometry: LayoutGeometry): boolean {
-  return [geometry.x, geometry.y, geometry.width, geometry.height].every(Number.isInteger) &&
+  return [geometry.x, geometry.y, geometry.width, geometry.height].every(Number.isFinite) &&
     geometry.width > 0 && geometry.height > 0;
 }
 
@@ -168,16 +169,31 @@ function samePoints(left: PointDto[], right: PointDto[]): boolean {
 
 function pointsValid(points: PointDto[]): boolean {
   return Array.isArray(points) && points.length >= 2 &&
-    points.every((point) => Number.isInteger(point.x) && Number.isInteger(point.y));
+    points.every((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+}
+
+function rejectDuplicatePatchIds(patch: LayoutPatch): void {
+  const seenNodes = new Set<string>();
+  const seenConnections = new Set<string>();
+  for (const entry of patch.nodes) {
+    if (!entry || typeof entry !== 'object' || typeof entry.id !== 'string') invalid();
+    if (seenNodes.has(entry.id)) rejectLayoutPatch('DTO_LAYOUT_PATCH_DUPLICATE_ITEM');
+    seenNodes.add(entry.id);
+  }
+  for (const entry of patch.connections) {
+    if (!entry || typeof entry !== 'object' || typeof entry.id !== 'string') invalid();
+    if (seenConnections.has(entry.id)) rejectLayoutPatch('DTO_LAYOUT_PATCH_DUPLICATE_ITEM');
+    seenConnections.add(entry.id);
+  }
 }
 
 function validatePatch(view: View, patch: LayoutPatch, side: 'after' | 'before'): void {
   if (!patch || typeof patch !== 'object' || !Array.isArray(patch.nodes) ||
       !Array.isArray(patch.connections)) invalid();
   if (patch.viewId !== view.id) rejectLayoutPatch('DTO_LAYOUT_PATCH_VIEW_MISMATCH');
+  rejectDuplicatePatchIds(patch);
   const expectedSide = side === 'after' ? 'before' : 'after';
   for (const entry of patch.nodes) {
-    if (!entry || typeof entry !== 'object') invalid();
     const node = findNode(view.nodes, entry.id);
     if (!node) rejectLayoutPatch('DTO_LAYOUT_PATCH_ITEM_NOT_FOUND');
     if (!geometryValid(entry.before) || !geometryValid(entry.after)) {
@@ -186,7 +202,6 @@ function validatePatch(view: View, patch: LayoutPatch, side: 'after' | 'before')
     if (!sameGeometry(node, entry[expectedSide])) rejectLayoutPatch('DTO_LAYOUT_PATCH_STALE');
   }
   for (const entry of patch.connections) {
-    if (!entry || typeof entry !== 'object') invalid();
     const connection = view.connections.find((item) => item.id === entry.id);
     if (!connection) rejectLayoutPatch('DTO_LAYOUT_PATCH_ITEM_NOT_FOUND');
     if (!pointsValid(entry.before) || !pointsValid(entry.after)) {

@@ -4,6 +4,7 @@ import { invalid } from '../model-dto/validate.js';
 
 interface CanvasElement {
   id?: string;
+  parent?: unknown;
   x?: number;
   y?: number;
   width?: number;
@@ -243,19 +244,21 @@ export class DiagramJsCanvasPort implements CanvasPort {
     hints: { attach?: boolean } | undefined, handler: (command: EditorCommand) => void): undefined {
     if (!Array.isArray(shapes) || !shapes.length || hints?.attach === true ||
         !Number.isFinite(delta?.x) || !Number.isFinite(delta?.y)) invalid();
-    const nodes = shapes.map((shape) => this.nodeFor(shape));
+    const items = shapes.map((shape) => ({ shape, node: this.nodeFor(shape) }));
     const root = this.services.canvas.getRootElement();
-    for (const node of nodes) {
+    if (items.length === 1) {
+      const { node } = items[0];
       const expectedParent = node.parentId ? this.shapes.get(node.parentId) : undefined;
       if (node.parentId ? target !== expectedParent : target != null && target !== root) invalid();
-    }
-    if (nodes.length === 1) {
-      const node = nodes[0];
       handler({ type: 'move', viewId: this.viewId, nodeId: node.id, x: node.x + delta.x, y: node.y + delta.y });
       return undefined;
     }
+    for (const { shape, node } of items) {
+      const expectedParent = node.parentId ? this.shapes.get(node.parentId) : root;
+      if (isElement(shape) && shape.parent !== expectedParent) invalid();
+    }
     handler({ type: 'move-many', viewId: this.viewId,
-      moves: nodes.map((node) => ({ nodeId: node.id, x: node.x + delta.x, y: node.y + delta.y })) });
+      moves: items.map(({ node }) => ({ nodeId: node.id, x: node.x + delta.x, y: node.y + delta.y })) });
     return undefined;
   }
 

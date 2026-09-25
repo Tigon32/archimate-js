@@ -228,6 +228,20 @@ it('routes multi-node move and multi-item deletion as batch DTO commands', () =>
   detach();
 });
 
+it('routes mixed top-level and nested batch moves without reparenting', () => {
+  const { editor, port, modeling, shapes } = setup();
+  const detach = editor.attach('view-dto-export', port);
+  const original = editor.getModel();
+  modeling.moveElements([shapes.get('node-service'), shapes.get('node-service-nested')], { x: 4, y: 5 });
+  const view = editor.getModel().views[0];
+  expect(view.nodes[1]).toMatchObject({ id: 'node-service', x: 304, y: 45 });
+  expect(view.nodes[0].nodes[0]).toMatchObject({ id: 'node-service-nested', x: 14, y: 125 });
+  expect(editor.undo()).toBe(true);
+  expect(editor.getModel()).toEqual(original);
+  expect(modeling.nativeCalls).toBe(0);
+  detach();
+});
+
 it('restores modeling hooks when a view is detached or switched', () => {
   const { editor, port, modeling } = setup();
   const originalMethods = [modeling.moveElements, modeling.resizeShape, modeling.updateLabel];
