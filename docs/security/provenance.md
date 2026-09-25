@@ -81,9 +81,13 @@ Research (`docs/research/okf/*.md`, the OKF concept bundle):
   inventories are internally consistent, structurally complete, and reference
   reachable-looking (`http`/`https`) locations. Human provenance review
   (ADR-0001, `AGENTS.md`, PR review) remains required.
-- It does not scan file *content* for secrets or private markers; that is
-  `test/security/scan-fixtures.mjs`'s existing, separate responsibility, and
-  this phase intentionally does not duplicate or extend that heuristic scan.
+- It does not scan file *content* for secrets or private markers. Fixture
+  content remains `test/security/scan-fixtures.mjs`'s separate
+  responsibility, and Git-tracked text/XML content repository-wide is scanned
+  by `npm run test:secrets` (`scripts/check-secrets.mts`, documented in
+  [`automated-analysis.md`](automated-analysis.md)). This check intentionally
+  does not duplicate or extend either scan. Neither content scan establishes
+  source legality; they reduce accidental leakage only.
 - It does not validate that a URL is reachable, unchanged, or still hosts the
   cited content; it only checks the URL's scheme and shape.
 - The YAML/frontmatter reader is a small, purpose-built parser for the exact
