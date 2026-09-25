@@ -53,6 +53,15 @@ it('does not let a heartbeat posted after expiry revive an expired lease', () =>
   expect(result).toMatchObject({ status: 'ambiguous', reason: 'heartbeat 1002 was posted after lease expiry' });
 });
 
+it('rejects a heartbeat timestamp later than its GitHub comment time', () => {
+  const futureHeartbeat = heartbeatRecord('2026-09-25T13:00:00Z', '2026-09-25T15:00:00Z', '2026-09-25T12:59:00Z');
+  const result = resolveAgentClaimHistory([
+    comment('1001', claim, '2026-09-25T10:00:01Z'),
+    comment('1002', futureHeartbeat, '2026-09-25T11:59:00Z')
+  ], 140, '2026-09-25T13:00:00Z');
+  expect(result).toMatchObject({ status: 'ambiguous', reason: 'heartbeat 1002 claims a time after its comment was posted' });
+});
+
 it('fails closed on malformed protocol attempts, unknown lineage, concurrent roots, and late stale writes', () => {
   const malformed = { id: '1001', created_at: '2026-09-25T10:00:00Z', body: 'archimate-js.agent-claim/v1' };
   expect(resolveAgentClaimHistory([malformed], 140, '2026-09-25T10:01:00Z').status).toBe('ambiguous');

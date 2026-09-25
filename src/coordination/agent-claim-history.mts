@@ -206,6 +206,7 @@ function applyTransition(event: ParsedEvent, context: HistoryContext): string | 
   if (at < state.latestAt) return `transition ${id} is out of order`;
   if (record.record_type === 'heartbeat') {
     if (state.expiry !== null && at >= state.expiry) return `heartbeat ${id} was posted after lease expiry`;
+    if (Date.parse(record.heartbeat_at) > at) return `heartbeat ${id} claims a time after its comment was posted`;
     const priorHeartbeat = 'heartbeat_at' in state.latest ? Date.parse(state.latest.heartbeat_at) : Number.NaN;
     if (state.expiry !== null && Number.isFinite(priorHeartbeat) && Date.parse(record.heartbeat_at) < priorHeartbeat) {
       return `heartbeat ${id} moves lease time backwards`;
