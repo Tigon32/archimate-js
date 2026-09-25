@@ -20,6 +20,13 @@ throws a content-free `MODEL_DTO_DIFF_INELIGIBLE` error. Invalid DTOs retain
 `MODEL_DTO_INVALID`. Callers should decide whether to display returned names,
 documentation, and labels; the diff itself does not log them.
 
+The CLI exposes this comparison as `archimate-js diff <before.xml> <after.xml>
+[--format json|human]`. Human output is the default; both formats go to stdout
+and write no files. JSON includes before/after DTO values, while human output
+includes stable entity IDs and changed field names. Explicit diff output can
+reveal model names, labels, documentation, or other values in the supported DTO
+subset, so only send it to destinations allowed to receive that model data.
+
 This API does not compare organization, properties, viewpoint metadata, or
 unparsed exchange fields. It does not infer renames when IDs change, render a
 visual overlay, or impose a large-model performance budget. Those remain in

@@ -2,6 +2,7 @@ import path from 'node:path';
 
 import type {
   CliOptions,
+  DiffOptions,
   ExportFormat,
   ExportOptions,
   PdfOrientation,
@@ -148,9 +149,22 @@ export function sanitizeBasename(value: string): string {
   return sanitized;
 }
 
+function parseDiff(before: string, after: string | undefined, rest: string[]): DiffOptions {
+  if (!before || before.startsWith('-') || !after || after.startsWith('-') ||
+      path.resolve(before) === path.resolve(after)) throw new Error('CLI_USAGE');
+  let format: DiffOptions['format'] = 'human';
+  if (rest.length) {
+    if (rest.length !== 2 || rest[0] !== '--format' ||
+        !['json', 'human'].includes(rest[1])) throw new Error('CLI_USAGE');
+    format = rest[1] as DiffOptions['format'];
+  }
+  return { command: 'diff', before, after, format };
+}
+
 export function parseArguments(argv: string[]): CliOptions {
   if (argv.length === 1 && ['--help', '-h'].includes(argv[0])) return { command: 'help' };
   const [command, input, ...rest] = argv;
+  if (command === 'diff') return parseDiff(input, rest[0], rest.slice(1));
   if (!['validate', 'render', 'export'].includes(command) || !input || input.startsWith('-')) {
     throw new Error('CLI_USAGE');
   }

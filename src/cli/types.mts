@@ -13,6 +13,13 @@ export type ValidateOptions = {
   input: string;
 };
 
+export type DiffOptions = {
+  command: 'diff';
+  before: string;
+  after: string;
+  format: 'json' | 'human';
+};
+
 export type RenderOptions = ViewSelection & {
   command: 'render';
   input: string;
@@ -39,7 +46,18 @@ export type ExportOptions = ViewSelection & {
   continueOnError?: boolean;
 };
 
-export type CliOptions = ValidateOptions | RenderOptions | ExportOptions | { command: 'help' };
+export type CliOptions = ValidateOptions | DiffOptions | RenderOptions | ExportOptions | { command: 'help' };
+
+export type ModelDiffChange = {
+  area: 'semantic' | 'presentation';
+  entity: 'model' | 'element' | 'relationship' | 'view' | 'node' | 'connection';
+  kind: 'added' | 'removed' | 'modified';
+  id: string;
+  viewId?: string;
+  changedFields: string[];
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
+};
 
 export type CliDiagnostic = {
   code: string;
