@@ -25,6 +25,14 @@ describe('local verification gate', () => {
     }
   });
 
+  it('starts background verification from a non-blocking post-commit hook', () => {
+    const hookPath = path.join(repositoryRoot, '.githooks/post-commit');
+    const hook = readFileSync(hookPath, 'utf8');
+    expect(hook).toContain('node scripts/local-verification.mts trigger');
+    expect(hook).not.toContain('npm run verify:local:run');
+    if (process.platform !== 'win32') expect(statSync(hookPath).mode & 0o111).not.toBe(0);
+  });
+
   it('installs hooks in a fresh Git checkout with no prior hook configuration', () => {
     const checkout = mkdtempSync(path.join(tmpdir(), 'archimate-js-hooks-'));
 
@@ -54,6 +62,9 @@ describe('local verification gate', () => {
     expect(packageJson.scripts.prepare).toBe('node scripts/install-git-hooks.mjs');
     expect(packageJson.scripts['hooks:install']).toBe('node scripts/install-git-hooks.mjs');
     expect(packageJson.scripts['verify:wip']).toBe('run-s check:source-policy lint test:typecheck test:validator-build');
-    expect(packageJson.scripts['verify:local']).toBe('run-s check:source-policy lint test compile');
+    expect(packageJson.scripts['verify:local']).toBe('node scripts/local-verification.mts ensure');
+    expect(packageJson.scripts['verify:local:run']).toBe('run-s check:source-policy lint test compile');
+    expect(packageJson.scripts['verify:local:start']).toBe('node scripts/local-verification.mts start');
+    expect(packageJson.scripts['verify:local:status']).toBe('node scripts/local-verification.mts status');
   });
 });

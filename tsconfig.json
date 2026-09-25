@@ -5,6 +5,7 @@
     "moduleResolution": "Bundler",
     "strict": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "lib": ["ES2022", "DOM"],
     "skipLibCheck": true
   },
@@ -50,6 +51,7 @@
     "test/security/check-tracked-paths.test.mts",
     "test/security/supply-chain.test.mts",
     "test/unit/cli-export.test.mts",
+    "test/unit/local-verification-process.test.mts",
     "test/fixtures",
     "test-results"
   ]

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-// @ts-expect-error Runtime script is intentionally plain ESM without a declaration file.
-import { isAgentBranch } from '../../scripts/finalize-agent-pr.mjs';
+import { isAgentBranch } from '../../src/coordination/agent-branch.mts';
 
 describe('agent PR finalization', () => {
   it('only promotes the reserved agent branch namespace', () => {
