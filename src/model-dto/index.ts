@@ -27,15 +27,15 @@ import type {
   DtoModelerServices as AdapterDtoModelerServices,
   DtoSaveResult as AdapterDtoSaveResult
 } from '../diagram-js-adapter/modeler-session.js';
-/** @deprecated Use the upcoming `archimate-js/modeler` entry planned for EE-M4 (#346). */
+/** @deprecated Use `DiagramJsCanvasPort` from `archimate-js/modeler`. */
 export const DiagramJsCanvasPort = AdapterDiagramJsCanvasPort;
-/** @deprecated Use the upcoming `archimate-js/modeler` entry planned for EE-M4 (#346). */
+/** @deprecated Use `DtoModelerSession` from `archimate-js/modeler`. */
 export const DtoModelerSession = AdapterDtoModelerSession;
-/** @deprecated Use the upcoming `archimate-js/modeler` entry planned for EE-M4 (#346). */
+/** @deprecated Use `DiagramJsCanvasServices` from `archimate-js/modeler`. */
 export type DiagramJsCanvasServices = AdapterDiagramJsCanvasServices;
-/** @deprecated Use the upcoming `archimate-js/modeler` entry planned for EE-M4 (#346). */
+/** @deprecated Use `DtoModelerServices` from `archimate-js/modeler`. */
 export type DtoModelerServices = AdapterDtoModelerServices;
-/** @deprecated Use the upcoming `archimate-js/modeler` entry planned for EE-M4 (#346). */
+/** @deprecated Use `DtoSaveResult` from `archimate-js/modeler`. */
 export type DtoSaveResult = AdapterDtoSaveResult;
 export {
   assessModelDtoEditingEligibility, checkMeffEditingEligibility, createDtoEditorFromMeff
