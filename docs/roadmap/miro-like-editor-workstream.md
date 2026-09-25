@@ -149,10 +149,10 @@ ship TypeScript declarations and a packed-consumer test.
 | Adapter-internal | `DiagramJsCanvasPort`, `DtoModelerSession`, raw port services, gesture translation. | Move out of `archimate-js/model-dto`; re-export temporarily with deprecation. |
 | Engine-specific escape hatch | `modeler.engine('diagram-js')` or `getDiagramJsCapabilities()`. | Unstable, opt-in, not portable, never required for normal editing. |
 
-`DiagramJsCanvasPort` and `DtoModelerSession` are currently exported from the
-engine-neutral `archimate-js/model-dto` entry point. EE-M3 moves those exports
-to the modeler package area and leaves a documented deprecation window for the
-old re-exports.
+`DiagramJsCanvasPort` and `DtoModelerSession` now live in
+`src/diagram-js-adapter/`. EE-M3 keeps deprecated compatibility re-exports from
+the engine-neutral `archimate-js/model-dto` entry until the EE-M4 modeler entry
+is introduced.
 
 ## Miro-like canvas interaction
 
@@ -379,9 +379,9 @@ a longer feature list.
 
 | File or area | Coupling | Target milestone |
 | --- | --- | --- |
-| `src/model-dto/index.ts` | Exports `DiagramJsCanvasPort` and `DtoModelerSession` from an engine-neutral entry. | EE-M3 |
-| `src/model-dto/diagram-js-canvas-port.ts` | Adapter depends on canvas, eventBus, selection, modeling, and element factory services. | EE-M2, EE-M5 |
-| `src/model-dto/modeler-session.ts` | DTO session is coupled to legacy `Modeler` services. | EE-M3, EE-M4 |
+| `src/model-dto/index.ts` | Keeps deprecated compatibility re-exports for `DiagramJsCanvasPort` and `DtoModelerSession`; implementation moved to `src/diagram-js-adapter/`. | EE-M4 |
+| `src/diagram-js-adapter/canvas-port.ts` | Adapter depends on canvas, eventBus, selection, modeling, and element factory services. | EE-M2, EE-M5 |
+| `src/diagram-js-adapter/modeler-session.ts` | DTO session is coupled to legacy `Modeler` services. | EE-M4 |
 | `lib/Modeler.ts` | Composes diagram-js modules and routes optimize through canvas, elementRegistry, commandStack. | EE-M6 |
 | `lib/BaseViewer.js` | Extends diagram-js `Diagram` and owns legacy viewer lifecycle. | EE-M13 |
 | `lib/import/Importer.js` | Imports XML into moddle/diagram-js projection. | EE-M13 |
@@ -442,11 +442,9 @@ CommonJS `require` calls, re-exports, and string-literal lookups of diagram-js
 services including `elementRegistry`, `commandStack`, `canvas`, `eventBus`,
 `elementFactory`, `modeling`, `selection`, and `graphicsFactory`.
 
-The explicit exceptions are the current adapter files
-`src/model-dto/diagram-js-canvas-port.ts` and
-`src/model-dto/modeler-session.ts`, both to be relocated by EE-M3, plus the
-future `src/diagram-js-adapter/**` target location. `lib/**` and `test/**`
-remain out of scope for this architecture boundary check.
+The explicit exception is `src/diagram-js-adapter/**`, the EE-M3 adapter home
+where engine-specific dependencies belong. `lib/**` and `test/**` remain out
+of scope for this architecture boundary check.
 
 The contract test suite must run against any `CanvasPort`: a headless fake port
 for deterministic service behavior and `DiagramJsCanvasPort` for browser
@@ -482,7 +480,7 @@ flowchart TD
 | EE-M0 Record ADR-0010 and this plan (docs only) | Record decisions and milestone plan. | Align parallel docs before implementation. | Docs. | `docs/adr/0010-diagram-engine-boundary.md`, this file. | ADR-0010, React Flow note. | Documentation review. | Links resolve; no implementation changes. | None. | S |
 | EE-M1 Architecture import-boundary check | Add automated import/service-name guard. | Prevent new reverse dependencies. | Source policy, lint/test. | `scripts/check-source-policy.mjs` or ESLint config, tests. | EE-M0. | Run source-policy checks and negative fixtures. | Forbidden diagram-js imports fail outside allowed areas. | Allow existing `lib/**` and adapter exceptions. | S |
 | EE-M2 Engine contract test suite (headless fake port + DiagramJsCanvasPort) | Implemented by the reusable CanvasPort contract suite in #344. | Make adapters interchangeable by contract. | DTO editor, adapter, tests. | `test/contract`, `test/browser`, `src/model-dto`. | EE-M1. | Headless fake port plus browser port tests. | Render, command, selection, detach, undo/redo behavior is covered. | Must not require React or new engine. | M |
-| EE-M3 Relocate diagram-js adapter out of engine-neutral model-dto entry (with re-export deprecation) | Move `DiagramJsCanvasPort` and `DtoModelerSession` exports behind modeler/adapter area. | Keep `model-dto` engine-neutral. | Package exports, DTO index, docs. | `src/model-dto/index.ts`, future modeler entry, docs/releases notes. | EE-M1. | Package export and packed-consumer tests. | Old re-export warns/deprecates; new path works. | Deprecation window for early users. | M |
+| EE-M3 Relocate diagram-js adapter out of engine-neutral model-dto entry (with re-export deprecation) — Implemented | Move `DiagramJsCanvasPort` and `DtoModelerSession` exports behind modeler/adapter area. | Keep `model-dto` engine-neutral. | Package exports, DTO index, docs. | `src/model-dto/index.ts`, future modeler entry, docs/releases notes. | EE-M1. | Package export and packed-consumer tests. | Old re-export warns/deprecates; new path works. | Deprecation window for early users. | M |
 | EE-M4 Public `archimate-js/modeler` entry, lifecycle, events, TypeScript declarations, packed-consumer test | Expose experimental public modeler API. | Move consumers from internal paths to supported boundary. | Package exports, declarations, modeler facade. | `package.json`, `dist/modeler`, tests, docs. | EE-M3. | `test/smoke/package.test.mts`, packed consumer, type checks. | `import Modeler from 'archimate-js/modeler'` works. | Experimental under `0.y.z`; changelog must call breaks. | L |
 | EE-M5 Editor intents: batch/multi-select move/delete, create-element (with #332), apply-layout-patch | Add missing serializable commands. | Support Miro-like editing without engine state. | DTO adapter, commands, validation, tests. | `src/model-dto/editor.ts`, DTO types if needed. | EE-M2, #332. | Unit contract tests and browser gesture tests. | Multi-node move/delete, create-element, batch, and layout patch are undoable. | Preserve single-item command behavior. | L |
 | EE-M6 Route Modeler.optimizeDiagram through DTO apply-layout-patch | Make optimization use DTO authority. | Layout changes become reversible DTO edits. | Modeler, layout, adapter. | `lib/Modeler.ts`, `src/layout`, adapter command. | EE-M5, #100. | Layout apply/reverse tests and browser optimize smoke. | Optimize returns patch/metrics and commits through DTO command when eligible. | Legacy commandStack path remains for ineligible sessions. | M |
