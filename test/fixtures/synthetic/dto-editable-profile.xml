@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Classification: SYNTHETIC. Hand-authored from public MEFF 3.1 records. -->
+<model xmlns="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:archimate="http://www.opengroup.org/xsd/archimate/3.0/"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  identifier="model-editable-profile">
+  <name>Synthetic Editable Model</name>
+  <elements>
+    <element identifier="component-editable" xsi:type="archimate:ApplicationComponent">
+      <name>Component Before</name>
+      <documentation>Synthetic component documentation.</documentation>
+      <properties>
+        <property propertyDefinitionRef="property-state"><value>Draft</value></property>
+      </properties>
+    </element>
+    <element identifier="service-editable" xsi:type="archimate:ApplicationService">
+      <name>Service Before</name>
+    </element>
+  </elements>
+  <relationships>
+    <relationship identifier="serving-editable" xsi:type="archimate:Serving"
+      source="component-editable" target="service-editable">
+      <name>Serves Before</name>
+      <documentation>Synthetic relationship documentation.</documentation>
+    </relationship>
+  </relationships>
+  <propertyDefinitions>
+    <propertyDefinition identifier="property-state" type="string">
+      <name>Lifecycle state</name>
+    </propertyDefinition>
+  </propertyDefinitions>
+  <views><diagrams>
+    <view identifier="view-editable" xsi:type="archimate:Diagram">
+      <name>Synthetic Editable View</name>
+      <node identifier="node-editable" xsi:type="archimate:Element"
+        elementRef="component-editable" x="20" y="30" w="120" h="60">
+        <label>Presentation Label</label>
+        <style lineWidth="3"><lineColor r="10" g="20" b="30"/></style>
+      </node>
+      <node identifier="service-node" xsi:type="archimate:Element"
+        elementRef="service-editable" x="220" y="30" w="120" h="60"/>
+      <connection identifier="serving-edge" xsi:type="archimate:Relationship"
+        relationshipRef="serving-editable" source="node-editable" target="service-node">
+        <sourceAttachment x="140" y="60"/>
+        <targetAttachment x="220" y="60"/>
+      </connection>
+    </view>
+  </diagrams></views>
+</model>

@@ -25,6 +25,7 @@ export type { CanvasPort, CanvasProjection, EditorCommand, EditorEvent } from '.
 export type { DtoEditingEligibility, DtoEditingReason, DtoMeffEditorEntry } from './eligibility.js';
 export type { DiagramJsCanvasServices } from './diagram-js-canvas-port.js';
 export type {
-  DtoDiagnostic, ElementDto, ModelDto, PointDto, RelationshipDto,
+  ConceptPropertyDto, DtoDiagnostic, ElementDto, ModelDto, PointDto, PropertyDefinitionDto,
+  PropertyDefinitionType, PropertyValueDto, RelationshipDto,
   StyleDto, ViewConnectionDto, ViewDto, ViewNodeDto
 } from './types.js';

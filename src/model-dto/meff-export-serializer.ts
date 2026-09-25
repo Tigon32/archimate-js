@@ -1,5 +1,7 @@
 /** Deterministic serializer for the public MEFF 3.1 Model/Diagram subset. */
 
+import { serializeConceptProperties, serializePropertyDefinitions } from './meff-properties.js';
+
 const NS = 'http://www.opengroup.org/xsd/archimate/3.0/';
 const XML_ID = /^[A-Za-z_][A-Za-z0-9_.-]*$/;
 const QNAME = /^(?:archimate:)?[A-Za-z][A-Za-z0-9]*$/;
@@ -78,7 +80,7 @@ function type(value: unknown, vocabulary: Set<string>): string {
 
 function diagnostic(code: WarningCode): ExportResult['diagnostics'][number] {
   const descriptions: Record<WarningCode, string> = {
-    MEFF_EXPORT_MODEL_OMITTED: 'Model metadata, properties, organizations, or property definitions were omitted.',
+    MEFF_EXPORT_MODEL_OMITTED: 'Unsupported model metadata, model properties, or organizations were omitted.',
     MEFF_EXPORT_VIEW_OMITTED: 'Unsupported view or viewpoint data was omitted.',
     MEFF_EXPORT_DIAGRAM_OMITTED: 'Unsupported diagram presentation data was omitted.',
     MEFF_EXPORT_ELEMENT_OMITTED: 'An unsupported model element or field was omitted.',
@@ -101,13 +103,14 @@ function attrs(record: Data | undefined, names: string[]): boolean {
 
 function names(record: Data | undefined, required = false): string {
   const localized = list(field(record, 'localizedNames'));
-  const raw = localized.length ? localized : field(record, 'name')
+  const hasName = field(record, 'name') !== undefined && field(record, 'name') !== null;
+  const raw = localized.length ? localized : hasName
     ? [{ value: field(record, 'name') }] : [];
   if (required && !raw.length) return failure();
   return raw.map((entry) => {
     const item = data(entry);
     const value = field(item, 'value');
-    if (typeof value !== 'string' || !value.length) return failure();
+    if (typeof value !== 'string') return failure();
     const language = field(item, 'language');
     const lang = language ? ' xml:lang="' + escape(language) + '"' : '';
     return '<name' + lang + '>' + escape(value) + '</name>';
@@ -116,7 +119,8 @@ function names(record: Data | undefined, required = false): string {
 
 function documentation(record: Data | undefined): string {
   const value = field(record, 'documentation');
-  return value ? '<documentation>' + escape(value) + '</documentation>' : '';
+  return value === undefined || value === null ? '' :
+    '<documentation>' + escape(value) + '</documentation>';
 }
 
 function number(value: unknown, positive = false, integer = false): string {
@@ -215,7 +219,10 @@ export function exportMeff(model: unknown): ExportResult {
   const warn = (code: WarningCode): void => { omitted.add(code); };
   const modelId = id(field(root, 'id'), ids);
   if (attrs(root, ['metadata', 'organizations', 'organizationsNode', 'properties',
-    'propertiesNode', 'propertyDefinitions', 'propertyDefinitionsNode', 'version'])) warn('MEFF_EXPORT_MODEL_OMITTED');
+    'propertiesNode', 'version'])) warn('MEFF_EXPORT_MODEL_OMITTED');
+  const propertyDefinitions = field(data(field(root, 'propertyDefinitionsNode')), 'propertyDefinitions');
+  const definitionIds = new Set(list(propertyDefinitions).map(data).map((item) => field(item, 'id'))
+    .filter((value): value is string => typeof value === 'string'));
   let body = names(root, true) + documentation(root);
   const elementsNode = data(field(root, 'elementsNode'));
   const elements = list(field(elementsNode, 'baseElements')).map(data);
@@ -228,14 +235,16 @@ export function exportMeff(model: unknown): ExportResult {
       if (typeof elementId !== 'string') return failure();
       const escapedId = id(elementId, ids);
       elementIds.add(elementId);
-      if (attrs(element, ['properties', 'propertiesNode', 'propertyDefinitions', 'specialization', 'children'])) {
+      if (attrs(element, ['propertiesNode', 'propertyDefinitions', 'specialization', 'children'])) {
         warn('MEFF_EXPORT_ELEMENT_OMITTED');
       }
       return '<element identifier="' + escapedId + '" xsi:type="' + type(elementType, ELEMENT_TYPES) + '">' +
-        names(element) + documentation(element) + '</element>';
+        names(element) + documentation(element) +
+        serializeConceptProperties(field(element, 'properties'), definitionIds, escape) + '</element>';
     }).join('') + '</elements>';
   }
-  body += exportRelationships(root, ids, omitted, elementIds);
+  body += exportRelationships(root, ids, omitted, elementIds, definitionIds);
+  body += serializePropertyDefinitions(propertyDefinitions, (value) => id(value, ids), escape);
   body += exportViews(root, ids, omitted, elementIds, relationshipIds(root));
   return {
     xml: '<?xml version="1.0" encoding="UTF-8"?>\n' +
@@ -253,7 +262,7 @@ function relationshipIds(root: Data): Set<string> {
 }
 
 function exportRelationships(root: Data, ids: Set<string>, omitted: Set<WarningCode>,
-  elementIds: Set<string>): string {
+  elementIds: Set<string>, definitionIds: Set<string>): string {
   const node = data(field(root, 'relationshipsNode'));
   const relations = list(field(node, 'relationships')).map(data);
   if (!relations.length) return '';
@@ -267,12 +276,13 @@ function exportRelationships(root: Data, ids: Set<string>, omitted: Set<WarningC
     const target = field(relation, 'targetRefId') || field(targetRecord, 'id');
     if (typeof source !== 'string' || typeof target !== 'string' || !elementIds.has(source) || !elementIds.has(target)) return failure();
     const escapedId = id(relationId, ids);
-    if (attrs(relation, ['properties', 'propertiesNode', 'accessType', 'influenceStrength', 'isDirected', 'modifier'])) {
+    if (attrs(relation, ['propertiesNode', 'accessType', 'influenceStrength', 'isDirected', 'modifier'])) {
       omitted.add('MEFF_EXPORT_RELATIONSHIP_OMITTED');
     }
     return '<relationship identifier="' + escapedId + '" xsi:type="' + type(relationType, RELATIONSHIP_TYPES) +
       '" source="' + escape(source) + '" target="' + escape(target) + '">' + names(relation) +
-      documentation(relation) + '</relationship>';
+      documentation(relation) +
+      serializeConceptProperties(field(relation, 'properties'), definitionIds, escape) + '</relationship>';
   }).join('');
   return '<relationships>' + body + '</relationships>';
 }

@@ -18,11 +18,31 @@ export interface StyleDto {
   lineWidth?: number;
 }
 
+export type PropertyDefinitionType = 'string' | 'boolean' | 'integer' | 'real';
+
+export interface PropertyDefinitionDto {
+  id: string;
+  type: PropertyDefinitionType;
+  name?: string;
+  documentation?: string;
+}
+
+export interface PropertyValueDto {
+  language?: string;
+  value: string;
+}
+
+export interface ConceptPropertyDto {
+  propertyDefinitionId: string;
+  values: PropertyValueDto[];
+}
+
 export interface ElementDto {
   id: string;
   type: string;
   name?: string;
   documentation?: string;
+  properties?: ConceptPropertyDto[];
 }
 
 export interface RelationshipDto extends ElementDto {
@@ -67,6 +87,7 @@ export interface ModelDto {
   schemaVersion: 1;
   id: string;
   name?: string;
+  propertyDefinitions?: PropertyDefinitionDto[];
   elements: ElementDto[];
   relationships: RelationshipDto[];
   views: ViewDto[];

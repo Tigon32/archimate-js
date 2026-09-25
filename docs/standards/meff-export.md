@@ -18,6 +18,11 @@ connections with their relationship/node references, styles, source/target
 attachments, and ordered bendpoints. Existing IDs are retained; no synthetic
 IDs or renderer defaults are written into exchange XML.
 
+The separate `archimate-js/model-dto` editor profile also supports explicitly
+defined scalar property definitions and concept property values; see
+[`../editor/model-dto-profile.md`](../editor/model-dto-profile.md). This does
+not expand the `exportMeff()` root-model API described above.
+
 After a diagram edit, current diagram-space node bounds take precedence over
 the imported geometry snapshot. Current integer connection waypoints are
 serialized in order (first and last as attachments, interior points as
