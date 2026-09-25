@@ -5,6 +5,7 @@ export { validateModelDto, serializeModelDto, parseModelDto } from './validate.j
 export { createAccessibleOutline, formatAccessibleOutline } from './accessible-outline.js';
 export { searchAccessibleOutline } from './outline-search.js';
 export { assessModelDtoDiffEligibility, diffModelDto } from './diff.js';
+export { renderModelDtoDiffOverlay } from './diff-overlay.js';
 export type {
   ModelDtoDiff, ModelDtoDiffEligibility, ModelDtoDiffEligibilityCode,
   ModelDtoDiffEligibilityDiagnostic, ModelDiffChange, ModelDiffArea,
