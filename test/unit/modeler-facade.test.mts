@@ -65,8 +65,7 @@ vi.mock('../../src/diagram-js-adapter/index.js', () => {
     close() { this.closed += 1; }
   }
   return {
-    DiagramJsCanvasPort: class {},
-    DtoModelerSession: FakeSession,
+    DiagramJsCanvasPort: class {}, DtoModelerSession: FakeSession,
     createDiagramJsModeler: () => {
       state.createdModeler = { destroy: () => { state.destroyed += 1; },
         get: (name: string) => { state.engineGets.push(name); return { name }; } };
