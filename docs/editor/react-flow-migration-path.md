@@ -50,7 +50,7 @@ structure, report renderer, or application-level editor semantics.
 
 A migration would replace the current adapter and engine composition:
 
-- `DiagramJsCanvasPort` in `src/model-dto/diagram-js-canvas-port.ts`.
+- `DiagramJsCanvasPort` in `src/diagram-js-adapter/canvas-port.ts`.
 - `Modeler` composition in `lib/Modeler.ts` and `lib/features/*`.
 - `ArchimateRenderer` in `lib/draw`.
 
@@ -90,8 +90,9 @@ unless a future React Flow spike proves equivalent output.
 These verified references show why the boundary must improve before any engine
 replacement is economical:
 
-- `src/model-dto/index.ts` exports `DiagramJsCanvasPort` and
-  `DtoModelerSession` from the engine-neutral `archimate-js/model-dto` entry.
+- `src/model-dto/index.ts` keeps deprecated compatibility re-exports for
+  `DiagramJsCanvasPort` and `DtoModelerSession` from the engine-neutral
+  `archimate-js/model-dto` entry until the EE-M4 modeler entry is available.
 - `lib/Modeler.ts` `optimizeDiagram` reads the root `businessObject`, uses
   `elementRegistry`, and executes `commandStack.execute('diagram.optimize')`.
 - `lib/features/rules/ArchimateRules.js` extends diagram-js `RuleProvider` and

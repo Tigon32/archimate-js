@@ -28,16 +28,8 @@ test('rejects static diagram-js imports in engine-neutral sources', () => {
   ]);
 });
 
-test('allows documented current and future adapter locations', () => {
+test('allows only the documented adapter location', () => {
   const sources = [
-    {
-      filePath: 'src/model-dto/diagram-js-canvas-port.ts',
-      text: "import Diagram from 'diagram-js';\nmodeler.get('canvas');\n"
-    },
-    {
-      filePath: 'src/model-dto/modeler-session.ts',
-      text: "const modeling = modeler.get('modeling');\n"
-    },
     {
       filePath: 'src/diagram-js-adapter/index.mts',
       text: "export { default } from 'diagram-js/lib/Diagram.js';\n"

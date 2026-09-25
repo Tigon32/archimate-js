@@ -2,7 +2,8 @@
 import { expect, it } from 'vitest';
 // @ts-expect-error Node types are not part of the browser package dependencies.
 import { readFileSync } from 'node:fs';
-import { DiagramAdapter, DiagramJsCanvasPort, importMeffToModelDto } from '../../src/model-dto/index.js';
+import { DiagramJsCanvasPort } from '../../src/diagram-js-adapter/index.js';
+import { DiagramAdapter, importMeffToModelDto } from '../../src/model-dto/index.js';
 import type { DiagramJsCanvasServices } from '../../src/model-dto/index.js';
 
 function mockModeling() {
