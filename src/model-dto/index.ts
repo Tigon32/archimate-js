@@ -15,6 +15,11 @@ export type { AccessibleOutlineSearchResult } from './outline-search.js';
 export type { AccessibleOutline, AccessibleOutlineNode, AccessibleOutlineRelationship,
   AccessibleOutlineOptions } from './accessible-outline.js';
 export { DiagramAdapter } from './editor.js';
+export { RelationshipEditError } from './editor-diagnostics.js';
+export type {
+  RelationshipEditDiagnostic, RelationshipEditDiagnosticCategory,
+  RelationshipEditDiagnosticCode, RelationshipEditOperation
+} from './editor-diagnostics.js';
 import { DiagramJsCanvasPort as AdapterDiagramJsCanvasPort } from '../diagram-js-adapter/canvas-port.js';
 import { DtoModelerSession as AdapterDtoModelerSession } from '../diagram-js-adapter/modeler-session.js';
 import type { DiagramJsCanvasServices as AdapterDiagramJsCanvasServices } from '../diagram-js-adapter/canvas-port.js';

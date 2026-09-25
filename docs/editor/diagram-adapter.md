@@ -71,17 +71,36 @@ cannot be retargeted through one view. Multi-item deletion is rejected as one
 unsupported gesture. Removing a view node removes attached view connections
 but retains semantic elements and relationships.
 
-The DTO adapter also checks every newly authored semantic relationship and every
+The DTO adapter validates each relationship connect and every
 endpoint-changing reconnect against the reviewed ArchiMate 3.2 decision service
 shared with standalone validation. A reviewed `allowed` tuple can commit;
 `disallowed` raises `DTO_RELATIONSHIP_DISALLOWED`, and unreviewed combinations
-raise `DTO_RELATIONSHIP_UNSUPPORTED`. Both failures leave model state and undo
-history unchanged and contain no model identifiers. MEFF/DTO relationship type
-names such as `archimate:Serving` resolve to the same reviewed row as
-`ServingRelationship`. Existing imported relationships remain available even
-when their tuple is unreviewed. Adding another view reference to such a
-relationship or changing only a connection's waypoints does not create a new
-semantic claim. The canvas port's immediate gesture
+raise `DTO_RELATIONSHIP_UNSUPPORTED`. These errors carry a fixed,
+content-minimized `diagnostic` with a stable code, category, operation,
+applicable view/connection/relationship/endpoint IDs, and a corrective reason.
+`sourceId` and `targetId` identify view nodes; when resolvable,
+`sourceElementId` and `targetElementId` identify their semantic model elements.
+Malformed IDs, duplicate connection IDs, relationship-ID collisions,
+connect commands whose `connection.relationshipId` differs from the new
+`relationship.id` (`DTO_RELATIONSHIP_ID_MISMATCH`, reporting the submitted
+relationship ID), relationship endpoint mismatches, and shared-relationship
+retarget conflicts have distinct codes. IDs are included only when they are at
+most 128 characters and free of control characters; longer IDs are redacted
+even when syntactically valid. No model payload or semantic type names are
+copied into the message. Every rejected command leaves model state, undo
+history, and redo history unchanged.
+
+Editor connect/reconnect commands are strict within this boundary: only
+`allowed` tuples in the reviewed profile commit. `unsupported` means the tuple
+is outside this repository's reviewed ArchiMate 3.2 decision set, not that the
+standard universally forbids it. The standalone validator remains tri-state
+and advisory for imported models; it can report unsupported profile scope
+without changing the imported model. Existing imported relationships remain
+unchanged until an edit is requested; adding a view reference or changing
+endpoints must pass the strict editor check. Waypoint-only reconnects do not
+create a new semantic claim.
+MEFF/DTO relationship type names such as `archimate:Serving` resolve to the
+same reviewed row as `ServingRelationship`. The canvas port's immediate gesture
 affordance still comes from legacy rules; aligning that UI hint and custom
 profiles is separate work under #102.
 
