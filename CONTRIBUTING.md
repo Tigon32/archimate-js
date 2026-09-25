@@ -25,7 +25,7 @@ npm run verify:local
 npm pack --dry-run
 ```
 
-`npm run verify:wip` is the fast durability gate used by the versioned `.githooks/pre-push` hook. It runs source policy, lint, type checks, and the validator build so WIP can be pushed frequently without waiting for the complete suite. `npm run verify:local` is the full qualification gate: source policy, lint, the complete test suite, and compile, serially and fail-fast. If hooks were intentionally cleared, restore them with `npm run hooks:install`.
+`npm run verify:wip` is the fast durability gate used by `.githooks/pre-push`. After each commit, `.githooks/post-commit` starts the full suite in a detached, single-flight background process and returns immediately. Inspect it with `npm run verify:local:status`. `npm run verify:local` reuses only a clean exact-HEAD receipt; if none matches, it waits for a matching run or executes the complete canonical suite synchronously. `npm run verify:local:run` is that canonical suite. State and receipts stay under the worktree's Git metadata and are not published. If hooks were intentionally cleared, restore them with `npm run hooks:install`.
 
 Create a Draft PR early and push the WIP branch after each coherent checkpoint, before a risky refactor or long-running operation, and before handoff. Prefer additive checkpoint commits and squash at merge rather than keeping substantial recoverable work only in one agent workspace. Draft pushes are collaboration and recovery snapshots; they are not evidence that the change is ready to merge.
 

@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+set -eu
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+# Trigger is detached and returns immediately; the full suite never blocks a commit.
+node scripts/local-verification.mts trigger

@@ -28,8 +28,11 @@
     "scripts/check-secrets.mts",
     "test/security/check-secrets.test.mts",
     "scripts/check-tracked-paths.mts",
+    "scripts/local-verification.mts",
+    "scripts/finalize-agent-pr.mts",
     "test/security/check-tracked-paths.test.mts",
-    "test/security/supply-chain.test.mts"
+    "test/security/supply-chain.test.mts",
+    "test/unit/local-verification-process.test.mts"
   ],
   "exclude": ["node_modules", "dist", "coverage", "test-results"]
 }

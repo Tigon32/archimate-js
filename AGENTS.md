@@ -31,7 +31,7 @@ The Open Group ArchiMate specification and published exchange/conformance artifa
 ## Work style
 
 - Prefer small reviewed PRs.
-- Run `npm ci` in a fresh checkout so the repository-owned Git hooks are installed. The pre-push hook runs the fast `npm run verify:wip` durability gate; `npm run verify:local` is the full qualification gate.
+- Run `npm ci` in a fresh checkout so the repository-owned Git hooks are installed. The pre-push hook runs the fast `npm run verify:wip` durability gate; the post-commit hook starts full verification in the background. `npm run verify:local` reuses only a matching clean exact-HEAD receipt or runs the canonical full gate synchronously.
 - Create a Draft PR early and push coherent WIP checkpoints often so collaborators can inspect progress and work survives an agent/workspace failure. Push before risky refactors, long-running operations, and handoffs; prefer additive checkpoint commits and squash at merge.
 - Do not bypass the pre-push gate for agent-generated changes. Keep WIP PRs Draft and run `npm run verify:local` before marking them ready so remote CI remains the authoritative review/merge boundary.
 - Grouped Dependabot minor/patch version and security PRs are also eligible for automatic draining only when created by `dependabot[bot]`, from the same repository, and their branch matches an allow-listed group from `.github/dependabot.yml`. Major or unknown Dependabot PRs enter the serialized dependency-maintenance queue.

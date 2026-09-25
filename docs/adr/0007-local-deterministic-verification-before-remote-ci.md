@@ -1,7 +1,10 @@
 # ADR-0007: Use tiered local verification before remote CI escalation
 
 Date: 2026-09-25
-Status: Accepted
+Updated: 2026-09-25
+Status: Implemented
+
+Implementation note (2026-09-25): #214 adds the detached post-commit verifier, exact-environment receipt reuse, status command, and synchronous fallback used by `pr:finalize`.
 
 ## Context
 
@@ -17,11 +20,11 @@ This decision composes Agent Stack's existing `AGP-deterministic-first@1`, `AGP-
    - commit-time checks, if configured, must remain ultra-cheap and operate only on staged/changed content; heavy suites must not synchronously block ordinary commits;
    - `npm run verify:wip` is the fast durability gate. It runs source migration/size policy, lint, type checking, and validator build checks before WIP push;
    - `npm run verify:local` is the full qualification gate. It runs source policy, lint, the complete repository test suite, and compilation serially and fail-fast.
-2. The repository owns a versioned `.githooks/pre-push` hook that invokes `npm run verify:wip`. `npm ci` runs a dependency-free `prepare` installer that configures checkout-local `core.hooksPath=.githooks`; `npm run hooks:install` is the explicit repair command.
+2. The repository owns a versioned `.githooks/pre-push` hook that invokes `npm run verify:wip`, plus a non-blocking `.githooks/post-commit` trigger for background qualification. `npm ci` runs a dependency-free `prepare` installer that configures checkout-local `core.hooksPath=.githooks`; `npm run hooks:install` is the explicit repair command.
 3. Contributors and agents create a Draft PR early and push the WIP branch frequently at coherent checkpoints, before risky refactors or long-running work, and before handoff. These pushes are durable collaboration/recovery snapshots, not merge qualification. Prefer additive checkpoint commits; squash at merge rather than rewriting shared WIP history.
-4. Heavy deterministic verification may run speculatively in the background after commits to reduce later qualification latency, but background work is advisory until it completes. Such verification must be single-flight per workspace/branch: when a newer commit supersedes the subject, cancel the obsolete run rather than allowing stale suites to compete for compute.
-5. A completed background verification result is reusable only when its receipt is bound to the exact current subject and relevant environment identity, including at minimum the commit SHA, verification profile, supported runtime/toolchain identity, and dependency/lock state where those can change the result. A stale or mismatched receipt does not qualify a newer commit.
-6. Before changing a Draft PR to Ready for review, require a successful `verify:local` result for the exact current `HEAD`. A matching completed receipt may satisfy that requirement; otherwise run `npm run verify:local` synchronously. Agent-generated work must not use `git push --no-verify` to make an unverified snapshot appear qualified. A repository owner can still bypass a client-side hook; bypass is an exception, not evidence.
+4. Heavy deterministic verification runs speculatively in a detached process after commits and is advisory until it completes. It is single-flight per worktree; when a newer subject supersedes the active run, terminate its process tree before starting the new run.
+5. A completed background verification result is reusable only when its atomic local receipt matches the exact current commit SHA, branch, verification profile, Node and npm versions, platform/architecture, package manifest, and dependency lockfile. A stale, malformed, or mismatched receipt does not qualify a newer commit. State and receipts live under the worktree Git metadata, outside the published package.
+6. Before changing a Draft PR to Ready for review, require a successful `verify:local` result for the exact current `HEAD`. `npm run verify:local` reuses a matching clean-tree receipt; otherwise it waits for a matching run or runs the canonical `verify:local:run` suite synchronously. Agent-generated work must not use `git push --no-verify` to make an unverified snapshot appear qualified. A repository owner can still bypass a client-side hook; bypass is an exception, not evidence.
 7. GitHub Actions remains authoritative for the review/merge boundary. Normal PR CI, automated security analysis, and path-scoped MEFF XSD validation do not run for Draft PRs. They run when a PR is non-draft, including the `ready_for_review` transition. CI on `main`, scheduled security analysis, manual dispatches, and tag/release workflows remain unchanged.
 8. Draft is a temporary collaboration state, not a terminal queue. At successful task completion an agent SHOULD run the repository-owned `npm run pr:finalize` command, which requires a clean `agent/*` branch, runs the full local gate, pushes exact HEAD, verifies the PR points at that commit, and marks the PR Ready.
 9. Queue draining is repository-owned and opt-out, not armed per PR. A trusted workflow on `main` reacts to completed pull-request workflows, considers Ready same-repository `agent/*` PRs plus explicitly allow-listed grouped Dependabot minor/patch version/security PRs, binds its decision to exact HEAD, requires `CI` and `Automated security analysis` to succeed, rejects any failed exact-HEAD PR workflow, and squash-merges with the expected HEAD SHA. For Dependabot, eligibility additionally requires the actual `dependabot[bot]` author and an allow-listed group branch; major, ungrouped, and unknown dependency updates remain manual. The `no-auto-merge` label is the explicit emergency brake. The workflow never checks out PR code with its write-capable token.
@@ -37,6 +40,7 @@ This decision composes Agent Stack's existing `AGP-deterministic-first@1`, `AGP-
 ## Consequences
 
 - WIP is recoverable remotely and visible to collaborators without activating the expensive CI boundary.
+- The post-commit trigger returns immediately; heavy verification does not block ordinary commits. `npm run verify:local:status` reports verified, running, failed, cancelled, stale, or unverified state and the retained run log path.
 - Commits remain cheap recovery checkpoints rather than synchronization points for heavy suites.
 - The fast pre-push gate provides backpressure against trivial defects without making every durability checkpoint wait for browser/integration suites.
 - Optional background verification can hide qualification latency, but it cannot silently become a gate; obsolete runs are cancelled and only exact-subject receipts are reusable.
@@ -51,7 +55,7 @@ This decision composes Agent Stack's existing `AGP-deterministic-first@1`, `AGP-
 
 ## Rollback
 
-Remove the `prepare`/hook installer and `.githooks/pre-push`, restore unconditional PR workflow execution, and retain `verify:wip`/`verify:local` as optional manual commands. Remote CI remains sufficient to protect merge correctness during rollback.
+Remove the `prepare`/hook installer and both `.githooks/pre-push` and `.githooks/post-commit`, restore `verify:local` to the canonical full suite, and retain `verify:wip` as an optional fast command. Remote CI remains sufficient to protect merge correctness during rollback.
 
 ## Revisit conditions
 
