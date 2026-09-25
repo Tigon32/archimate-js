@@ -23,8 +23,12 @@ function mockModeling() {
   };
 }
 
-function setup() {
+function setup(supportedServing = false) {
   const model = importMeffToModelDto(readFileSync('test/fixtures/synthetic/dto-export-view.xml', 'utf8'));
+  if (supportedServing) {
+    model.elements.find((item) => item.id === 'component-one')!.type = 'archimate:ApplicationService';
+    model.elements.find((item) => item.id === 'service-two')!.type = 'archimate:ApplicationComponent';
+  }
   model.views.push({ id: 'view-two', nodes: [], connections: [] });
   const editor = new DiagramAdapter(model);
   const shapes = new Map<string, Record<string, unknown>>();
@@ -118,7 +122,7 @@ it('routes semantic connect, reconnect and view deletion through one history', (
 });
 
 it('rejects semantic endpoint mismatches and shared relationship retargeting atomically', () => {
-  const { editor, port, modeling, shapes, connections } = setup();
+  const { editor, port, modeling, shapes, connections } = setup(true);
   const detach = editor.attach('view-dto-export', port);
   const original = editor.serialize();
   expect(() => editor.execute({ type: 'connect', viewId: 'view-dto-export',
