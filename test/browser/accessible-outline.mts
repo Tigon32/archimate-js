@@ -134,6 +134,8 @@ try {
   assert.equal(await list.locator(':scope > li').count(), 5, 'the outline should include every view node');
   assert.ok((await page.locator('#outline-relationships li').count()) >= 4,
     'the outline should describe the selected view relationships');
+  assert.equal(await page.getByRole('list', { name: 'Relationships', exact: true }).count(), 1,
+    'the relationships list should have the accessible name of its visible heading');
   assert.ok((await page.locator('#outline-relationships').textContent())?.includes('from'));
   assert.equal(await page.locator('#outline-content img').count(), 0,
     'model-derived text must not create HTML elements');

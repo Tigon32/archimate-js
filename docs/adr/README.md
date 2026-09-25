@@ -22,6 +22,7 @@ ADRs record consequential decisions for this fork. They should be short, dated, 
 | 0006 | Limit release attestation authority to a tag-only job | Accepted |
 | 0007 | Use local deterministic verification before remote CI escalation | Implemented |
 | 0008 | Establish a bounded third-party extension API boundary | Proposed |
+| 0009 | Apply fail-closed post-merge branch cleanup | Proposed |
 
 ## Template
 
