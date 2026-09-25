@@ -29,6 +29,18 @@ Node.js 20 is intentionally not part of the forward CI baseline.
    - render the same diagram in HTML and SVG;
    - embed the SVG in Markdown-rendered report images.
 
+## CanvasPort contract suite
+
+`test/contract/canvas-port-contract.mts` defines the reusable DTO editor engine
+contract. Every future `CanvasPort` implementation, including a possible
+`ReactFlowAdapter`, must pass the same cases before it is considered compatible:
+initial projection render, engine gesture command routing, ID-only selection in
+both directions, rejected unsupported gestures without model/history mutation,
+undo/redo rerendering, detach cleanup, and JSON-round-trippable plain
+projections. The suite intentionally leaves richer connect/reconnect/label/delete
+gestures to adapter-specific tests until those commands are exposed uniformly by
+all candidate ports.
+
 ## Current known debt
 
 - `npm run lint` currently fails on the inherited codebase and should be treated as a dedicated cleanup workstream.
