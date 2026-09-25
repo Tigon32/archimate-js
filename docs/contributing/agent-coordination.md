@@ -93,7 +93,9 @@ ambiguous until a later same-lease `release` with the claim's exact branch and
 a reason, or a valid `supersede` naming the exact claim ID, epoch, and branch,
 resolves it. This recovery does not apply to malformed JSON, unknown fields,
 invalid roots, other identity mismatches, duplicate or unknown comment IDs,
-or unrelated protocol errors; those histories remain ambiguous. Supersede
+or unrelated protocol errors; those histories remain ambiguous. The resolving
+release's `released_at` or supersede's `superseded_at` must be no earlier than
+the malformed transition's corresponding `released_at` value. Supersede
 records state an intended maintainer resolution, but the history resolver has
 no commenter-authorship data. A caller must independently verify the GitHub
 author's maintainer authority before performing any write.

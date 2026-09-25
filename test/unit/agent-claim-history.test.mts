@@ -89,6 +89,26 @@ it('resolves a branch-mismatched release with an exact-target maintainer superse
   expect(result).toMatchObject({ status: 'released', claim_comment_id: '1001', record: { record_type: 'supersede' } });
 });
 
+it('keeps self-release ambiguous when its timestamp predates the malformed release', () => {
+  const earlierSelfRelease = { ...selfRelease('Corrected resolution.'), released_at: '2026-09-25T10:09:00Z' };
+  const result = resolveAgentClaimHistory([
+    comment('1001', claim, '2026-09-25T10:00:01Z'),
+    comment('1002', mismatchedBranchRelease(), '2026-09-25T10:10:01Z'),
+    comment('1003', earlierSelfRelease, '2026-09-25T10:11:01Z')
+  ], 140, '2026-09-25T10:12:00Z');
+  expect(result.status).toBe('ambiguous');
+});
+
+it('keeps supersede ambiguous when its timestamp predates the malformed release', () => {
+  const earlierSupersede = { ...maintainerSupersede(), superseded_at: '2026-09-25T10:09:00Z' };
+  const result = resolveAgentClaimHistory([
+    comment('1001', claim, '2026-09-25T10:00:01Z'),
+    comment('1002', mismatchedBranchRelease(), '2026-09-25T10:10:01Z'),
+    comment('1003', earlierSupersede, '2026-09-25T10:11:01Z')
+  ], 140, '2026-09-25T10:12:00Z');
+  expect(result.status).toBe('ambiguous');
+});
+
 it('keeps a branch-mismatched release ambiguous without an exact identity resolution', () => {
   const mismatchedResolution = { ...selfRelease('A reason.'), lease_id: 'synthetic-other-lease' };
   const result = resolveAgentClaimHistory([

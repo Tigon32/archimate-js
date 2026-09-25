@@ -20,7 +20,7 @@ interface LeaseState {
   latestAt: number;
   expiry: number | null;
   terminal: boolean;
-  malformedTransition?: { id: string; at: number };
+  malformedTransition?: { id: string; at: number; transitionAt: number };
 }
 
 interface ParsedEvent {
@@ -212,8 +212,8 @@ function applyTransition(event: ParsedEvent, context: HistoryContext): string | 
     if (!isSelfReleaseResolution(event, state)) return `transition ${id} does not resolve the malformed transition`;
     state.malformedTransition = undefined;
   } else if (!sameLease(state.root, record)) {
-    if (isBranchMismatchRelease(event, state)) {
-      state.malformedTransition = { id, at };
+    if (record.record_type === 'release' && isBranchMismatchRelease(event, state)) {
+      state.malformedTransition = { id, at, transitionAt: Date.parse(record.released_at) };
       return undefined;
     }
     return `transition ${id} changes lease identity or epoch`;
@@ -245,7 +245,12 @@ function applySupersede(
   if (state.malformedTransition && at <= state.malformedTransition.at) {
     return `supersede ${id} does not follow the malformed transition`;
   }
-  if (Date.parse(record.superseded_at) > at || Date.parse(record.superseded_at) < latestActivityAt(state.latest)) {
+  const supersededAt = Date.parse(record.superseded_at);
+  const earliestResolutionAt = Math.max(
+    latestActivityAt(state.latest),
+    state.malformedTransition?.transitionAt ?? Number.NEGATIVE_INFINITY
+  );
+  if (supersededAt > at || supersededAt < earliestResolutionAt) {
     return `supersede ${id} has an out-of-order resolution timestamp`;
   }
   state.malformedTransition = undefined;
@@ -261,7 +266,9 @@ function isSelfReleaseResolution(event: ParsedEvent, state: LeaseState): boolean
   return record.record_type === 'release' && typeof record.reason === 'string' && Boolean(record.reason.trim()) &&
     sameLease(state.root, record) && state.malformedTransition !== undefined &&
     at > state.malformedTransition.at && Date.parse(record.released_at) <= at &&
-    Date.parse(record.released_at) >= latestActivityAt(state.latest);
+    Date.parse(record.released_at) >= Math.max(
+      latestActivityAt(state.latest), state.malformedTransition.transitionAt
+    );
 }
 
 function isBranchMismatchRelease(event: ParsedEvent, state: LeaseState): boolean {
