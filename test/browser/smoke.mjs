@@ -12,6 +12,7 @@ const resultsDirectory = path.join(root, 'test-results');
 const routes = new Map([
   ['/examples/read-only/', [ 'examples/read-only/index.html', 'text/html; charset=utf-8' ]],
   ['/examples/read-only/viewer.js', [ 'examples/read-only/viewer.js', 'text/javascript; charset=utf-8' ]],
+  ['/examples/read-only/outline-bridge.js', [ 'examples/read-only/outline-bridge.js', 'text/javascript; charset=utf-8' ]],
   ['/examples/read-only/theme.js', [ 'examples/read-only/theme.js', 'text/javascript; charset=utf-8' ]],
   ['/.ci-build/model-dto.js', [ '.ci-build/model-dto.js', 'text/javascript; charset=utf-8' ]],
   ['/examples/read-only/diagram.css', [ 'examples/read-only/diagram.css', 'text/css; charset=utf-8' ]],

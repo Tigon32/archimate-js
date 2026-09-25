@@ -51,6 +51,7 @@ const fixturePath = 'test/fixtures/synthetic/read-only-showcase-outline-meff.xml
 const routes = new Map<string, string>([
   ['/examples/read-only/', 'examples/read-only/index.html'],
   ['/examples/read-only/viewer.js', 'examples/read-only/viewer.js'],
+  ['/examples/read-only/outline-bridge.js', 'examples/read-only/outline-bridge.js'],
   ['/examples/read-only/theme.js', 'examples/read-only/theme.js'],
   ['/examples/read-only/diagram.css', 'examples/read-only/diagram.css'],
   ['/.ci-build/archimate-js.js', '.ci-build/archimate-js.js'],
@@ -91,6 +92,18 @@ try {
   browser = await chromium.launch({ executablePath: process.env.CHROME_BIN || undefined,
     headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
   const page = await browser.newPage();
+  const browserRequests: string[] = [];
+  const offOriginRequests: string[] = [];
+  await page.route('**/*', async (route) => {
+    const url = route.request().url();
+    browserRequests.push(url);
+    if (url.startsWith(`http://127.0.0.1:${address.port}/`)) {
+      await route.continue();
+      return;
+    }
+    offOriginRequests.push(url);
+    await route.abort();
+  });
   page.on('dialog', (dialog) => { dialogs++; void dialog.dismiss(); });
   await page.goto(`http://127.0.0.1:${address.port}/examples/read-only/`, { waitUntil: 'networkidle' });
   await page.locator('#status[data-state="success"]').waitFor();
@@ -125,6 +138,27 @@ try {
   assert.equal(await page.locator('#outline-content img').count(), 0,
     'model-derived text must not create HTML elements');
   assert.ok((await page.locator('#outline-content').textContent())?.includes('<img src=x onerror=alert(1)>'));
+
+  const firstPortal = page.locator('[data-outline-id="view-customer"]').first();
+  await firstPortal.click();
+  assert.equal(await firstPortal.getAttribute('aria-pressed'), 'true',
+    'activating an outline item should select the same stable view node id');
+  const outlineLabels = await page.locator('[data-outline-id]').filter({ hasText: /Customer|Request/ })
+    .evaluateAll((buttons) => buttons.map((button) => button.textContent ?? ''));
+  assert.ok(outlineLabels.every((label) => /id view-/.test(label)),
+    'visible names should include stable id context for repeated-name disambiguation');
+  await firstPortal.press('ArrowDown');
+  assert.notEqual(await page.evaluate(() => document.activeElement?.getAttribute('data-outline-id')),
+    'view-customer', 'ArrowDown should move focus through outline entries');
+  await page.keyboard.press('Enter');
+  assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('aria-pressed')), 'true',
+    'Enter should activate the focused outline entry');
+  await page.locator('#outline-search').fill('platform');
+  await page.keyboard.press('Enter');
+  assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('data-outline-id')),
+    'view-platform', 'Enter in search should focus and activate the first matching stable id');
+  await page.locator('#outline-search').fill('no synthetic match');
+  assert.equal(await page.locator('#outline-search-status').textContent(), 'No outline matches.');
 
   const failureIsolation = await page.evaluate(async () => {
     // @ts-expect-error The browser test server exposes the emitted module URL.
@@ -182,6 +216,54 @@ try {
   assert.equal(nested.details, 1, 'groups should use one native disclosure control');
   assert.equal(nested.hasTreeRole, false, 'the outline should keep native list semantics');
 
+  const bridgeCleanup = await page.evaluate(async () => {
+    const api = window.ArchimateJS;
+    if (!api) throw new Error('Viewer browser API is unavailable.');
+    const xml = await (await fetch('/test/fixtures/synthetic/read-only-showcase-outline-meff.xml')).text();
+    const host = document.createElement('div');
+    document.body.append(host);
+    const viewer = await api.mountViewer({ xml, viewId: 'view-synthetic-showcase',
+      container: host, width: '800px', height: '500px' }) as {
+        get(name: 'selection' | 'elementRegistry'): any;
+        on(event: string, callback: (event?: unknown) => void): void;
+        off(event: string, callback: (event?: unknown) => void): void;
+        openView(viewId: string): Promise<unknown>;
+        destroy(): void;
+      };
+    const registrations: Array<{ event: string; removed: boolean }> = [];
+    const originalOn = viewer.on.bind(viewer);
+    const originalOff = viewer.off.bind(viewer);
+    viewer.on = (event, callback) => {
+      registrations.push({ event, removed: false });
+      originalOn(event, callback);
+    };
+    viewer.off = (event, callback) => {
+      const match = registrations.find((entry) => entry.event === event && !entry.removed);
+      if (match) match.removed = true;
+      originalOff(event, callback);
+    };
+    // @ts-expect-error The browser test server exposes the emitted module URL.
+    const bridge = await import('/examples/read-only/outline-bridge.js');
+    const adapter = bridge.createViewerSelectionAdapter(viewer);
+    const observed: string[][] = [];
+    adapter.onSelectionChange((ids: string[]) => observed.push(ids));
+    const selected = adapter.selectById('view-customer');
+    await viewer.openView('view-synthetic-showcase');
+    viewer.destroy();
+    host.remove();
+    return { selected, observed, registrations };
+  });
+  assert.equal(bridgeCleanup.selected, true,
+    'the bridge should select diagram elements by stable view ids');
+  assert.ok(bridgeCleanup.observed.some((ids) => ids[0] === 'view-customer'),
+    'diagram selection changes should flow back through the bridge');
+  assert.ok(bridgeCleanup.observed.some((ids) => ids.length === 0),
+    'view switches should clear stale outline selection');
+  assert.deepEqual(bridgeCleanup.registrations, [
+    { event: 'selection.changed', removed: true },
+    { event: 'import.render.start', removed: true }
+  ], 'destroy should remove bridge event listeners');
+
   const summary = page.locator('#nested-outline-test details > summary');
   await summary.focus();
   await page.keyboard.press('Space');
@@ -191,6 +273,8 @@ try {
   assert.notEqual(await page.locator('#nested-outline-test details').getAttribute('open'), null,
     'Enter should activate the native disclosure control');
   assert.equal(dialogs, 0, 'synthetic hostile-looking text must not execute');
+  assert.deepEqual(offOriginRequests, [], 'the example must not request off-origin resources');
+  assert.equal(browserRequests.every((url) => url.startsWith(`http://127.0.0.1:${address.port}/`)), true);
   console.log('Accessible outline Chromium checks passed.');
 } finally {
   await browser?.close();
