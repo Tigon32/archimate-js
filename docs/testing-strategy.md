@@ -41,6 +41,14 @@ projections. The suite intentionally leaves richer connect/reconnect/label/delet
 gestures to adapter-specific tests until those commands are exposed uniformly by
 all candidate ports.
 
+## Architecture checks
+
+`npm run check:engine-boundary` enforces the EE-M1 diagram-engine boundary for
+engine-neutral source roots. It rejects direct `diagram-js*` imports, dynamic
+imports, re-exports, CommonJS `require` calls, and diagram-js service lookups
+outside the documented adapter exceptions; it also runs through
+`npm run check:source-policy`, `npm test`, and `npm run verify:wip`.
+
 ## Current known debt
 
 - `npm run lint` currently fails on the inherited codebase and should be treated as a dedicated cleanup workstream.

@@ -9,6 +9,10 @@ const TYPE = /^(?:archimate:)?[A-Za-z][A-Za-z0-9]*$/;
 const HEX = /^#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?$/;
 const KINDS = new Set(['sourceAttachment', 'bendpoint', 'targetAttachment']);
 
+export function isIdentifier(value: unknown): value is string {
+  return typeof value === 'string' && ID.test(value);
+}
+
 export function invalid(): never {
   const error = new TypeError('The model DTO is invalid.');
   Object.assign(error, { code: 'MODEL_DTO_INVALID' });
@@ -26,7 +30,7 @@ export function list(value: unknown): unknown[] {
 }
 
 export function identifier(value: unknown): string {
-  if (typeof value !== 'string' || !ID.test(value)) invalid();
+  if (!isIdentifier(value)) invalid();
   return value;
 }
 
