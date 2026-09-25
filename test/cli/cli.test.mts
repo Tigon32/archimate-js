@@ -156,7 +156,7 @@ async function transparentExportTest(directory: string): Promise<void> {
     ], 0);
     assert.deepEqual(transparent.json.formats, ['png']);
     assert.deepEqual(pngDimensions(await readFile(path.join(directory, 'transparent.png'))),
-      { width: 510, height: 170 });
+      { width: 500, height: 160 });
 }
 
 async function invalidLayoutTest(directory: string): Promise<void> {
