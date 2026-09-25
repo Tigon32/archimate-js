@@ -55,6 +55,7 @@
     "test/unit/pr-drain.test.mts",
     "test/unit/local-verification-process.test.mts",
     "test/fixtures",
-    "test-results"
+    "test-results",
+    "test/unit/relationship-matrix-document.test.mts"
   ]
 }
