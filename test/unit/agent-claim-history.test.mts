@@ -84,6 +84,23 @@ it('does not report a lease active after a takeover request alone', () => {
   ], 140, '2026-09-25T10:32:00Z')).toMatchObject({ status: 'expired', claim_comment_id: '1001' });
 });
 
+it.each([
+  ['before the observed expiry', '2026-09-25T10:29:59Z'],
+  ['before observation starts', '2026-09-25T10:30:59Z']
+])('rejects a takeover request posted %s', (_case, created_at) => {
+  const expiredClaim = { ...claim, expires_at: '2026-09-25T10:30:00Z' };
+  const request = {
+    schema: claim.schema, record_type: 'takeover', issue: 140, claim_comment_id: null,
+    actor_id: 'synthetic-run-b', github_login: 'example-bot', lease_id: 'synthetic-lease-b', epoch: 2,
+    supersedes_claim_comment_id: '1001', observed_expired_at: '2026-09-25T10:30:00Z',
+    observation_started_at: '2026-09-25T10:31:00Z', branch: 'agent/synthetic/issue-140-b', state: 'takeover-requested'
+  };
+  const result = resolveAgentClaimHistory([
+    comment('1001', expiredClaim, '2026-09-25T10:00:01Z'), comment('1002', request, created_at)
+  ], 140, '2026-09-25T10:32:00Z');
+  expect(result).toMatchObject({ status: 'ambiguous', reason: expect.stringContaining('posted before expiry or the observation window began') });
+});
+
 it('accepts a takeover only after the matching request, observation window, and prior acknowledgement', () => {
   const expiredClaim = { ...claim, expires_at: '2026-09-25T10:30:00Z' };
   const takeoverBase = {
@@ -105,6 +122,60 @@ it('accepts a takeover only after the matching request, observation window, and 
     { id: '1003', created_at: '2026-09-25T10:46:00Z', body: 'Synthetic maintainer acknowledgement.' },
     comment('1004', active, '2026-09-25T10:46:01Z')
   ], 140, '2026-09-25T10:50:00Z')).toMatchObject({ status: 'active', claim_comment_id: '1004', record: { epoch: 2 } });
+});
+
+it('rejects an active takeover comment posted before the observation window ends', () => {
+  const expiredClaim = { ...claim, expires_at: '2026-09-25T10:30:00Z' };
+  const takeoverBase = {
+    schema: claim.schema, record_type: 'takeover', issue: 140, claim_comment_id: null,
+    actor_id: 'synthetic-run-b', github_login: 'example-bot', lease_id: 'synthetic-lease-b', epoch: 2,
+    supersedes_claim_comment_id: '1001', observed_expired_at: '2026-09-25T10:30:00Z',
+    observation_started_at: '2026-09-25T10:31:00Z', branch: 'agent/synthetic/issue-140-b'
+  };
+  const active = {
+    ...takeoverBase, state: 'active', observation_ended_at: '2026-09-25T10:46:00Z',
+    maintainer_ack_comment_id: '1003', claimed_at: '2026-09-25T10:46:00Z',
+    heartbeat_at: '2026-09-25T10:46:00Z', expires_at: '2026-09-25T12:46:00Z',
+    lease_started_at: '2026-09-25T10:46:00Z', last_work_observed_at: '2026-09-25T10:46:00Z'
+  };
+  const result = resolveAgentClaimHistory([
+    comment('1001', expiredClaim, '2026-09-25T10:00:01Z'),
+    comment('1002', { ...takeoverBase, state: 'takeover-requested' }, '2026-09-25T10:31:01Z'),
+    { id: '1003', created_at: '2026-09-25T10:45:00Z', body: 'Synthetic maintainer acknowledgement.' },
+    comment('1004', active, '2026-09-25T10:45:59Z')
+  ], 140, '2026-09-25T10:50:00Z');
+  expect(result).toMatchObject({ status: 'ambiguous', reason: expect.stringContaining('posted before its observation window ended') });
+});
+
+it.each(['heartbeat', 'release'] as const)('cancels pending takeover after a later %s', (transitionType) => {
+  const expiredClaim = { ...claim, expires_at: '2026-09-25T10:30:00Z' };
+  const takeoverBase = {
+    schema: claim.schema, record_type: 'takeover', issue: 140, claim_comment_id: null,
+    actor_id: 'synthetic-run-b', github_login: 'example-bot', lease_id: 'synthetic-lease-b', epoch: 2,
+    supersedes_claim_comment_id: '1001', observed_expired_at: '2026-09-25T10:30:00Z',
+    observation_started_at: '2026-09-25T10:31:00Z', branch: 'agent/synthetic/issue-140-b'
+  };
+  const active = {
+    ...takeoverBase, state: 'active', observation_ended_at: '2026-09-25T10:46:00Z',
+    maintainer_ack_comment_id: '1004', claimed_at: '2026-09-25T10:46:00Z',
+    heartbeat_at: '2026-09-25T10:46:00Z', expires_at: '2026-09-25T12:46:00Z',
+    lease_started_at: '2026-09-25T10:46:00Z', last_work_observed_at: '2026-09-25T10:46:00Z'
+  };
+  const transition = transitionType === 'heartbeat'
+    ? heartbeatRecord('2026-09-25T10:29:00Z', '2026-09-25T10:30:00Z', '2026-09-25T10:29:00Z')
+    : {
+        schema: claim.schema, record_type: 'release', issue: 140, claim_comment_id: '1001',
+        actor_id: claim.actor_id, github_login: claim.github_login, lease_id: claim.lease_id,
+        epoch: 1, released_at: '2026-09-25T10:32:00Z', branch: claim.branch, state: 'released'
+      };
+  const result = resolveAgentClaimHistory([
+    comment('1001', expiredClaim, '2026-09-25T10:00:01Z'),
+    comment('1002', { ...takeoverBase, state: 'takeover-requested' }, '2026-09-25T10:31:01Z'),
+    comment('1003', transition, '2026-09-25T10:32:00Z'),
+    { id: '1004', created_at: '2026-09-25T10:46:00Z', body: 'Synthetic maintainer acknowledgement.' },
+    comment('1005', active, '2026-09-25T10:46:01Z')
+  ], 140, '2026-09-25T10:50:00Z');
+  expect(result).toMatchObject({ status: 'ambiguous', reason: expect.stringContaining('without intervening transitions') });
 });
 
 it('returns unclaimed for prose-only history', () => {
