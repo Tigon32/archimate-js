@@ -82,7 +82,7 @@ it('creates a reviewed semantic relationship and view connection as one history 
   expect(editor.redo()).toBe(true);
 });
 
-it('rejects duplicate IDs, invalid types, endpoints, and semantics without mutation or history changes', () => {
+it('rejects duplicate IDs and invalid element types without mutation or history changes', () => {
   const cases = [
     {
       command: { type: 'create-element' as const, viewId, element: element('component-one'),
@@ -103,6 +103,9 @@ it('rejects duplicate IDs, invalid types, endpoints, and semantics without mutat
     expect(editor.undo()).toBe(false);
   }
 
+});
+
+it('rejects invalid endpoints and semantic tuples without mutation or history changes', () => {
   const invalidEndpoint = makeEditor();
   const endpointBefore = invalidEndpoint.serialize();
   expect(() => invalidEndpoint.execute({ type: 'create-relationship', viewId,

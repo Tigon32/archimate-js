@@ -263,6 +263,8 @@ function apply(model: ModelDto, command: EditorCommand): ModelDto {
   if (command.type === 'connect' || command.type === 'reconnect') checkRelationshipIds(command);
   const next = structuredClone(model);
   const view = viewForCommand(next, command);
+  if (command.type === 'create-element') return createElement(next, command);
+  if (command.type === 'create-relationship') return createRelationship(next, command);
 
   switch (command.type) {
   case 'move':
@@ -275,10 +277,6 @@ function apply(model: ModelDto, command: EditorCommand): ModelDto {
   case 'connect':
     connect(next, view, command);
     break;
-  case 'create-element':
-    return createElement(next, command);
-  case 'create-relationship':
-    return createRelationship(next, command);
   case 'reconnect':
     reconnect(next, view, command);
     break;
