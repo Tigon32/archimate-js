@@ -49,5 +49,14 @@ This API does not compare organization, properties, viewpoint metadata, or
 unparsed exchange fields. Eligibility diagnostics prevent callers from
 mistaking such snapshots for complete comparisons, but do not preserve or diff
 the unsupported data. It does not infer relationship, view, or connection
-renames, render a visual overlay, or impose a large-model performance budget.
-Those remain in the [comparison umbrella](https://github.com/Tigon32/archimate-js/issues/105).
+renames or impose a large-model performance budget. Those remain in the
+[comparison umbrella](https://github.com/Tigon32/archimate-js/issues/105).
+
+`renderModelDtoDiffOverlay(before, after, viewId)` returns a standalone
+transparent SVG layer for one view. It marks added, removed, and modified node
+and connection geometry, showing both outlines when geometry moved or was
+rerouted. Semantic element and relationship changes also mark their instances
+in that view. The overlay uses generic accessible labels and serializes no
+model IDs, names, documentation, or DTO records. It does not render unchanged
+model geometry; compose it over a separately rendered view. Both snapshots
+must satisfy the same lossless diff eligibility boundary as `diffModelDto`.
