@@ -23,7 +23,7 @@ const compiler = webpack({
     clean: true
   },
   resolve: {
-    extensions: [ '.js', '.json' ]
+    extensions: [ '.ts', '.js', '.json' ]
   },
   module: {
     rules: [
