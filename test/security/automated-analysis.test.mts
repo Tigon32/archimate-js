@@ -7,8 +7,8 @@ import { APPROVED_LICENSES } from '../../scripts/check-dependency-policy.mjs';
 
 const ACTIONS = Object.freeze({
   'actions/checkout': '3d3c42e5aac5ba805825da76410c181273ba90b1',
-  'github/codeql-action/init': '1190a975f95ce23525efb6a3fc21ea29567c1b52',
-  'github/codeql-action/analyze': '1190a975f95ce23525efb6a3fc21ea29567c1b52',
+  'github/codeql-action/init': '2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2',
+  'github/codeql-action/analyze': '2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2',
   'actions/dependency-review-action': 'a1d282b36b6f3519aa1f3fc636f609c47dddb294'
 });
 
