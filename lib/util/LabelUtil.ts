@@ -2,8 +2,23 @@ import {
   assign
 } from 'min-dash';
 
+// @ts-expect-error Legacy JavaScript boundary has no declarations yet.
 import { is, getViewElement, getElementRef } from './ModelUtil';
+// @ts-expect-error Legacy JavaScript boundary has no declarations yet.
 import { logger } from './Logger';
+
+type Point = { x: number; y: number };
+type LabelBounds = { x: number; y: number; width: number; height: number };
+type LabelElement = {
+  label?: { bounds?: LabelBounds };
+  labelTarget?: unknown;
+};
+type DiagramElement = LabelElement & {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
 
 
 export var DEFAULT_LABEL_SIZE = {
@@ -19,7 +34,7 @@ export var FLOW_LABEL_INDENT = 15;
  * @param {Shape} element
  * @return {Boolean} true if has label
  */
-export function isLabelExternal(element) {
+export function isLabelExternal(element: DiagramElement) {
   var elementRef = getElementRef(element);
   // return is(semantic, 'archimate:Group');
   return is(elementRef, 'archimate:Group');
@@ -31,7 +46,7 @@ export function isLabelExternal(element) {
  * @param {djs.model.shape} element
  * @return {Boolean} true if has label
  */
-export function hasExternalLabel(element) {
+export function hasExternalLabel(element: DiagramElement) {
   return isLabel(element.label);
 }
 
@@ -42,7 +57,7 @@ export function hasExternalLabel(element) {
  * @param  {Array<Point>} waypoints
  * @return {Point} the mid point
  */
-export function getWaypointsMid(waypoints) {
+export function getWaypointsMid(waypoints: Point[]) {
   var lengths = [],
       totalLength = 0;
 
@@ -83,7 +98,7 @@ export function getWaypointsMid(waypoints) {
 }
 
 
-export function getExternalLabelMid(element) {
+export function getExternalLabelMid(element: DiagramElement) {
 
   var elementRef = getElementRef(element);      
   
@@ -111,7 +126,7 @@ export function getExternalLabelMid(element) {
  *
  * @param {djs.model.Base} element
  */
-export function getExternalLabelBounds(element) {
+export function getExternalLabelBounds(element: DiagramElement) {
 
   var mid,
       size,
@@ -144,6 +159,6 @@ export function getExternalLabelBounds(element) {
   }, size);
 }
 
-export function isLabel(element) {
+export function isLabel(element: { bounds?: LabelBounds; labelTarget?: unknown } | undefined) {
   return element && !!element.labelTarget;
 }

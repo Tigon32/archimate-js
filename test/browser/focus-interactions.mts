@@ -116,7 +116,9 @@ try {
     canvas.focus();
     const editableElement = modeler.get('elementRegistry').get('node-component');
     modeler.get('selection').select(editableElement);
-    (window as any).__focusInteractions = { activeListeners, container, modeler, svg };
+    const keyboard = (key: string, modifiers: KeyboardEventInit = {}) =>
+      svg.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...modifiers }));
+    (window as any).__focusInteractions = { activeListeners, container, modeler, svg, keyboard };
   });
 
   await page.evaluate(() => {
@@ -125,9 +127,9 @@ try {
     state.modeler.get('directEditing').activate(element);
   });
 
-  const result = await page.evaluate(async () => {
+  const focusResult = await page.evaluate(async () => {
     const state = (window as any).__focusInteractions;
-    const { activeListeners, container, modeler, svg } = state;
+    const { container, modeler, svg, keyboard } = state;
     const editor = container.querySelector('.djs-direct-editing-content') as HTMLElement | null;
     if (!editor) throw new Error('Label editing should create a contenteditable editor.');
     editor.focus();
@@ -135,20 +137,25 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 10));
     const cancelRestoredFocus = document.activeElement === svg;
 
-    await pageKeyboard('e');
+    keyboard('e');
     const reopenedEditor = container.querySelector('.djs-direct-editing-content') as HTMLElement | null;
     const keyboardReopenedEditing = Boolean(reopenedEditor);
     reopenedEditor?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }));
     await new Promise((resolve) => setTimeout(resolve, 10));
     const completeRestoredFocus = document.activeElement === svg;
-    await pageKeyboard('a', { ctrlKey: true });
+    keyboard('a', { ctrlKey: true });
     const selectedByKeyboard = modeler.get('selection').get().length >= 2;
+    return { cancelRestoredFocus, completeRestoredFocus, keyboardReopenedEditing, selectedByKeyboard };
+  });
 
-    const selection = modeler.get('selection');
-    const element = modeler.get('elementRegistry').get('node-component');
+  const cleanupResult = await page.evaluate(async () => {
+    const state = (window as any).__focusInteractions;
+    const { activeListeners, container, modeler, svg, keyboard } = state;
+    const listenerTotal = (listeners: Map<string, number> | undefined) =>
+      Array.from(listeners?.values() || []).reduce((total, count) => total + count, 0);
+    const selection = modeler.get('selection'); const element = modeler.get('elementRegistry').get('node-component');
     selection.select(element);
-    const contextPad = modeler.get('contextPad');
-    contextPad.open(element, true);
+    const contextPad = modeler.get('contextPad'); contextPad.open(element, true);
     await new Promise((resolve) => setTimeout(resolve, 10));
     const contextOpened = contextPad.isOpen();
     const popupMenu = modeler.get('popupMenu');
@@ -165,7 +172,7 @@ try {
     const popupRestoredFocus = document.activeElement === svg;
     const contextClosed = contextOpened && !contextPad.isOpen() && !container.querySelector('.djs-popup');
 
-    await pageKeyboard('e');
+    keyboard('e');
     const editingBeforeClear = Boolean(container.querySelector('.djs-direct-editing-content'));
     modeler.clear();
     await new Promise((resolve) => setTimeout(resolve, 10));
@@ -180,16 +187,7 @@ try {
     ) as Array<[string, number]>).filter((entry) => entry[1] > 0);
     container.remove();
     delete (window as any).__focusInteractions;
-
-    async function pageKeyboard(key: string, modifiers: KeyboardEventInit = {}) {
-      svg.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...modifiers }));
-    }
-
     return {
-      cancelRestoredFocus,
-      completeRestoredFocus,
-      keyboardReopenedEditing,
-      selectedByKeyboard,
       popupOpened,
       popupRestoredFocus,
       contextClosed,
@@ -200,11 +198,8 @@ try {
       listenerCountAfterDestroy,
       listenerTypesAfterDestroy
     };
-
-    function listenerTotal(listeners: Map<string, number> | undefined) {
-      return Array.from(listeners?.values() || []).reduce((total, count) => total + count, 0);
-    }
   });
+  const result = { ...focusResult, ...cleanupResult };
 
   assert.equal(result.cancelRestoredFocus, true);
   assert.equal(result.completeRestoredFocus, true);
