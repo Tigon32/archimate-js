@@ -31,23 +31,47 @@ interface OutlineData {
 }
 
 interface BrowserDtoApi {
+  checkMeffEditingEligibility(xml: unknown): { eligible: boolean };
   importMeffToModelDto(xml: unknown): unknown;
   createAccessibleOutline(model: unknown, viewId: string, options: {
     grouping: 'containment'; includeRelationships: boolean; includeDocumentation: boolean;
   }): OutlineData;
+  DtoModelerSession: {
+    open(viewer: unknown, xml: string, viewId: string): Promise<{
+      editor?: {
+        project(viewId: string): { selectedIds: string[] };
+        select(viewId: string, ids: string[]): void;
+        subscribe(listener: (event: { type: 'changed' | 'selection'; viewId: string;
+          selectedIds: string[] }) => void): () => void;
+      };
+      close(): void;
+    }>;
+  };
 }
 
 interface BrowserViewerApi {
   mountViewer(options: { xml: string; viewId: string; container: HTMLElement;
-    width: string; height: string }): Promise<{ destroy(): void }>;
+    width: string; height: string }): Promise<{
+      on(event: string, callback: (event?: unknown) => void): void;
+      off(event: string, callback: (event?: unknown) => void): void;
+      openView(viewId: string): Promise<unknown>;
+      destroy(): void;
+    }>;
 }
 
 declare global {
-  interface Window { ArchimateModelDto?: BrowserDtoApi; ArchimateJS?: BrowserViewerApi }
+  interface Window {
+    ArchimateModelDto?: BrowserDtoApi;
+    ArchimateJS?: BrowserViewerApi;
+    adapterContract?: { viewer: Awaited<ReturnType<BrowserViewerApi['mountViewer']>>;
+      selectById(id: string): boolean; registrations: Array<{ event: string; removed: boolean }>;
+      getUnsubscribeCount(): number };
+  }
 }
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const fixturePath = 'test/fixtures/synthetic/read-only-showcase-outline-meff.xml';
+const adapterFixturePath = 'test/fixtures/synthetic/dto-export-view.xml';
 const routes = new Map<string, string>([
   ['/examples/read-only/', 'examples/read-only/index.html'],
   ['/examples/read-only/viewer.js', 'examples/read-only/viewer.js'],
@@ -66,11 +90,17 @@ const routes = new Map<string, string>([
 const fixture = (await readFile(path.join(root, fixturePath), 'utf8')).replace(
   '<name xml:lang="en">Customer</name>',
   '<name xml:lang="en">&lt;img src=x onerror=alert(1)&gt;</name>');
+const adapterFixture = await readFile(path.join(root, adapterFixturePath), 'utf8');
 const server = createServer((request, response) => {
   const pathname = new URL(request.url ?? '/', 'http://localhost').pathname;
   if (pathname === `/${fixturePath}`) {
     response.setHeader('content-type', 'application/xml; charset=utf-8');
     response.end(fixture);
+    return;
+  }
+  if (pathname === `/${adapterFixturePath}`) {
+    response.setHeader('content-type', 'application/xml; charset=utf-8');
+    response.end(adapterFixture);
     return;
   }
   const file = routes.get(pathname);
@@ -218,20 +248,26 @@ try {
   assert.equal(nested.details, 1, 'groups should use one native disclosure control');
   assert.equal(nested.hasTreeRole, false, 'the outline should keep native list semantics');
 
-  const bridgeCleanup = await page.evaluate(async () => {
+  const bridgeContract = await page.evaluate(async () => {
     const api = window.ArchimateJS;
-    if (!api) throw new Error('Viewer browser API is unavailable.');
-    const xml = await (await fetch('/test/fixtures/synthetic/read-only-showcase-outline-meff.xml')).text();
+    const dto = window.ArchimateModelDto;
+    if (!api || !dto) throw new Error('Browser APIs are unavailable.');
+    const xml = await (await fetch('/test/fixtures/synthetic/dto-export-view.xml')).text();
+    if (!dto.checkMeffEditingEligibility(xml).eligible) throw new Error('DTO contract fixture must be eligible.');
     const host = document.createElement('div');
+    host.id = 'adapter-contract-host';
+    host.style.cssText = 'width:800px;height:500px;';
     document.body.append(host);
-    const viewer = await api.mountViewer({ xml, viewId: 'view-synthetic-showcase',
-      container: host, width: '800px', height: '500px' }) as {
-        get(name: 'selection' | 'elementRegistry'): any;
-        on(event: string, callback: (event?: unknown) => void): void;
-        off(event: string, callback: (event?: unknown) => void): void;
-        openView(viewId: string): Promise<unknown>;
-        destroy(): void;
-      };
+    const viewer = await api.mountViewer({ xml, viewId: 'view-dto-export',
+      container: host, width: '800px', height: '500px' });
+    const session = await dto.DtoModelerSession.open(viewer, xml, 'view-dto-export');
+    if (!session.editor) throw new Error('Eligible DTO session did not expose an editor.');
+    let unsubscribeCount = 0;
+    const originalSubscribe = session.editor.subscribe.bind(session.editor);
+    session.editor.subscribe = (listener) => {
+      const unsubscribe = originalSubscribe(listener);
+      return () => { unsubscribeCount++; unsubscribe(); };
+    };
     const registrations: Array<{ event: string; removed: boolean }> = [];
     const originalOn = viewer.on.bind(viewer);
     const originalOff = viewer.off.bind(viewer);
@@ -244,27 +280,77 @@ try {
       if (match) match.removed = true;
       originalOff(event, callback);
     };
+    const outlineSelection = document.createElement('output');
+    outlineSelection.id = 'adapter-contract-selection';
+    host.append(outlineSelection);
+    // @ts-expect-error The browser test server exposes the emitted module URL.
+    const renderer = await import('/examples/read-only/viewer.js');
     // @ts-expect-error The browser test server exposes the emitted module URL.
     const bridge = await import('/examples/read-only/outline-bridge.js');
-    const adapter = bridge.createViewerSelectionAdapter(viewer);
-    const observed: string[][] = [];
-    adapter.onSelectionChange((ids: string[]) => observed.push(ids));
-    const selected = adapter.selectById('view-customer');
-    await viewer.openView('view-synthetic-showcase');
-    viewer.destroy();
-    host.remove();
-    return { selected, observed, registrations };
+    const adapter = bridge.createDiagramAdapterSelectionBridge(session.editor, 'view-dto-export');
+    adapter.onSelectionChange((ids: string[]) => { outlineSelection.value = ids.join(','); });
+    renderer.bindViewerSelection(viewer, session, adapter);
+    const selected = adapter.selectById('node-component');
+    const canvasSelected = host.querySelector('.djs-element[data-element-id="node-component"]')
+      ?.classList.contains('selected');
+    window.adapterContract = { viewer, selectById: (id) => adapter.selectById(id), registrations,
+      getUnsubscribeCount: () => unsubscribeCount };
+    return { selected, canvasSelected, outlineSelection: outlineSelection.value };
   });
-  assert.equal(bridgeCleanup.selected, true,
-    'the bridge should select diagram elements by stable view ids');
-  assert.ok(bridgeCleanup.observed.some((ids) => ids[0] === 'view-customer'),
-    'diagram selection changes should flow back through the bridge');
-  assert.ok(bridgeCleanup.observed.some((ids) => ids.length === 0),
-    'view switches should clear stale outline selection');
-  assert.deepEqual(bridgeCleanup.registrations, [
-    { event: 'selection.changed', removed: true },
-    { event: 'import.render.start', removed: true }
-  ], 'destroy should remove bridge event listeners');
+  assert.equal(bridgeContract.selected, true,
+    'outline activation should call the adapter with a stable view-node ID');
+  assert.equal(bridgeContract.canvasSelected, true,
+    'the adapter should route the ID selection to its attached canvas port');
+  assert.equal(bridgeContract.outlineSelection, 'node-component',
+    'the adapter EditorEvent should publish selectedIds to the outline');
+  await page.locator('#adapter-contract-host .djs-element[data-element-id="node-service"]').click({ force: true });
+  assert.equal(await page.locator('#adapter-contract-selection').textContent(), 'node-service',
+    'canvas selection should update the outline through EditorEvent selectedIds');
+  const viewChangeCleanup = await page.evaluate(async () => {
+    const contract = window.adapterContract;
+    const dto = window.ArchimateModelDto;
+    if (!contract || !dto) throw new Error('Adapter contract fixture is unavailable.');
+    await contract.viewer.openView('view-dto-export');
+    const viewChange = { selectedAfterViewChange: contract.selectById('node-component'),
+      registrations: contract.registrations.map((entry) => ({ ...entry })),
+      unsubscribeCount: contract.getUnsubscribeCount() };
+    const xml = await (await fetch('/test/fixtures/synthetic/dto-export-view.xml')).text();
+    const session = await dto.DtoModelerSession.open(contract.viewer, xml, 'view-dto-export');
+    if (!session.editor) throw new Error('Eligible DTO session did not reopen after view change.');
+    let destroyUnsubscribeCount = 0;
+    const originalSubscribe = session.editor.subscribe.bind(session.editor);
+    session.editor.subscribe = (listener) => {
+      const unsubscribe = originalSubscribe(listener);
+      return () => { destroyUnsubscribeCount++; unsubscribe(); };
+    };
+    // @ts-expect-error The browser test server exposes the emitted module URL.
+    const bridgeModule = await import('/examples/read-only/outline-bridge.js');
+    // @ts-expect-error The browser test server exposes the emitted module URL.
+    const renderer = await import('/examples/read-only/viewer.js');
+    const destroyAdapter = bridgeModule.createDiagramAdapterSelectionBridge(session.editor, 'view-dto-export');
+    const destroyListenerOffset = contract.registrations.length;
+    renderer.bindViewerSelection(contract.viewer, session, destroyAdapter);
+    contract.viewer.destroy();
+    return { viewChange, destroy: { unsubscribeCount: destroyUnsubscribeCount,
+      selectAfterDestroy: destroyAdapter.selectById('node-component'),
+      registrations: contract.registrations.slice(destroyListenerOffset) } };
+  });
+  assert.equal(viewChangeCleanup.viewChange.selectedAfterViewChange, false,
+    'view change should dispose the active view selection bridge');
+  assert.equal(viewChangeCleanup.viewChange.unsubscribeCount, 1,
+    'view change should unsubscribe the EditorEvent listener');
+  assert.deepEqual(viewChangeCleanup.viewChange.registrations, [
+    { event: 'import.render.start', removed: true },
+    { event: 'diagram.destroy', removed: true }
+  ], 'view change should remove lifecycle hooks');
+  assert.deepEqual(viewChangeCleanup.destroy.registrations, [
+    { event: 'import.render.start', removed: true },
+    { event: 'diagram.destroy', removed: true }
+  ], 'destroy should remove lifecycle hooks');
+  assert.equal(viewChangeCleanup.destroy.unsubscribeCount, 1,
+    'destroy should unsubscribe the EditorEvent listener');
+  assert.equal(viewChangeCleanup.destroy.selectAfterDestroy, false,
+    'destroy should disable the old selection bridge');
 
   const summary = page.locator('#nested-outline-test details > summary');
   await summary.focus();
