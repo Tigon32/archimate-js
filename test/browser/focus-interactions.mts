@@ -52,22 +52,29 @@ const listenerTrackerScript = `
 (() => {
   const active = new Map();
   const listenerIds = new WeakMap();
-  const labels = new WeakMap([[ window, 'window' ], [ document, 'document' ], [ document.body, 'body' ]]);
+  const targetIds = new WeakMap();
+  const targetPrefixes = new WeakMap([[ window, 'window' ], [ document, 'document' ], [ document.body, 'body' ]]);
   let sequence = 0;
+  let targetSequence = 0;
   const originalAdd = EventTarget.prototype.addEventListener;
   const originalRemove = EventTarget.prototype.removeEventListener;
-  const optionKey = (options) => JSON.stringify({
-    capture: typeof options === 'boolean' ? options : Boolean(options && options.capture),
-    once: Boolean(options && typeof options === 'object' && options.once),
-    passive: Boolean(options && typeof options === 'object' && options.passive)
-  });
-  const targetLabel = (target) => {
-    const existing = labels.get(target);
+  const captureFlag = (options) => typeof options === 'boolean' ? options : Boolean(options && options.capture);
+  const targetId = (target) => {
+    const existing = targetIds.get(target);
     if (existing) return existing;
+    const prefix = targetPrefixes.get(target) || (target instanceof SVGSVGElement ? 'svg' : undefined);
+    if (!prefix) return undefined;
+    const id = prefix + '#' + (++targetSequence);
+    targetIds.set(target, id);
+    return id;
+  };
+  const markDetachedDiagramSvg = (target) => {
+    const id = targetId(target);
+    if (!id) return undefined;
     if (target instanceof SVGSVGElement) {
-      labels.set(target, 'svg');
-      return 'svg';
+      target.setAttribute('data-focus-listener-target', id);
     }
+    return id;
   };
   const listenerId = (listener) => {
     const existing = listenerIds.get(listener);
@@ -76,16 +83,22 @@ const listenerTrackerScript = `
     return sequence;
   };
   const track = (target, type, listener, options, delta) => {
-    const label = targetLabel(target);
-    if (!label || !listener) return;
-    const id = listenerId(listener);
-    const capture = typeof options === 'boolean' ? options : Boolean(options && options.capture);
-    const key = type + ':' + id + ':' + optionKey(options);
-    const listeners = active.get(label) || new Map();
+    const currentTargetId = markDetachedDiagramSvg(target);
+    if (!currentTargetId || !listener) return;
+    const currentListenerId = listenerId(listener);
+    const capture = captureFlag(options);
+    const key = currentTargetId + ':' + type + ':' + currentListenerId + ':' + capture;
+    const listeners = active.get(currentTargetId) || new Map();
     const count = Math.max(0, ((listeners.get(key) || {}).count || 0) + delta);
-    if (count) listeners.set(key, { target: label, type, listenerId: id, capture, count });
+    if (count) listeners.set(key, {
+      targetId: currentTargetId,
+      type,
+      listenerId: currentListenerId,
+      capture,
+      count
+    });
     else listeners.delete(key);
-    active.set(label, listeners);
+    active.set(currentTargetId, listeners);
   };
   EventTarget.prototype.addEventListener = function(type, listener, options) {
     track(this, type, listener, options, 1);
@@ -98,7 +111,7 @@ const listenerTrackerScript = `
   window.__focusListenerTracker = {
     remainingListeners: () => Array.from(active.values()).flatMap((listeners) => Array.from(listeners.values()))
       .filter((record) => record.count > 0)
-      .map(({ target, type, listenerId, capture, count }) => ({ target, type, listenerId, capture, count }))
+      .map(({ targetId, type, listenerId, capture, count }) => ({ targetId, type, listenerId, capture, count }))
   };
 })();
 `;
@@ -162,7 +175,7 @@ try {
       };
     }).FocusInteractionsTest;
     const tracker = (window as any).__focusListenerTracker as { remainingListeners(): Array<{
-      target: string; type: string; listenerId: number; capture: boolean; count: number;
+      targetId: string; type: string; listenerId: number; capture: boolean; count: number;
     }> };
     const xml = await (await fetch('/synthetic.xml')).text();
     const container = document.createElement('div');
@@ -270,15 +283,31 @@ try {
   assert.equal(result.destroyRemovedDom, true);
   assert.equal(result.detachedSvgUnreachable, true);
   assert.ok(result.listenerCountBeforeDestroy > 0);
-  assert.deepEqual(result.retainedListeners.map((record: { target: string; type: string; count: number }) => ({
-    target: record.target, type: record.type, count: record.count
-  })), [
-    { target: 'svg', type: 'focusin', count: 1 },
-    { target: 'svg', type: 'focusout', count: 1 },
-    { target: 'svg', type: 'mouseover', count: 1 },
-    { target: 'svg', type: 'mouseout', count: 1 },
-    { target: 'svg', type: 'dblclick', count: 1 }
+  const retainedTargets = [...new Set(result.retainedListeners.map((record: { targetId: string }) => record.targetId))];
+  assert.equal(retainedTargets.length, 1);
+  assert.match(retainedTargets[0], /^svg#\d+$/);
+  const retained = result.retainedListeners as Array<{
+    targetId: string; type: string; listenerId: number; capture: boolean; count: number;
+  }>;
+  assert.deepEqual(retained.map((record) => record.type).sort(), [
+    'dblclick',
+    'focusin',
+    'focusout',
+    'mouseout',
+    'mouseover'
   ]);
+  assert.equal(new Set(retained.map((record) => record.listenerId)).size, retained.length);
+  assert.deepEqual(retained.map((record) => ({
+    targetId: record.targetId,
+    listenerId: Number.isInteger(record.listenerId),
+    capture: record.capture,
+    count: record.count
+  })), retained.map((record) => ({
+    targetId: retainedTargets[0],
+    listenerId: true,
+    capture: false,
+    count: 1
+  })));
   assert.deepEqual(offOriginRequests, []);
   assert.deepEqual(browserRequests.every((url) => url === origin || url.startsWith(origin + '/')), true);
   assert.deepEqual(requestPaths.sort(), [
