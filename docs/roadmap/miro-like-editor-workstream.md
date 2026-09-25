@@ -442,11 +442,9 @@ CommonJS `require` calls, re-exports, and string-literal lookups of diagram-js
 services including `elementRegistry`, `commandStack`, `canvas`, `eventBus`,
 `elementFactory`, `modeling`, `selection`, and `graphicsFactory`.
 
-The explicit exceptions are the current adapter files
-`src/model-dto/diagram-js-canvas-port.ts` and
-`src/model-dto/modeler-session.ts`, both to be relocated by EE-M3, plus the
-future `src/diagram-js-adapter/**` target location. `lib/**` and `test/**`
-remain out of scope for this architecture boundary check.
+The explicit exception is `src/diagram-js-adapter/**`, the EE-M3 adapter home
+where engine-specific dependencies belong. `lib/**` and `test/**` remain out
+of scope for this architecture boundary check.
 
 The contract test suite must run against any `CanvasPort`: a headless fake port
 for deterministic service behavior and `DiagramJsCanvasPort` for browser
