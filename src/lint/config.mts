@@ -1,6 +1,6 @@
-import type { LintConfig, LintRunMode, LintSeverity } from './types.mjs';
+import type { LintConfig, LintRunMode, LintSeverityOverride } from './types.mjs';
 
-const SEVERITIES = new Set<LintSeverity>(['error', 'warning', 'info']);
+const SEVERITIES = new Set<LintSeverityOverride>(['error', 'warning', 'info', 'off']);
 const MODES = new Set<LintRunMode>(['full', 'incremental']);
 
 function record(value: unknown): Record<string, unknown> {
@@ -23,7 +23,7 @@ function stringList(value: unknown, name: string): string[] {
 
 export interface NormalizedLintConfig {
   enabledRuleIds: readonly string[];
-  severityOverrides: Readonly<Record<string, LintSeverity>>;
+  severityOverrides: Readonly<Record<string, LintSeverityOverride>>;
   mode: LintRunMode;
   changedSubjectIds: readonly string[];
 }
@@ -46,14 +46,14 @@ export function normalizeLintConfig(input: unknown, knownRuleIds: ReadonlySet<st
   }
 
   const overridesData = data.severityOverrides === undefined ? {} : record(data.severityOverrides);
-  const severityOverrides: Record<string, LintSeverity> = {};
+  const severityOverrides: Record<string, LintSeverityOverride> = {};
   for (const id of Object.keys(overridesData).sort(compare)) {
     if (!knownRuleIds.has(id)) throw new TypeError(`Unknown lint rule ID: ${id}.`);
     const severity = overridesData[id];
-    if (typeof severity !== 'string' || !SEVERITIES.has(severity as LintSeverity)) {
+    if (typeof severity !== 'string' || !SEVERITIES.has(severity as LintSeverityOverride)) {
       throw new TypeError(`Invalid severity override for lint rule ${id}.`);
     }
-    severityOverrides[id] = severity as LintSeverity;
+    severityOverrides[id] = severity as LintSeverityOverride;
   }
 
   const mode = data.mode === undefined ? 'full' : data.mode;

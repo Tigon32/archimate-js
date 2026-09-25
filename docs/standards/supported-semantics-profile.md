@@ -29,6 +29,8 @@ The following are code facts at the assessment snapshot, not claims about comple
 
 The matrix in [relationship-validation-matrix.md](relationship-validation-matrix.md) now records the implemented evidence boundary. The standalone validator exports a pure tri-state relationship service with a small application-layer decision set. Missing rows are unsupported rather than implicitly invalid.
 
+The built-in `archimate/unsupported-relationship` lint rule consumes that same service and reports disallowed rows and combinations not covered by the reviewed profile. Its findings describe this repository's ArchiMate 3.2 profile only; they are not a universal relationship matrix or a conformance determination.
+
 ## Advisory and adversarial review
 
 - **Advisory standards lens:** keep the normative authority with The Open Group, version every future evidence row, and separate source-backed rules from implementation observations. Public reference cards can orient investigation but are insufficient by themselves to claim complete rule coverage.

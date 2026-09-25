@@ -1,7 +1,9 @@
 import { expect, it } from 'vitest';
-import { createLintEngine, lintModel } from '../../src/lint/index.mjs';
+import { BUILTIN_LINT_RULES, createLintEngine, lintModel } from '../../src/lint/index.mjs';
 import type { LintFindingDraft, LintRule } from '../../src/lint/index.mjs';
 import type { ModelDto } from '../../src/model-dto/index.js';
+
+const unsupportedRelationshipRuleId = 'archimate/unsupported-relationship';
 
 // SYNTHETIC: a minimal DTO authored in this test; it is not copied from a project model.
 function syntheticModel(): ModelDto {
@@ -15,6 +17,29 @@ function syntheticModel(): ModelDto {
   };
 }
 
+// SYNTHETIC: relationship cases authored to exercise the reviewed semantic profile.
+function syntheticRelationshipModel(): ModelDto {
+  return {
+    schemaVersion: 1,
+    id: 'synthetic-relationship-model',
+    elements: [
+      { id: 'application-component', type: 'ApplicationComponent' },
+      { id: 'application-function', type: 'ApplicationFunction' },
+      { id: 'application-service', type: 'ApplicationService' }
+    ],
+    relationships: [
+      { id: 'allowed-assignment', type: 'AssignmentRelationship',
+        sourceId: 'application-component', targetId: 'application-function' },
+      { id: 'disallowed-assignment', type: 'AssignmentRelationship',
+        sourceId: 'application-function', targetId: 'application-component' },
+      { id: 'unreviewed-relationship', type: 'UnknownRelationship',
+        sourceId: 'application-component', targetId: 'application-service' }
+    ],
+    views: [],
+    diagnostics: []
+  };
+}
+
 it('returns model, view, and concept findings with typed remediation', () => {
     const result = lintModel(syntheticModel());
     expect(result.findings.map(({ ruleId, subject }) => [ruleId, subject.kind])).toEqual([
@@ -24,6 +49,99 @@ it('returns model, view, and concept findings with typed remediation', () => {
     ]);
     expect(result.findings.every((finding) => finding.remediation?.description.length)).toBe(true);
     expect(result.diagnostics).toEqual([]);
+});
+
+it('reports reviewed-disallowed and unreviewed relationships, but accepts reviewed relationships', () => {
+  const result = lintModel(syntheticRelationshipModel(), {
+    enabledRuleIds: [unsupportedRelationshipRuleId]
+  });
+  expect(result.findings.map(({ subject, severity, message, remediation }) => ({
+    conceptId: subject.kind === 'concept' ? subject.conceptId : undefined,
+    severity, message, remediation
+  }))).toEqual([
+    {
+      conceptId: 'disallowed-assignment',
+      severity: 'warning',
+      message: 'Relationship "disallowed-assignment" from "application-function" to ' +
+        '"application-component" is explicitly disallowed by the reviewed ArchiMate 3.2 semantic profile.',
+      remediation: {
+        description: 'Review the relationship endpoints and semantic profile before relying on it.',
+        reference: 'docs/standards/supported-semantics-profile.md'
+      }
+    },
+    {
+      conceptId: 'unreviewed-relationship',
+      severity: 'warning',
+      message: 'Relationship "unreviewed-relationship" from "application-component" to ' +
+        '"application-service" is not covered by the reviewed ArchiMate 3.2 semantic profile.',
+      remediation: {
+        description: 'Review the relationship endpoints and semantic profile before relying on it.',
+        reference: 'docs/standards/supported-semantics-profile.md'
+      }
+    }
+  ]);
+  expect(lintModel(syntheticRelationshipModel(), {
+    enabledRuleIds: [unsupportedRelationshipRuleId],
+    severityOverrides: { [unsupportedRelationshipRuleId]: 'error' }
+  }).findings.map(({ severity }) => severity)).toEqual(['error', 'error']);
+});
+
+it('safely skips unresolved relationship endpoints when evaluated directly', () => {
+  const model = syntheticModel();
+  model.elements = [{ id: 'known-target', type: 'ApplicationFunction' }];
+  model.relationships = [{
+    id: 'broken-reference', type: 'AssignmentRelationship',
+    sourceId: 'missing-source', targetId: 'known-target'
+  }];
+  const rule = BUILTIN_LINT_RULES.find(({ id }) => id === unsupportedRelationshipRuleId)!;
+  expect(() => rule.evaluate(model, { mode: 'full', changedSubjectIds: [] })).not.toThrow();
+  expect(rule.evaluate(model, { mode: 'full', changedSubjectIds: [] })).toEqual([]);
+});
+
+it('supports disabling the built-in rule with an off override or enabled-rule selection', () => {
+  const model = syntheticRelationshipModel();
+  expect(lintModel(model, {
+    enabledRuleIds: [unsupportedRelationshipRuleId],
+    severityOverrides: { [unsupportedRelationshipRuleId]: 'off' }
+  })).toMatchObject({
+    findings: [],
+    execution: { mode: 'full', rulesRun: 0 }
+  });
+  expect(lintModel(model, { enabledRuleIds: [] }).execution.rulesRun).toBe(0);
+});
+
+it('orders relationship findings independently of DTO object and relationship order', () => {
+  const model = syntheticRelationshipModel();
+  const reorderedModel: ModelDto = {
+    diagnostics: model.diagnostics,
+    relationships: [...model.relationships].reverse().map((relationship) => ({
+      targetId: relationship.targetId,
+      sourceId: relationship.sourceId,
+      documentation: relationship.documentation,
+      name: relationship.name,
+      type: relationship.type,
+      id: relationship.id
+    })),
+    views: model.views,
+    elements: [...model.elements].reverse().map((element) => ({
+      documentation: element.documentation,
+      name: element.name,
+      type: element.type,
+      id: element.id
+    })),
+    id: model.id,
+    schemaVersion: model.schemaVersion
+  };
+  const config = { enabledRuleIds: [unsupportedRelationshipRuleId] };
+  expect(lintModel(model, config)).toEqual(lintModel(reorderedModel, config));
+});
+
+it('coexists with the existing model and concept name rules', () => {
+  const result = lintModel(syntheticRelationshipModel());
+  expect(result.findings.map(({ ruleId }) => ruleId)).toContain('core.model-name-present');
+  expect(result.findings.map(({ ruleId }) => ruleId)).toContain('core.concept-name-present');
+  expect(result.findings.map(({ ruleId }) => ruleId)).toContain(unsupportedRelationshipRuleId);
+  expect(result.diagnostics).toEqual([]);
 });
 
 it('sorts rules and findings deterministically and applies validated configuration', () => {

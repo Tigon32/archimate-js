@@ -1,6 +1,7 @@
 import type { ModelDto } from '../model-dto/types.js';
 
 export type LintSeverity = 'error' | 'warning' | 'info';
+export type LintSeverityOverride = LintSeverity | 'off';
 export type LintRunMode = 'full' | 'incremental';
 
 export type LintSubject =
@@ -42,7 +43,7 @@ export interface LintRule {
 
 export interface LintConfig {
   readonly enabledRuleIds?: readonly string[];
-  readonly severityOverrides?: Readonly<Record<string, LintSeverity>>;
+  readonly severityOverrides?: Readonly<Record<string, LintSeverityOverride>>;
   readonly mode?: LintRunMode;
   readonly changedSubjectIds?: readonly string[];
 }
