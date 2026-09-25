@@ -25,20 +25,18 @@ function reject(code: ConstructorParameters<typeof EditorCommandError>[0]): neve
   throw new EditorCommandError(code);
 }
 
-function conceptIds(model: ModelDto): Set<string> {
-  return new Set([...model.elements, ...model.relationships].map((item) => item.id));
-}
-
-function nodeIds(model: ModelDto, viewId: string): Set<string> {
-  const view = model.views.find((item) => item.id === viewId);
-  if (!view) reject('DTO_CREATE_VIEW_NOT_FOUND');
-  const ids = new Set<string>();
-  const visit = (node: ViewNodeDto): void => {
-    ids.add(node.id);
-    node.nodes.forEach(visit);
-  };
-  view.nodes.forEach(visit);
-  view.connections.forEach((connection) => ids.add(connection.id));
+function allObjectIds(model: ModelDto): Set<string> {
+  const ids = new Set([model.id, ...model.elements.map((item) => item.id),
+    ...model.relationships.map((item) => item.id), ...model.views.map((item) => item.id),
+    ...(model.propertyDefinitions || []).map((item) => item.id)]);
+  for (const view of model.views) {
+    const visit = (node: ViewNodeDto): void => {
+      ids.add(node.id);
+      node.nodes.forEach(visit);
+    };
+    view.nodes.forEach(visit);
+    view.connections.forEach((connection) => ids.add(connection.id));
+  }
   return ids;
 }
 
@@ -77,12 +75,12 @@ function validateNewElement(model: ModelDto, command: CreateElementCommand): Mod
   const view = model.views.find((item) => item.id === command.viewId);
   if (!view) reject('DTO_CREATE_VIEW_NOT_FOUND');
   validateElement(command.element);
-  if (conceptIds(model).has(command.element.id)) reject('DTO_CREATE_DUPLICATE_ID');
+  if (allObjectIds(model).has(command.element.id)) reject('DTO_CREATE_DUPLICATE_ID');
   if (command.node.kind !== 'element' || command.node.elementId !== command.element.id ||
       command.node.conceptRef !== undefined || command.node.xpathPart !== undefined) {
     reject('DTO_CREATE_INVALID_ELEMENT');
   }
-  if (nodeIds(model, command.viewId).has(command.node.id)) reject('DTO_CREATE_NODE_ID_CONFLICT');
+  if (allObjectIds(model).has(command.node.id)) reject('DTO_CREATE_NODE_ID_CONFLICT');
   const candidate = structuredClone(model);
   candidate.elements.push(structuredClone(command.element));
   candidate.views.find((item) => item.id === command.viewId)!.nodes.push(structuredClone(command.node));
@@ -127,8 +125,8 @@ function validateNewRelationship(model: ModelDto, command: CreateRelationshipCom
   if (connection.kind !== 'relationship' || connection.relationshipId !== relationship.id) {
     reject('DTO_CREATE_INVALID_RELATIONSHIP');
   }
-  if (conceptIds(model).has(relationship.id)) reject('DTO_CREATE_DUPLICATE_ID');
-  if (nodeIds(model, command.viewId).has(connection.id)) reject('DTO_CREATE_CONNECTION_ID_CONFLICT');
+  if (allObjectIds(model).has(relationship.id)) reject('DTO_CREATE_DUPLICATE_ID');
+  if (allObjectIds(model).has(connection.id)) reject('DTO_CREATE_CONNECTION_ID_CONFLICT');
   validateRelationshipEndpoints(model, command.viewId, relationship, connection);
   const candidate = structuredClone(model);
   candidate.relationships.push(structuredClone(relationship));

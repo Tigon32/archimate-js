@@ -13,6 +13,23 @@ function makeEditor(): DiagramAdapter {
   return new DiagramAdapter(importMeffToModelDto(fixture));
 }
 
+function makeEditorWithSecondView(): DiagramAdapter {
+  const model = importMeffToModelDto(fixture);
+  const firstView = model.views[0];
+  model.views.push({
+    id: 'second-view',
+    nodes: [
+      { ...structuredClone(firstView.nodes[0]), id: 'other-view-node', nodes: [] },
+      { ...structuredClone(firstView.nodes[1]), id: 'other-view-target' }
+    ],
+    connections: [{
+      ...structuredClone(firstView.connections[0]), id: 'other-view-connection',
+      sourceId: 'other-view-node', targetId: 'other-view-target'
+    }]
+  });
+  return new DiagramAdapter(model);
+}
+
 function element(id: string, type = 'archimate:ApplicationProcess') {
   return {
     id, type, name: 'Synthetic process', documentation: 'Synthetic creation.'
@@ -159,4 +176,34 @@ it('rejects relationship ID and connection conflicts before any candidate mutati
       }));
   expect(editor.serialize()).toBe(before);
   expect(editor.undo()).toBe(false);
+});
+
+it('rejects semantic IDs colliding with objects in another view', () => {
+  const elementEditor = makeEditorWithSecondView();
+  expect(() => elementEditor.execute({ type: 'create-element', viewId, element: element('other-view-node'),
+    node: node('new-element-node', 'other-view-node') })).toThrow(expect.objectContaining({
+      code: 'DTO_CREATE_DUPLICATE_ID'
+    }));
+  const relationshipEditor = makeEditorWithSecondView();
+  expect(() => relationshipEditor.execute({ type: 'create-relationship', viewId,
+    relationship: relationship('other-view-connection', 'component-one', 'service-two'),
+    connection: connection('new-relationship-connection', 'other-view-connection',
+      'node-component', 'node-service') })).toThrow(expect.objectContaining({
+      code: 'DTO_CREATE_DUPLICATE_ID'
+    }));
+});
+
+it('rejects view IDs colliding with objects in another view', () => {
+  const elementEditor = makeEditorWithSecondView();
+  expect(() => elementEditor.execute({ type: 'create-element', viewId, element: element('new-element'),
+    node: node('other-view-connection', 'new-element') })).toThrow(expect.objectContaining({
+      code: 'DTO_CREATE_NODE_ID_CONFLICT'
+    }));
+  const relationshipEditor = makeEditorWithSecondView();
+  expect(() => relationshipEditor.execute({ type: 'create-relationship', viewId,
+    relationship: relationship('new-relationship', 'component-one', 'service-two'),
+    connection: connection('other-view-node', 'new-relationship',
+      'node-component', 'node-service') })).toThrow(expect.objectContaining({
+      code: 'DTO_CREATE_CONNECTION_ID_CONFLICT'
+    }));
 });
