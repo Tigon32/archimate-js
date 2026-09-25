@@ -47,6 +47,8 @@ const fixtureRoute = '/test/fixtures/synthetic/read-only-showcase-outline-meff.x
 const routes = new Map<string, [string, string]>([
   ['/examples/read-only/', ['examples/read-only/index.html', 'text/html; charset=utf-8']],
   ['/examples/read-only/viewer.js', ['examples/read-only/viewer.js', 'text/javascript; charset=utf-8']],
+  ['/examples/read-only/outline-bridge.js', ['examples/read-only/outline-bridge.js',
+    'text/javascript; charset=utf-8']],
   ['/examples/read-only/theme.js', ['examples/read-only/theme.js', 'text/javascript; charset=utf-8']],
   ['/examples/read-only/diagram.css', ['examples/read-only/diagram.css', 'text/css; charset=utf-8']],
   ['/assets/design-tokens/app-shell.css', ['assets/design-tokens/app-shell.css', 'text/css; charset=utf-8']],
