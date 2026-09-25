@@ -30,10 +30,12 @@
     "test/security/check-secrets.test.mts",
     "test/security/codeowners.test.mts",
     "scripts/check-tracked-paths.mts",
+    "scripts/check-public-source-exceptions.mts",
     "scripts/local-verification.mts",
     "scripts/finalize-agent-pr.mts",
     "test/security/check-tracked-paths.test.mts",
     "test/security/supply-chain.test.mts",
+    "test/security/public-source-exceptions.test.mts",
     "test/unit/local-verification-process.test.mts"
   ],
   "exclude": ["node_modules", "dist", "coverage", "test-results"]

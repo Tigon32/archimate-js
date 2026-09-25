@@ -108,10 +108,14 @@ legitimately new content:
    description and, for a consequential rule change, an ADR update. Do not
    work around a finding by weakening the manifest data itself without
    review.
-3. There is no manifest-level "exception" flag in this phase (unlike
-   `scripts/source-policy-exceptions.json` for the size/TypeScript policy);
-   scoped exception handling for provenance findings is deferred to a later
-   phase of issue #109.
+3. Scoped exception data is maintained separately in
+   `docs/security/public-source-exceptions.json` and validated by
+   `scripts/check-public-source-exceptions.mts`. Do not use
+   `scripts/source-policy-exceptions.json`, which governs the size/TypeScript
+   policy. The record validator checks structure, file scope, approver metadata,
+   review date, and expiry; it does not verify that a GitHub approval exists
+   or establish whether the source is legally public. Human review remains
+   necessary.
 
 Findings for the fixture inventory omit file paths and any matched content
 (consistent with `scan-fixtures.mjs`'s existing redaction, since that scan
