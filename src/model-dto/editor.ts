@@ -1,5 +1,5 @@
 import type {
-  ModelDto, PointDto, PropertyValueDto, RelationshipDto, StyleDto, ViewConnectionDto, ViewNodeDto
+  ElementDto, ModelDto, PointDto, PropertyValueDto, RelationshipDto, StyleDto, ViewConnectionDto, ViewNodeDto
 } from './types.js';
 import type { LayoutPatch } from '../layout/types.js';
 import { exportModelDtoToMeff } from './meff-export.js';
@@ -9,8 +9,9 @@ import { validateRelationshipSemantics } from '../language/relationship-semantic
 import { rejectRelationshipEdit } from './editor-diagnostics.js';
 import type { RelationshipEditOperation } from './editor-diagnostics.js';
 import {
-  applyLayoutPatch, changeBounds, deleteItem, deleteMany, findNode, moveMany, nodesOf
+  applyLayoutPatch, changeBounds, deleteItem, deleteMany, EditorCommandError, findNode, moveMany, nodesOf
 } from './editor-view.js';
+import { createElement, createRelationship } from './editor-create.js';
 
 /** The canvas receives values and identifiers, never mutable diagram-js objects. */
 export interface CanvasProjection {
@@ -24,6 +25,9 @@ export interface CanvasProjection {
 }
 
 export type EditorCommand =
+  | { type: 'create-element'; viewId: string; element: ElementDto; node: ViewNodeDto }
+  | { type: 'create-relationship'; viewId: string; relationship: RelationshipDto;
+      connection: ViewConnectionDto }
   | { type: 'move'; viewId: string; nodeId: string; x: number; y: number }
   | { type: 'move-many'; viewId: string; moves: Array<{ nodeId: string; x: number; y: number }> }
   | { type: 'resize'; viewId: string; nodeId: string; x: number; y: number; width: number; height: number }
@@ -249,6 +253,9 @@ function viewForCommand(model: ModelDto, command: EditorCommand): ModelDto['view
       targetId: command.type === 'connect' ? command.connection.targetId : command.targetId
     });
   }
+  if (command.type === 'create-element' || command.type === 'create-relationship') {
+    throw new EditorCommandError('DTO_CREATE_VIEW_NOT_FOUND');
+  }
   invalid();
 }
 
@@ -256,6 +263,8 @@ function apply(model: ModelDto, command: EditorCommand): ModelDto {
   if (command.type === 'connect' || command.type === 'reconnect') checkRelationshipIds(command);
   const next = structuredClone(model);
   const view = viewForCommand(next, command);
+  if (command.type === 'create-element') return createElement(next, command);
+  if (command.type === 'create-relationship') return createRelationship(next, command);
 
   switch (command.type) {
   case 'move':

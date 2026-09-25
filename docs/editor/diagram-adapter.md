@@ -31,6 +31,44 @@ if (result.eligible) {
 }
 ```
 
+DTO-owned creation commands use deterministic caller-provided IDs and validate
+the complete detached candidate before committing:
+
+```ts
+editor.execute({
+  type: 'create-element',
+  viewId: 'view-one',
+  element: { id: 'process-new', type: 'archimate:ApplicationProcess',
+    name: 'Synthetic process' },
+  node: { id: 'node-process-new', kind: 'element', elementId: 'process-new',
+    x: 420, y: 80, width: 140, height: 70, nodes: [] }
+});
+editor.execute({
+  type: 'create-relationship',
+  viewId: 'view-one',
+  relationship: { id: 'assignment-new', type: 'archimate:Assignment',
+    sourceId: 'component-one', targetId: 'process-new' },
+  connection: { id: 'connection-new', kind: 'relationship',
+    relationshipId: 'assignment-new', sourceId: 'node-component',
+    targetId: 'node-process-new',
+    waypoints: [
+      { x: 160, y: 75, kind: 'sourceAttachment' },
+      { x: 420, y: 115, kind: 'targetAttachment' }
+    ] }
+});
+```
+
+`create-element` stores its semantic element and view node in one undoable
+snapshot. `create-relationship` stores its semantic relationship and view
+connection in one snapshot. Element types come from the public concept
+registry; relationship types use the supported MEFF vocabulary and endpoint
+tuples pass the reviewed relationship service. Disallowed and unreviewed
+tuples retain the `DTO_RELATIONSHIP_DISALLOWED` versus
+`DTO_RELATIONSHIP_UNSUPPORTED` distinction. Duplicate IDs, invalid fields,
+endpoints, geometry, or round-trip data leave model, undo, and redo history
+unchanged. Native diagram-js creation routing remains pending adapter
+coordination under #372; creation UI remains out of scope for EE-M9/#351.
+
 `DiagramJsCanvasPort` now lives in `src/diagram-js-adapter/`; its compatibility
 re-export from `archimate-js/model-dto` is deprecated until the EE-M4
 `archimate-js/modeler` entry (#346) becomes the public import path. The adapter

@@ -6,6 +6,13 @@ import type { CanvasProjection, EditorCommand } from './editor.js';
 type View = ModelDto['views'][number];
 
 export type EditorCommandErrorCode =
+  | 'DTO_CREATE_INVALID_ELEMENT'
+  | 'DTO_CREATE_INVALID_RELATIONSHIP'
+  | 'DTO_CREATE_DUPLICATE_ID'
+  | 'DTO_CREATE_VIEW_NOT_FOUND'
+  | 'DTO_CREATE_NODE_ID_CONFLICT'
+  | 'DTO_CREATE_CONNECTION_ID_CONFLICT'
+  | 'DTO_CREATE_ENDPOINT_INVALID'
   | 'DTO_LAYOUT_PATCH_VIEW_MISMATCH'
   | 'DTO_LAYOUT_PATCH_ITEM_NOT_FOUND'
   | 'DTO_LAYOUT_PATCH_DUPLICATE_ITEM'

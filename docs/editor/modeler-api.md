@@ -64,14 +64,18 @@ modeler.zoom(0.8);
 modeler.zoom('fit');
 ```
 
-Supported persistent command discriminants are `move`, `move-many`, `resize`,
+Supported persistent command discriminants are `create-element`,
+`create-relationship`, `move`, `move-many`, `resize`,
 `connect`, `reconnect`, `delete`, `delete-many`, `apply-layout-patch`, `label`,
 `concept-name`, `concept-documentation`, and `property`. `move-many` uses
 absolute diagram-space target coordinates per node. `apply-layout-patch` accepts
 a DTO `LayoutPatch` and `side: 'after' | 'before'`; it applies node bounds and
 connection waypoints only, validates current geometry to reject stale patches,
-and commits as one undo step. `create-element` is intentionally not part of this
-surface yet; it remains tracked separately by #332.
+and commits as one undo step. `create-element` and `create-relationship` require
+deterministic caller-provided IDs and commit semantic and presentation records
+atomically; see [the DTO command boundary](diagram-adapter.md) for payloads and
+validation. Adapter gesture routing remains pending #372, and creation UI
+remains EE-M9/#351.
 
 `await modeler.optimizeDiagram(options?)` computes layout from the active view
 of the detached DTO model and commits only its geometry patch via one
