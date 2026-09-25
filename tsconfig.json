@@ -54,6 +54,7 @@
     "test/release/packed-assets.test.mts",
     "test/security/codeowners.test.mts",
     "test/security/check-secrets.test.mts",
+    "test/security/check-engine-boundary.test.mts",
     "test/security/check-tracked-paths.test.mts",
     "test/security/supply-chain.test.mts",
     "test/security/public-source-exceptions.test.mts",

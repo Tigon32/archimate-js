@@ -430,6 +430,24 @@ Forbid `diagram-js/*` imports and diagram-js service names such as
 `src/layout`, `src/lint`, `src/export`, and the future shell. Allowed
 exceptions are `lib/**`, the diagram-js adapter module, and tests.
 
+### EE-M1 implemented import-boundary check
+
+EE-M1 is implemented by `scripts/check-engine-boundary.mts`, available through
+`npm run check:engine-boundary`, `npm run check:source-policy`, `npm test`, and
+`npm run verify:wip`. The check scans engine-neutral `src/model-dto`,
+`src/language`, `src/validator`, `src/layout`, `src/lint`, `src/export`, and
+future clean shell/support roots (`src/cli`, `src/coordination`,
+`src/verification`) for direct `diagram-js*` import specifiers, dynamic imports,
+CommonJS `require` calls, re-exports, and string-literal lookups of diagram-js
+services including `elementRegistry`, `commandStack`, `canvas`, `eventBus`,
+`elementFactory`, `modeling`, `selection`, and `graphicsFactory`.
+
+The explicit exceptions are the current adapter files
+`src/model-dto/diagram-js-canvas-port.ts` and
+`src/model-dto/modeler-session.ts`, both to be relocated by EE-M3, plus the
+future `src/diagram-js-adapter/**` target location. `lib/**` and `test/**`
+remain out of scope for this architecture boundary check.
+
 The contract test suite must run against any `CanvasPort`: a headless fake port
 for deterministic service behavior and `DiagramJsCanvasPort` for browser
 integration.
