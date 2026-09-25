@@ -7,7 +7,7 @@ import { applyLayoutPatch, optimizeDiagram } from '../../lib/layout/optimize-dia
 import OptimizeDiagramHandler from '../../lib/features/modeling/cmd/OptimizeDiagramHandler.js';
 import ArchimateRenderer from '../../lib/draw/ArchimateRenderer.js';
 import { createSvg } from '../../lib/util/SvgExportUtil.mjs';
-import Modeler from '../../lib/Modeler';
+import Modeler from '../../lib/Modeler.js';
 import Modeling from '../../lib/features/modeling/Modeling.js';
 
 // Fixture provenance: SYNTHETIC, designed solely for geometry regression.
