@@ -1,7 +1,4 @@
-// Legacy exporter interop for issue #92; migrate the complete serializer with
-// the public MEFF path after the typed editor/persistence boundary is ready.
-// @ts-expect-error Existing MEFF serializer is untyped first-party JavaScript.
-import { exportMeff } from '../../lib/export/Meff.js';
+import { exportMeff } from './meff-export-serializer.js';
 import { importMeffToModelDto } from './meff-import.js';
 import { toMeffShape } from './meff-export-shape.js';
 import { serializeModelDto, validateModelDto } from './validate.js';
