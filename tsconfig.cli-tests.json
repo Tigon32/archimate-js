@@ -24,6 +24,7 @@
     "test/unit/cli-export.test.mts",
     "test/browser/export-api.mts",
     "test/browser/theme-contrast.mts",
+    "test/browser/theme-export-invariance.mts",
     "test/performance/browser-benchmark.mts",
     "test/browser/accessible-outline.mts",
     "scripts/check-secrets.mts",
