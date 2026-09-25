@@ -22,8 +22,8 @@ function expectSyntheticFixtureShape(): void {
   expect(first.semantic.xml).not.toContain('@');
 }
 
-function createValidResult() {
-  const measurement = {
+function createMeasurement() {
+  return {
     samplesMs: [ 1 ],
     medianMs: 1,
     medianAbsoluteDeviationMs: 0,
@@ -33,6 +33,39 @@ function createValidResult() {
     budgetStatus: 'within',
     hardLimitStatus: 'within'
   };
+}
+
+function createBenchmark(tier: typeof PERFORMANCE_TIERS[number]) {
+  const measurement = createMeasurement();
+  return {
+    tier,
+    fixture: {
+      provenance: 'SYNTHETIC',
+      semantic: { elementCount: tier.size, relationshipCount: tier.size - 1, xmlBytes: 1 },
+      diagram: { nodeCount: tier.size, connectionCount: tier.size - 1 }
+    },
+    repeats: 1,
+    fixtureFingerprint: 'a'.repeat(64),
+    measurements: {
+      semanticGenerationMs: measurement,
+      semanticValidationMs: measurement,
+      diagramGenerationMs: measurement,
+      routingMs: measurement,
+      layoutMs: measurement
+    },
+    metrics: {
+      semantic: {
+        valid: true,
+        errorCount: 0,
+        summaryElementCount: tier.size,
+        summaryRelationshipCount: tier.size - 1
+      },
+      diagram: { routedConnectionCount: tier.size - 1 }
+    }
+  };
+}
+
+function createValidResult() {
   return {
       schemaVersion: BENCHMARK_SCHEMA_VERSION,
       contractVersion: 1,
@@ -48,34 +81,7 @@ function createValidResult() {
       },
       environment: { node: 'v-test' },
       options: { tiers: PERFORMANCE_TIERS, repeats: 1 },
-      benchmarks: PERFORMANCE_TIERS.map((tier) => ({
-        tier,
-        fixture: {
-          provenance: 'SYNTHETIC',
-          semantic: { elementCount: tier.size, relationshipCount: tier.size - 1, xmlBytes: 1 },
-          diagram: { nodeCount: tier.size, connectionCount: tier.size - 1 }
-        },
-        repeats: 1,
-        fixtureFingerprint: 'a'.repeat(64),
-        measurements: {
-          semanticGenerationMs: measurement,
-          semanticValidationMs: measurement,
-          diagramGenerationMs: measurement,
-          routingMs: measurement,
-          layoutMs: measurement
-        },
-        metrics: {
-          semantic: {
-            valid: true,
-            errorCount: 0,
-            summaryElementCount: tier.size,
-            summaryRelationshipCount: tier.size - 1
-          },
-          diagram: {
-            routedConnectionCount: tier.size - 1
-          }
-        }
-      }))
+      benchmarks: PERFORMANCE_TIERS.map(createBenchmark)
   };
 }
 

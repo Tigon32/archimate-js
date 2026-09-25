@@ -108,6 +108,23 @@ async function readPageState(page: Page): Promise<PageState> {
   }));
 }
 
+async function preparePage(context: BrowserContext, origin: string) {
+  let offOriginRequests = 0;
+  const pageErrors: string[] = [];
+  const consoleErrors: string[] = [];
+  await context.route('**/*', (route: Route) => {
+    if (route.request().url().startsWith(origin + '/')) return route.continue();
+    offOriginRequests += 1;
+    return route.abort();
+  });
+  const page = await context.newPage();
+  page.on('pageerror', (error) => { pageErrors.push(error.message); });
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text());
+  });
+  return { page, pageErrors, consoleErrors, offOriginRequests: () => offOriginRequests };
+}
+
 async function measureOnce(
   browser: Browser,
   origin: string,
@@ -115,19 +132,8 @@ async function measureOnce(
 ): Promise<{ durationMs: number; structure: Structure }> {
   const context: BrowserContext = await browser.newContext({ colorScheme: 'light' });
   try {
-    let offOriginRequests = 0;
-    const pageErrors: string[] = [];
-    await context.route('**/*', (route: Route) => {
-      if (route.request().url().startsWith(origin + '/')) return route.continue();
-      offOriginRequests += 1;
-      return route.abort();
-    });
-    const page = await context.newPage();
-    const consoleErrors: string[] = [];
-    page.on('pageerror', (error) => { pageErrors.push(error.message); });
-    page.on('console', (message) => {
-      if (message.type() === 'error') consoleErrors.push(message.text());
-    });
+    const prepared = await preparePage(context, origin);
+    const { page, pageErrors, consoleErrors } = prepared;
     await observeRender(page, expected);
     await page.goto(origin + '/examples/read-only/', { waitUntil: 'domcontentloaded' });
     try {
@@ -152,7 +158,7 @@ async function measureOnce(
       { shapes: measured.shapes, connections: measured.connections, text: measured.text },
       expected
     );
-    assert.equal(offOriginRequests, 0);
+    assert.equal(prepared.offOriginRequests(), 0);
     assert.deepEqual(pageErrors, []);
     assert.equal(typeof measured.durationMs, 'number');
     return { durationMs: measured.durationMs as number, structure: expected };
@@ -201,6 +207,42 @@ async function measureTier(
   };
 }
 
+type BrowserBenchmark = Awaited<ReturnType<typeof measureTier>>;
+
+function createResult(browser: Browser, benchmarks: BrowserBenchmark[], repeats: number) {
+  const browserMajor = browser.version().split('.')[0];
+  return {
+    schemaVersion: 2,
+    contractVersion: PERFORMANCE_CONTRACT_VERSION,
+    provenance: 'SYNTHETIC',
+    artifact: artifactMetadata(
+      'browser',
+      `chromium-${browserMajor}-${process.platform}-${process.arch}`
+    ),
+    measure: 'navigation-init-to-rendered-svg',
+    environment: {
+      browser: 'chromium',
+      browserVersion: browser.version(),
+      node: process.version,
+      platform: process.platform,
+      arch: process.arch,
+      cpuCount: cpus().length,
+      ci: process.env.CI === 'true'
+    },
+    options: { tiers: PERFORMANCE_TIERS, repeats },
+    benchmarks
+  };
+}
+
+async function emitResult(result: ReturnType<typeof createResult>, output: string | undefined) {
+  const json = `${JSON.stringify(result, null, 2)}\n`;
+  if (output) {
+    await mkdir(path.dirname(path.resolve(output)), { recursive: true });
+    await writeFile(output, json, { flag: 'w' });
+  }
+  process.stdout.write(json);
+}
+
 async function run(): Promise<void> {
   const args = new Set(process.argv.slice(2));
   const output = process.argv.find((argument) => argument.startsWith('--output='))?.slice(9);
@@ -221,34 +263,8 @@ async function run(): Promise<void> {
     for (const tier of PERFORMANCE_TIERS) {
       benchmarks.push(await measureTier(browser, origin, fixtureServer, tier, repeats));
     }
-    const browserMajor = browser.version().split('.')[0];
-    const result = {
-      schemaVersion: 2,
-      contractVersion: PERFORMANCE_CONTRACT_VERSION,
-      provenance: 'SYNTHETIC',
-      artifact: artifactMetadata(
-        'browser',
-        `chromium-${browserMajor}-${process.platform}-${process.arch}`
-      ),
-      measure: 'navigation-init-to-rendered-svg',
-      environment: {
-        browser: 'chromium',
-        browserVersion: browser.version(),
-        node: process.version,
-        platform: process.platform,
-        arch: process.arch,
-        cpuCount: cpus().length,
-        ci: process.env.CI === 'true'
-      },
-      options: { tiers: PERFORMANCE_TIERS, repeats },
-      benchmarks
-    };
-    const json = `${JSON.stringify(result, null, 2)}\n`;
-    if (output) {
-      await mkdir(path.dirname(path.resolve(output)), { recursive: true });
-      await writeFile(output, json, { flag: 'w' });
-    }
-    process.stdout.write(json);
+    const result = createResult(browser, benchmarks, repeats);
+    await emitResult(result, output);
     if (args.has('--assert') &&
         benchmarks.some(({ measurement }) => measurement.hardLimitStatus === 'exceeded')) {
       throw new Error('Browser performance hard limit exceeded');
