@@ -124,7 +124,15 @@ criteria:
    accessible names/focus, stable SVG output, persisted geometry, and
    import/edit/export/re-import behavior.
 
+The detailed, milestone-level plan for this boundary and the Miro-like
+interaction work is in
+[Miro-like editor workstream](miro-like-editor-workstream.md), with the
+decision recorded in [ADR-0010](../adr/0010-diagram-engine-boundary.md).
+
 ## Engine-switch gate
+
+See also the [React Flow migration path](../editor/react-flow-migration-path.md)
+for what an engine replacement would keep, replace, and reimplement.
 
 Do not switch engines for branding reasons or because another library has a
 longer feature list. Start a time-boxed prototype only after a concrete user
