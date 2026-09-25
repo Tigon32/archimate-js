@@ -48,6 +48,60 @@ const routes = new Map([
   [ '/diagram.css', 'node_modules/diagram-js/assets/diagram-js.css' ]
 ]);
 const requestPaths: string[] = [];
+const listenerTrackerScript = `
+(() => {
+  const active = new Map();
+  const listenerIds = new WeakMap();
+  const labels = new WeakMap([[ window, 'window' ], [ document, 'document' ], [ document.body, 'body' ]]);
+  let sequence = 0;
+  const originalAdd = EventTarget.prototype.addEventListener;
+  const originalRemove = EventTarget.prototype.removeEventListener;
+  const optionKey = (options) => JSON.stringify({
+    capture: typeof options === 'boolean' ? options : Boolean(options && options.capture),
+    once: Boolean(options && typeof options === 'object' && options.once),
+    passive: Boolean(options && typeof options === 'object' && options.passive)
+  });
+  const targetLabel = (target) => {
+    const existing = labels.get(target);
+    if (existing) return existing;
+    if (target instanceof SVGSVGElement) {
+      labels.set(target, 'svg');
+      return 'svg';
+    }
+  };
+  const listenerId = (listener) => {
+    const existing = listenerIds.get(listener);
+    if (existing) return existing;
+    listenerIds.set(listener, ++sequence);
+    return sequence;
+  };
+  const track = (target, type, listener, options, delta) => {
+    const label = targetLabel(target);
+    if (!label || !listener) return;
+    const id = listenerId(listener);
+    const capture = typeof options === 'boolean' ? options : Boolean(options && options.capture);
+    const key = type + ':' + id + ':' + optionKey(options);
+    const listeners = active.get(label) || new Map();
+    const count = Math.max(0, ((listeners.get(key) || {}).count || 0) + delta);
+    if (count) listeners.set(key, { target: label, type, listenerId: id, capture, count });
+    else listeners.delete(key);
+    active.set(label, listeners);
+  };
+  EventTarget.prototype.addEventListener = function(type, listener, options) {
+    track(this, type, listener, options, 1);
+    return originalAdd.call(this, type, listener, options);
+  };
+  EventTarget.prototype.removeEventListener = function(type, listener, options) {
+    track(this, type, listener, options, -1);
+    return originalRemove.call(this, type, listener, options);
+  };
+  window.__focusListenerTracker = {
+    remainingListeners: () => Array.from(active.values()).flatMap((listeners) => Array.from(listeners.values()))
+      .filter((record) => record.count > 0)
+      .map(({ target, type, listenerId, capture, count }) => ({ target, type, listenerId, capture, count }))
+  };
+})();
+`;
 
 const server = createServer((request: { url?: string }, response: {
   setHeader(name: string, value: string): void;
@@ -80,8 +134,21 @@ try {
   });
   const page = await browser.newPage();
   const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  const browserRequests: string[] = [];
+  const offOriginRequests: string[] = [];
+  await page.route('**/*', async (route) => {
+    const url = route.request().url();
+    browserRequests.push(url);
+    if (url === origin || url.startsWith(origin + '/')) {
+      await route.continue();
+      return;
+    }
+    offOriginRequests.push(url);
+    await route.abort();
+  });
   await page.goto(origin, { waitUntil: 'domcontentloaded' });
   await page.addStyleTag({ url: '/diagram.css' });
+  await page.addScriptTag({ content: listenerTrackerScript });
   await page.addScriptTag({ url: '/focus-interactions-test.js' });
 
   await page.evaluate(async () => {
@@ -91,24 +158,12 @@ try {
         get(name: string): any;
         clear(): void;
         destroy(): void;
-      } };
+      };
+      };
     }).FocusInteractionsTest;
-    const activeListeners = new WeakMap<EventTarget, Map<string, number>>();
-    const originalAdd = EventTarget.prototype.addEventListener;
-    const originalRemove = EventTarget.prototype.removeEventListener;
-    EventTarget.prototype.addEventListener = function(type, listener, options) {
-      const listeners = activeListeners.get(this) || new Map<string, number>();
-      listeners.set(type, (listeners.get(type) || 0) + 1);
-      activeListeners.set(this, listeners);
-      return originalAdd.call(this, type, listener, options);
-    };
-    EventTarget.prototype.removeEventListener = function(type, listener, options) {
-      const listeners = activeListeners.get(this) || new Map<string, number>();
-      listeners.set(type, Math.max(0, (listeners.get(type) || 0) - 1));
-      activeListeners.set(this, listeners);
-      return originalRemove.call(this, type, listener, options);
-    };
-
+    const tracker = (window as any).__focusListenerTracker as { remainingListeners(): Array<{
+      target: string; type: string; listenerId: number; capture: boolean; count: number;
+    }> };
     const xml = await (await fetch('/synthetic.xml')).text();
     const container = document.createElement('div');
     container.style.width = '800px';
@@ -124,7 +179,7 @@ try {
     modeler.get('selection').select(editableElement);
     const keyboard = (key: string, modifiers: KeyboardEventInit = {}) =>
       svg.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...modifiers }));
-    (window as any).__focusInteractions = { activeListeners, container, modeler, svg, keyboard };
+    (window as any).__focusInteractions = { container, modeler, remainingListeners: tracker.remainingListeners, svg, keyboard };
   });
 
   await page.evaluate(() => {
@@ -156,9 +211,7 @@ try {
 
   const cleanupResult = await page.evaluate(async () => {
     const state = (window as any).__focusInteractions;
-    const { activeListeners, container, modeler, svg, keyboard } = state;
-    const listenerTotal = (listeners: Map<string, number> | undefined) =>
-      Array.from(listeners?.values() || []).reduce((total, count) => total + count, 0);
+    const { container, modeler, remainingListeners, svg, keyboard } = state;
     const selection = modeler.get('selection'); const element = modeler.get('elementRegistry').get('node-component');
     selection.select(element);
     const contextPad = modeler.get('contextPad'); contextPad.open(element, true);
@@ -183,14 +236,12 @@ try {
     modeler.clear();
     await new Promise((resolve) => setTimeout(resolve, 10));
     const clearRemovedEditing = !container.querySelector('.djs-direct-editing-parent');
-    const listenerCountBeforeDestroy = listenerTotal(activeListeners.get(svg));
+    const listenerCountBeforeDestroy = remainingListeners().length;
     modeler.destroy();
     await new Promise((resolve) => setTimeout(resolve, 10));
     const destroyRemovedDom = !container.querySelector('.djs-direct-editing-parent') && !container.querySelector('svg');
-    const listenerCountAfterDestroy = listenerTotal(activeListeners.get(svg));
-    const listenerTypesAfterDestroy = (Array.from(
-      activeListeners.get(svg)?.entries() || []
-    ) as Array<[string, number]>).filter((entry) => entry[1] > 0);
+    const detachedSvgUnreachable = !document.body.contains(svg);
+    const retainedListeners = remainingListeners();
     container.remove();
     delete (window as any).__focusInteractions;
     return {
@@ -200,9 +251,9 @@ try {
       editingBeforeClear,
       clearRemovedEditing,
       destroyRemovedDom,
+      detachedSvgUnreachable,
       listenerCountBeforeDestroy,
-      listenerCountAfterDestroy,
-      listenerTypesAfterDestroy
+      retainedListeners
     };
   });
   const result = { ...focusResult, ...cleanupResult };
@@ -217,14 +268,19 @@ try {
   assert.equal(result.editingBeforeClear, true);
   assert.equal(result.clearRemovedEditing, true);
   assert.equal(result.destroyRemovedDom, true);
+  assert.equal(result.detachedSvgUnreachable, true);
   assert.ok(result.listenerCountBeforeDestroy > 0);
-  assert.deepEqual(result.listenerTypesAfterDestroy, [
-    [ 'focusin', 1 ],
-    [ 'focusout', 1 ],
-    [ 'mouseover', 1 ],
-    [ 'mouseout', 1 ],
-    [ 'dblclick', 1 ]
+  assert.deepEqual(result.retainedListeners.map((record: { target: string; type: string; count: number }) => ({
+    target: record.target, type: record.type, count: record.count
+  })), [
+    { target: 'svg', type: 'focusin', count: 1 },
+    { target: 'svg', type: 'focusout', count: 1 },
+    { target: 'svg', type: 'mouseover', count: 1 },
+    { target: 'svg', type: 'mouseout', count: 1 },
+    { target: 'svg', type: 'dblclick', count: 1 }
   ]);
+  assert.deepEqual(offOriginRequests, []);
+  assert.deepEqual(browserRequests.every((url) => url === origin || url.startsWith(origin + '/')), true);
   assert.deepEqual(requestPaths.sort(), [
     '/',
     '/diagram.css',
