@@ -3,16 +3,21 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const codeownersPath = new URL('../../.github/CODEOWNERS', import.meta.url);
-const rules = (await readFile(codeownersPath, 'utf8'))
+interface OwnershipRule {
+  pattern: string;
+  owners: string[];
+}
+
+const rules: OwnershipRule[] = (await readFile(codeownersPath, 'utf8'))
   .split(/\r?\n/)
   .map((line) => line.trim())
   .filter((line) => line && !line.startsWith('#'))
-  .map((line) => {
+  .map((line): OwnershipRule => {
     const [pattern, ...owners] = line.split(/\s+/);
-    return { pattern, owners };
+    return { pattern: pattern ?? '', owners };
   });
 
-function ownersFor(path) {
+function ownersFor(path: string): string[] {
   const matched = rules.filter(({ pattern }) => {
     const rootedPattern = pattern.replace(/^\//, '');
     const expression = rootedPattern
@@ -28,7 +33,7 @@ function ownersFor(path) {
 }
 
 test('governance paths are assigned to the human repository owner', () => {
-  const governedPaths = [
+  const governedPaths: string[] = [
     '.github/CODEOWNERS',
     'AGENTS.md',
     'docs/adr/0001-public-clean-room-boundary.md',
