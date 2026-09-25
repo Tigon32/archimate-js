@@ -1,6 +1,15 @@
 import { defineConfig } from 'vitest/config';
+import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
+  resolve: {
+    alias: [
+      {
+        find: '../../lib/Modeler.js',
+        replacement: fileURLToPath(new URL('./lib/Modeler.ts', import.meta.url))
+      }
+    ]
+  },
   test: {
     environment: 'node',
     include: [
