@@ -82,36 +82,41 @@ const listenerTrackerScript = `
     listenerIds.set(listener, ++sequence);
     return sequence;
   };
-  const track = (target, type, listener, options, delta) => {
+  const track = (target, type, listener, options, delta, registrationOrigin) => {
     const currentTargetId = markDetachedDiagramSvg(target);
     if (!currentTargetId || !listener) return;
     const currentListenerId = listenerId(listener);
     const capture = captureFlag(options);
     const key = currentTargetId + ':' + type + ':' + currentListenerId + ':' + capture;
     const listeners = active.get(currentTargetId) || new Map();
-    const count = Math.max(0, ((listeners.get(key) || {}).count || 0) + delta);
-    if (count) listeners.set(key, {
-      targetId: currentTargetId,
-      type,
-      listenerId: currentListenerId,
-      capture,
-      count
-    });
-    else listeners.delete(key);
+    if (delta > 0 && !listeners.has(key)) {
+      listeners.set(key, {
+        targetId: currentTargetId,
+        type,
+        listenerId: currentListenerId,
+        capture,
+        count: 1,
+        registrationOrigin
+      });
+    } else if (delta < 0) {
+      listeners.delete(key);
+    }
     active.set(currentTargetId, listeners);
   };
   EventTarget.prototype.addEventListener = function(type, listener, options) {
-    track(this, type, listener, options, 1);
+    track(this, type, listener, options, 1, new Error().stack || '');
     return originalAdd.call(this, type, listener, options);
   };
   EventTarget.prototype.removeEventListener = function(type, listener, options) {
-    track(this, type, listener, options, -1);
+    track(this, type, listener, options, -1, '');
     return originalRemove.call(this, type, listener, options);
   };
   window.__focusListenerTracker = {
+    targetId: (target) => targetId(target),
     remainingListeners: () => Array.from(active.values()).flatMap((listeners) => Array.from(listeners.values()))
       .filter((record) => record.count > 0)
-      .map(({ targetId, type, listenerId, capture, count }) => ({ targetId, type, listenerId, capture, count }))
+      .map(({ targetId, type, listenerId, capture, count, registrationOrigin }) =>
+        ({ targetId, type, listenerId, capture, count, registrationOrigin }))
   };
 })();
 `;
@@ -176,7 +181,8 @@ try {
     }).FocusInteractionsTest;
     const tracker = (window as any).__focusListenerTracker as { remainingListeners(): Array<{
       targetId: string; type: string; listenerId: number; capture: boolean; count: number;
-    }> };
+      registrationOrigin: string;
+    }>; targetId(target: EventTarget): string };
     const xml = await (await fetch('/synthetic.xml')).text();
     const container = document.createElement('div');
     container.style.width = '800px';
@@ -188,11 +194,63 @@ try {
     const svg = container.querySelector('svg');
     if (!svg) throw new Error('Modeler SVG should be mounted.');
     canvas.focus();
-    const editableElement = modeler.get('elementRegistry').get('node-component');
+    const registry = modeler.get('elementRegistry');
+    const editableElement = registry.get('node-component');
     modeler.get('selection').select(editableElement);
     const keyboard = (key: string, modifiers: KeyboardEventInit = {}) =>
       svg.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...modifiers }));
-    (window as any).__focusInteractions = { container, modeler, remainingListeners: tracker.remainingListeners, svg, keyboard };
+    const diagramTargetId = tracker.targetId(svg);
+    const expectedRetainedListeners = tracker.remainingListeners()
+      .filter((record) => record.targetId === diagramTargetId &&
+        [ 'focusin', 'focusout', 'mouseout', 'mouseover' ].includes(record.type) &&
+        record.registrationOrigin.includes('/diagram-js/lib/core/Canvas.js'))
+      .sort((left, right) => left.listenerId - right.listenerId);
+    if (expectedRetainedListeners.length !== 4) {
+      throw new Error(`Expected exact diagram-js retained listener registrations: ${
+        JSON.stringify(tracker.remainingListeners().filter((record) =>
+          record.targetId === diagramTargetId))
+      }`);
+    }
+    if (new Set(expectedRetainedListeners.map((record) => record.type)).size !== 4 ||
+        new Set(expectedRetainedListeners.map((record) => record.listenerId)).size !== 4 ||
+        expectedRetainedListeners.some((record) =>
+          record.capture || record.count !== 1 ||
+          !record.registrationOrigin.includes('/diagram-js/lib/core/Canvas.js'))) {
+      throw new Error('Diagram-js retained listener identities do not match the canonical set.');
+    }
+    const sameSvgProjectListener = () => {};
+    const secondSvgProjectListener = () => {};
+    const secondSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    document.body.append(secondSvg);
+    const secondTargetId = tracker.targetId(secondSvg);
+    svg.addEventListener('focusin', sameSvgProjectListener);
+    secondSvg.addEventListener('focusout', secondSvgProjectListener, true);
+    const negativeControlsTracked = tracker.remainingListeners().filter((record) =>
+      !record.registrationOrigin.includes('diagram-js') &&
+      (record.targetId === diagramTargetId || record.targetId === secondTargetId));
+    const controlsAreDistinct = negativeControlsTracked.length === 2 &&
+      new Set(negativeControlsTracked.map((record) => record.listenerId)).size === 2 &&
+      negativeControlsTracked.some((record) =>
+        record.targetId === diagramTargetId && record.type === 'focusin' && record.capture === false) &&
+      negativeControlsTracked.some((record) =>
+        record.targetId === secondTargetId && record.type === 'focusout' && record.capture === true);
+    svg.removeEventListener('focusin', sameSvgProjectListener);
+    secondSvg.removeEventListener('focusout', secondSvgProjectListener, true);
+    secondSvg.remove();
+    const negativeControlIds = new Set(negativeControlsTracked.map((record) => record.listenerId));
+    const negativeControlsRemoved = !tracker.remainingListeners()
+      .some((record) => negativeControlIds.has(record.listenerId));
+    (window as any).__focusInteractions = {
+      container,
+      modeler,
+      remainingListeners: tracker.remainingListeners,
+      svg,
+      keyboard,
+      diagramTargetId,
+      expectedRetainedListeners,
+      controlsAreDistinct,
+      negativeControlsRemoved
+    };
   });
 
   await page.evaluate(() => {
@@ -224,7 +282,10 @@ try {
 
   const cleanupResult = await page.evaluate(async () => {
     const state = (window as any).__focusInteractions;
-    const { container, modeler, remainingListeners, svg, keyboard } = state;
+    const {
+      container, modeler, remainingListeners, svg, keyboard, diagramTargetId,
+      expectedRetainedListeners, controlsAreDistinct, negativeControlsRemoved
+    } = state;
     const selection = modeler.get('selection'); const element = modeler.get('elementRegistry').get('node-component');
     selection.select(element);
     const contextPad = modeler.get('contextPad'); contextPad.open(element, true);
@@ -266,7 +327,11 @@ try {
       destroyRemovedDom,
       detachedSvgUnreachable,
       listenerCountBeforeDestroy,
-      retainedListeners
+      retainedListeners,
+      diagramTargetId,
+      expectedRetainedListeners,
+      controlsAreDistinct,
+      negativeControlsRemoved
     };
   });
   const result = { ...focusResult, ...cleanupResult };
@@ -282,32 +347,18 @@ try {
   assert.equal(result.clearRemovedEditing, true);
   assert.equal(result.destroyRemovedDom, true);
   assert.equal(result.detachedSvgUnreachable, true);
+  assert.equal(result.controlsAreDistinct, true);
+  assert.equal(result.negativeControlsRemoved, true);
   assert.ok(result.listenerCountBeforeDestroy > 0);
-  const retainedTargets = [...new Set(result.retainedListeners.map((record: { targetId: string }) => record.targetId))];
-  assert.equal(retainedTargets.length, 1);
-  assert.match(retainedTargets[0], /^svg#\d+$/);
   const retained = result.retainedListeners as Array<{
     targetId: string; type: string; listenerId: number; capture: boolean; count: number;
+    registrationOrigin: string;
   }>;
-  assert.deepEqual(retained.map((record) => record.type).sort(), [
-    'dblclick',
-    'focusin',
-    'focusout',
-    'mouseout',
-    'mouseover'
-  ]);
-  assert.equal(new Set(retained.map((record) => record.listenerId)).size, retained.length);
-  assert.deepEqual(retained.map((record) => ({
-    targetId: record.targetId,
-    listenerId: Number.isInteger(record.listenerId),
-    capture: record.capture,
-    count: record.count
-  })), retained.map((record) => ({
-    targetId: retainedTargets[0],
-    listenerId: true,
-    capture: false,
-    count: 1
-  })));
+  assert.match(result.diagramTargetId, /^svg#\d+$/);
+  assert.deepEqual(
+    retained.sort((left, right) => left.listenerId - right.listenerId),
+    result.expectedRetainedListeners
+  );
   assert.deepEqual(offOriginRequests, []);
   assert.deepEqual(browserRequests.every((url) => url === origin || url.startsWith(origin + '/')), true);
   assert.deepEqual(requestPaths.sort(), [
