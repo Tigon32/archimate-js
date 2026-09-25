@@ -34,6 +34,8 @@
     "scripts/check-secrets.mts",
     "scripts/content-markers.mts",
     "test/security/check-secrets.test.mts",
+    "scripts/check-engine-boundary.mts",
+    "test/security/check-engine-boundary.test.mts",
     "test/security/codeowners.test.mts",
     "scripts/check-tracked-paths.mts",
     "scripts/check-public-source-exceptions.mts",
