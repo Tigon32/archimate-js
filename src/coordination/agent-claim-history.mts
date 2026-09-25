@@ -205,6 +205,7 @@ function applyTransition(event: ParsedEvent, context: HistoryContext): string | 
   if (!sameLease(state.root, record)) return `transition ${id} changes lease identity or epoch`;
   if (at < state.latestAt) return `transition ${id} is out of order`;
   if (record.record_type === 'heartbeat') {
+    if (state.expiry !== null && at >= state.expiry) return `heartbeat ${id} was posted after lease expiry`;
     const priorHeartbeat = 'heartbeat_at' in state.latest ? Date.parse(state.latest.heartbeat_at) : Number.NaN;
     if (state.expiry !== null && Number.isFinite(priorHeartbeat) && Date.parse(record.heartbeat_at) < priorHeartbeat) {
       return `heartbeat ${id} moves lease time backwards`;

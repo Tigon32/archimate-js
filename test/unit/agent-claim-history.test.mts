@@ -44,6 +44,15 @@ it('reports expired and explicitly released leases without treating either as ac
     .toMatchObject({ status: 'released', claim_comment_id: '1001', record: { record_type: 'release' } });
 });
 
+it('does not let a heartbeat posted after expiry revive an expired lease', () => {
+  const lateHeartbeat = heartbeatRecord('2026-09-25T12:30:00Z', '2026-09-25T14:30:00Z', '2026-09-25T12:29:00Z');
+  const result = resolveAgentClaimHistory([
+    comment('1001', claim, '2026-09-25T10:00:01Z'),
+    comment('1002', lateHeartbeat, '2026-09-25T12:30:00Z')
+  ], 140, '2026-09-25T13:00:00Z');
+  expect(result).toMatchObject({ status: 'ambiguous', reason: 'heartbeat 1002 was posted after lease expiry' });
+});
+
 it('fails closed on malformed protocol attempts, unknown lineage, concurrent roots, and late stale writes', () => {
   const malformed = { id: '1001', created_at: '2026-09-25T10:00:00Z', body: 'archimate-js.agent-claim/v1' };
   expect(resolveAgentClaimHistory([malformed], 140, '2026-09-25T10:01:00Z').status).toBe('ambiguous');
@@ -175,7 +184,10 @@ it.each(['heartbeat', 'release'] as const)('cancels pending takeover after a lat
     { id: '1004', created_at: '2026-09-25T10:46:00Z', body: 'Synthetic maintainer acknowledgement.' },
     comment('1005', active, '2026-09-25T10:46:01Z')
   ], 140, '2026-09-25T10:50:00Z');
-  expect(result).toMatchObject({ status: 'ambiguous', reason: expect.stringContaining('without intervening transitions') });
+  const expectedReason = transitionType === 'heartbeat'
+    ? 'heartbeat 1003 was posted after lease expiry'
+    : 'active takeover has no preceding matching request without intervening transitions';
+  expect(result).toMatchObject({ status: 'ambiguous', reason: expectedReason });
 });
 
 it('returns unclaimed for prose-only history', () => {
