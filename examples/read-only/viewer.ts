@@ -1,3 +1,5 @@
+import { createViewerSelectionAdapter, type ViewerSelectionAdapter } from './outline-bridge.js';
+
 interface ViewerBrowserApi {
   mountViewer(options: { xml: string; viewId: string; container: HTMLElement;
     width: string; height: string }): Promise<unknown>;
@@ -40,6 +42,15 @@ declare global {
 const VIEW_ID = 'view-synthetic-showcase';
 const FIXTURE_PATH = '../../test/fixtures/synthetic/read-only-showcase-outline-meff.xml';
 const MAX_FIXTURE_BYTES = 256 * 1024;
+
+interface OutlineEntry {
+  id: string;
+  label: string;
+  context: string;
+  category: 'element' | 'relationship';
+}
+
+let activeSelectionAdapter: ViewerSelectionAdapter | undefined;
 
 async function readLimitedResponse(response: Response): Promise<Uint8Array> {
   if (!response.body || typeof response.body.getReader !== 'function') {
@@ -85,21 +96,43 @@ function labelFor(type: string, name: string): string {
   return `${type}: ${name}`;
 }
 
-function appendNode(node: OutlineNode, list: HTMLUListElement): void {
+function contextLabel(path: string[]): string {
+  return path.length ? `Context: ${path.join(' / ')}` : 'Context: top level';
+}
+
+function makeOutlineButton(entry: OutlineEntry): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'outline-item-button';
+  button.dataset.outlineId = entry.id;
+  button.dataset.outlineCategory = entry.category;
+  button.setAttribute('aria-pressed', 'false');
+  button.textContent = entry.label;
+  const context = document.createElement('span');
+  context.className = 'outline-item-context';
+  context.textContent = ` (${entry.context}; id ${entry.id})`;
+  button.append(context);
+  button.addEventListener('click', () => activateOutlineEntry(button));
+  button.addEventListener('keydown', onOutlineKeydown);
+  return button;
+}
+
+function appendNode(node: OutlineNode, list: HTMLUListElement, path: string[]): void {
   const item = document.createElement('li');
+  const nextPath = [...path, node.name];
+  const button = makeOutlineButton({ id: node.id, label: labelFor(node.type, node.name),
+    context: contextLabel(path), category: 'element' });
   if (node.children.length) {
     const disclosure = document.createElement('details');
     disclosure.open = true;
     const summary = document.createElement('summary');
-    summary.textContent = labelFor(node.type, node.name);
+    summary.append(button);
     const children = document.createElement('ul');
-    node.children.forEach((child) => appendNode(child, children));
+    node.children.forEach((child) => appendNode(child, children, nextPath));
     disclosure.append(summary, children);
     item.append(disclosure);
   } else {
-    const label = document.createElement('span');
-    label.textContent = labelFor(node.type, node.name);
-    item.append(label);
+    item.append(button);
   }
   list.append(item);
 }
@@ -121,9 +154,8 @@ function renderRelationships(relations: OutlineRelationship[], names: Map<string
   const list = document.createElement('ul');
   for (const relation of relations) {
     const item = document.createElement('li');
-    const label = document.createElement('span');
-    label.textContent = relationshipLabel(relation, names);
-    item.append(label);
+    item.append(makeOutlineButton({ id: relation.id, label: relationshipLabel(relation, names),
+      context: 'relationship in selected view', category: 'relationship' }));
     list.append(item);
   }
   host.replaceChildren(list);
@@ -134,10 +166,11 @@ export function renderAccessibleOutline(outline: OutlineData, elementsHost: HTML
   const names = new Map<string, string>();
   collectNames(outline.nodes, names);
   const list = document.createElement('ul');
-  for (const node of outline.nodes) appendNode(node, list);
+  for (const node of outline.nodes) appendNode(node, list, []);
   list.setAttribute('aria-labelledby', 'outline-elements-heading');
   elementsHost.replaceChildren(list);
   renderRelationships(outline.relationships, names, relationshipsHost);
+  updateSearchResults('');
 }
 
 function requireElement(selector: string): HTMLElement {
@@ -168,8 +201,9 @@ export async function renderExample(): Promise<void> {
   try {
     const viewerApi = window.ArchimateJS;
     if (typeof viewerApi?.mountViewer !== 'function') throw new Error('Viewer API unavailable');
-    await viewerApi.mountViewer({ xml, viewId: VIEW_ID, container: requireElement('#diagram'),
+    const viewer = await viewerApi.mountViewer({ xml, viewId: VIEW_ID, container: requireElement('#diagram'),
       width: '100%', height: '100%' });
+    bindViewerSelection(createViewerSelectionAdapter(viewer));
     const status = requireElement('#status');
     status.dataset.state = 'success';
     status.textContent = 'Loaded the public synthetic service delivery example.';
@@ -178,6 +212,88 @@ export async function renderExample(): Promise<void> {
     showFailure();
   }
   await renderOutline(window.ArchimateModelDto, xml);
+}
+
+function outlineButtons(): HTMLButtonElement[] {
+  return Array.from(document.querySelectorAll<HTMLButtonElement>('[data-outline-id]'));
+}
+
+function setActiveButton(id: string | undefined): void {
+  for (const button of outlineButtons()) {
+    const active = Boolean(id && button.dataset.outlineId === id);
+    button.setAttribute('aria-pressed', String(active));
+    button.toggleAttribute('data-selected', active);
+    if (active && document.activeElement === document.body) button.focus();
+  }
+  document.dispatchEvent(new CustomEvent('archimate-viewer-selection-change', {
+    detail: { selectedIds: id ? [id] : [] }
+  }));
+}
+
+function bindViewerSelection(adapter: ViewerSelectionAdapter | undefined): void {
+  activeSelectionAdapter?.dispose();
+  activeSelectionAdapter = adapter;
+  if (!adapter) return;
+  adapter.onSelectionChange((ids) => setActiveButton(ids[0]));
+}
+
+function activateOutlineEntry(button: HTMLButtonElement): void {
+  const id = button.dataset.outlineId;
+  if (!id || !activeSelectionAdapter?.selectById(id)) {
+    setActiveButton(undefined);
+    activeSelectionAdapter?.clearSelection();
+    document.dispatchEvent(new CustomEvent('archimate-outline-activate', {
+      detail: { id, selected: false }
+    }));
+    return;
+  }
+  setActiveButton(id);
+  document.dispatchEvent(new CustomEvent('archimate-outline-activate', {
+    detail: { id, selected: true }
+  }));
+}
+
+function onOutlineKeydown(event: KeyboardEvent): void {
+  const button = event.currentTarget as HTMLButtonElement;
+  const buttons = outlineButtons();
+  const index = buttons.indexOf(button);
+  const targetIndex = event.key === 'ArrowDown' ? index + 1 :
+    event.key === 'ArrowUp' ? index - 1 : -1;
+  if (targetIndex >= 0 && targetIndex < buttons.length) {
+    event.preventDefault();
+    buttons[targetIndex].focus();
+  }
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    activateOutlineEntry(button);
+  }
+}
+
+function updateSearchResults(query: string): void {
+  const normalized = query.trim().toLowerCase();
+  let firstMatch: HTMLButtonElement | undefined;
+  for (const button of outlineButtons()) {
+    const matches = !normalized || (button.textContent ?? '').toLowerCase().includes(normalized);
+    button.closest('li')?.toggleAttribute('hidden', !matches);
+    firstMatch ??= matches ? button : undefined;
+  }
+  const status = document.querySelector<HTMLElement>('#outline-search-status');
+  if (status) status.textContent = normalized && !firstMatch ? 'No outline matches.' : '';
+}
+
+function installOutlineSearch(): void {
+  const search = document.querySelector<HTMLInputElement>('#outline-search');
+  if (!search || search.dataset.outlineSearchReady) return;
+  search.dataset.outlineSearchReady = 'true';
+  search.addEventListener('input', () => updateSearchResults(search.value));
+  search.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    const first = outlineButtons().find((button) => !button.closest('li')?.hasAttribute('hidden'));
+    if (!first) return;
+    event.preventDefault();
+    first.focus();
+    activateOutlineEntry(first);
+  });
 }
 
 async function renderOutline(modelDtoApi: ModelDtoBrowserApi | undefined,
@@ -193,6 +309,7 @@ async function renderOutline(modelDtoApi: ModelDtoBrowserApi | undefined,
     });
     renderAccessibleOutline(outline, requireElement('#outline-content'),
       requireElement('#outline-relationships'));
+    installOutlineSearch();
     status.textContent = 'Loaded the supported synthetic MEFF view outline.';
   } catch {
     status.textContent = 'Text outline unavailable for this model format.';

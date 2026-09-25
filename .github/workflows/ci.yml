@@ -47,26 +47,26 @@ jobs:
           test -n "$CHROME_BIN"
           npm run test:cli:browser
 
-      - name: Assert synthetic Node performance smoke baseline
-        run: node test/performance/benchmark.mts --smoke --assert --output=performance-baseline-node-24.json
+      - name: Assert synthetic Node performance budgets
+        run: node test/performance/benchmark.mts --smoke --assert --output=test-results/performance-node.json
 
-      - name: Capture synthetic browser render timing
+      - name: Assert synthetic browser performance budgets
         run: |
           export CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
           test -n "$CHROME_BIN"
           npm run compile:model-dto:browser
-          node test/performance/browser-benchmark.mts --output=test-results/performance-baseline-browser.json
+          node test/performance/browser-benchmark.mts --assert --output=test-results/performance-browser.json
 
       - name: Retain primary qualification evidence
-        if: success()
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: primary-qualification-evidence
           path: |
-            performance-baseline-node-24.json
-            test-results/performance-baseline-browser.json
+            test-results/performance-node.json
+            test-results/performance-browser.json
             test-results/read-only-showcase.png
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30
 
       - name: Retain synthetic browser diagnostics on failure

@@ -1,101 +1,107 @@
-# Synthetic performance benchmark
+# Synthetic performance budgets
 
-This phase-1 harness establishes repeatable scaling evidence for the semantic model path and the view geometry path. Every fixture is generated in memory and is explicitly marked `SYNTHETIC`; it contains no imported model, organization, environment, or customer data.
+The performance gate uses deterministic, generated `SYNTHETIC` models. It does
+not load customer, organization, or imported architecture data. The same
+generator supplies the Node benchmark and the browser MEFF fixture.
 
-Build the TypeScript validator once, then run the smoke benchmark:
+## Tiers
 
-```bash
-npm run compile:validator && node test/performance/benchmark.mts --smoke --assert
-```
+| Tier | Elements/nodes | Relationships/connections | Purpose |
+| --- | ---: | ---: | --- |
+| Small | 25 | 24 | Fast regression signal |
+| Medium | 64 | 63 | Routine scaling signal |
+| Large | 144 | 143 | Bounded CI stress signal |
 
-For the fuller local run, omit `--smoke` or choose a repeat count:
+Each model is a fixed grid of application processes joined by triggering
+relationships. Identifiers, labels, coordinates, XML, and fixture
+fingerprints are deterministic. The benchmark exercises the existing
+validator, router, layout, model importer, and SVG renderer. It does not add or
+measure culling, workers, alternate rendering paths, or performance
+optimizations.
 
-```bash
-npm run compile:validator && node test/performance/benchmark.mts --repeats=5 --output=/tmp/archimate-performance.json
-```
+## Commands
 
-The command writes versioned JSON to stdout (and to `--output=...` when supplied). Results include Node/platform/architecture, fixture sizes, semantic element and relationship counts, diagram node and connection counts, route/layout metrics, and medians for fixture generation, validation, routing, and layout over the requested repeats. `--assert` checks deterministic structural safety conditions only; it does not gate on wall-clock time.
-
-## CI artifacts and comparison
-
-The CI **Verify on Node.js 22** and **Verify on Node.js 24** jobs compile once, then run
-`node test/performance/benchmark.mts --smoke --assert --output=performance-baseline-node-<major>.json`.
-The same jobs upload `performance-baseline-node-22` and
-`performance-baseline-node-24` as separate artifacts after a successful assertion.
-In a pull request or main branch run, open **Actions → CI → the run → Artifacts**
-and download the artifact for the Node version being investigated. Artifacts
-are retained for 30 days. A failed semantic or routing assertion fails the
-verify job; a successful run retains its JSON file. No second full test suite
-is run for this baseline.
-
-The JSON uses `schemaVersion: 1`. It includes top-level `provenance:
-"SYNTHETIC"`, `mode: "smoke"`, `environment` (Node version, platform,
-architecture, CPU count and CI flag), `options` (sizes and repeat count),
-and one `benchmarks[]` entry per synthetic size. Each entry records fixture
-provenance and semantic/diagram counts, a SHA-256 `fixtureFingerprint`,
-`metrics.semantic` and `metrics.diagram` for validation and routing/layout,
-and `mediansMs` for generation, validation, routing and layout. The smoke
-mode measures sizes 4 and 9 with two repeats by default.
-
-Compare artifacts from the **same Node major** and the same `schemaVersion`,
-`options`, sizes and fixture fingerprints. For example, after extracting
-two Node 24 artifacts:
+Run the deterministic contract tests:
 
 ```bash
-jq -r '.benchmarks[] | [.fixture.size, .fixtureFingerprint, .mediansMs.semanticValidationMs, .mediansMs.routingMs, .mediansMs.layoutMs] | @tsv' baseline/performance-baseline-node-24.json
-jq -r '.benchmarks[] | [.fixture.size, .fixtureFingerprint, .mediansMs.semanticValidationMs, .mediansMs.routingMs, .mediansMs.layoutMs] | @tsv' candidate/performance-baseline-node-24.json
+npm run test:performance:determinism
 ```
 
-If a median changes materially, first check the fingerprint, counts, route and
-layout metrics, Node version, architecture and CPU count. Then repeat the
-benchmark on the same machine or compare several CI runs before profiling
-the affected operation. Shared CI runners, JIT warmup and two-repeat samples
-make individual wall-clock medians noisy; results are diagnostic scaling
-evidence, not a numeric regression gate or a substitute for browser rendering,
-memory, larger-tier, or real-model measurements.
-
-## Browser render baseline
-
-The browser CI job also runs the read-only synthetic showcase three times in
-fresh Chromium contexts and uploads `performance-baseline-browser` (JSON) for
-30 days. Locally, after `npm run compile`, run:
+Run the Node and browser smoke gate:
 
 ```bash
-CHROME_BIN=/path/to/chromium node test/performance/browser-benchmark.mts --output=test-results/performance-baseline-browser.json
+CHROME_BIN=/path/to/chromium npm run test:performance:smoke
 ```
 
-The `navigation-init-to-rendered-svg` timer starts in a document init script
-and stops when the example reports success and has at least five shapes and
-four connections. It includes document load, local fixture fetch, bundle
-startup, model import, and first SVG mount. Browser launch and context creation
-are outside the timer. The runner asserts SVG shape, connection, and text
-counts, equal counts across repeats, no page errors, and no off-origin requests.
-Its output contains only a SHA-256 digest of the synthetic fixture, three
-timings, their median, structural counts, and runtime metadata; it does not
-embed XML or page content. This benchmark uses the read-only example's shared
-MEFF source and serves both the ArchiMateJS and model DTO browser bundles. Its
-fixture hash therefore changes when the example's shared model changes. Compare
-runs only with the same fixture hash, schema, Chromium major version, and
-comparable runner environment.
+The individual commands are `npm run test:performance:node` and
+`npm run test:performance:browser`. Both execute every tier with three repeats.
+The Node benchmark can use five repeats for a fuller local sample:
 
-Timings are observational: CI host contention, cold asset loading, browser
-version, and the small sample count add noise. This is one small view with an
-automatic read-only mount; it does not measure interactive editing, peak
-memory, larger views, cancellation, or SVG raster/pixel quality. The numeric
-budgets and scaling decisions remain in #107.
+```bash
+npm run compile:validator
+node test/performance/benchmark.mts --assert --repeats=5 \
+  --output=test-results/performance-node.json
+```
 
-## Provisional phase-1 tiers and budgets
+## Statistics and gate behavior
 
-These are planning budgets, not CI pass/fail thresholds. They are intentionally broad until representative hardware and real-world view distributions are available.
+Every measurement records all samples, the median, median absolute deviation
+(MAD), and a tolerance:
 
-| Tier | Synthetic size | Intended use | Provisional local budget |
-| --- | ---: | --- | ---: |
-| Smoke | 4–9 nodes; 8–18 semantic elements | Pull-request sanity and developer feedback | Complete without routing-grid errors; no semantic diagnostics |
-| Small | 9–25 nodes; 18–50 semantic elements | Routine local regression sampling | Median of each operation remains below 1 s on a modern developer machine |
-| Medium | 49 nodes; 98 semantic elements | Periodic scaling check | Median of each operation remains below 10 s on a modern developer machine |
+```text
+tolerance = max(1 ms, median * 25%, MAD * 3)
+```
 
-The budgets are guidance for investigation, not fragile timing assertions. Changes should first be compared using the structured medians and route/layout metrics, then profiled if a tier changes materially. CI should use the smoke assertion mode rather than a wall-clock gate.
+Numeric budgets and hard limits are separate constants in
+`test/performance/performance-contract.mts`.
 
-## Result contract
+- A median above its budget is recorded as `budgetStatus: "exceeded"`. This is
+  advisory evidence for investigation and does not fail CI.
+- A result fails only when `median - tolerance` is above the hard limit. This
+  requires the stable part of the sample to exceed the safety boundary and
+  avoids failing on a single slow shared-runner sample.
+- Structural assertions remain hard failures: semantic validation must be
+  clean, generated counts must match summaries, every connection must route,
+  routing must not intersect nodes, browser structure must be exact, and the
+  browser must make no off-origin requests or report page errors.
 
-The top-level `schemaVersion` is currently `1`. A result is valid only when top-level and fixture provenance is `SYNTHETIC`, semantic validation succeeds with zero errors, generated counts match the validator summary, and every generated connection is routed. Fixture fingerprints help detect accidental changes to the deterministic input shape.
+### Node budgets and hard limits
+
+Values are milliseconds in `budget / hard limit` form.
+
+| Tier | Semantic generation | Validation | Diagram generation | Routing | Layout |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Small | 25 / 250 | 100 / 1,000 | 25 / 250 | 100 / 1,500 | 250 / 3,000 |
+| Medium | 50 / 500 | 250 / 2,500 | 50 / 500 | 500 / 5,000 | 1,000 / 8,000 |
+| Large | 100 / 1,000 | 750 / 5,000 | 100 / 1,000 | 3,000 / 12,000 | 3,000 / 20,000 |
+
+### Browser budgets and hard limits
+
+The browser measurement starts in a document initialization script and ends
+after the read-only example reports success with the exact expected SVG shape,
+connection, and text counts. Browser launch and context creation are excluded.
+
+| Tier | Budget | Hard limit |
+| --- | ---: | ---: |
+| Small | 2,000 ms | 8,000 ms |
+| Medium | 4,000 ms | 15,000 ms |
+| Large | 7,000 ms | 25,000 ms |
+
+## Retained artifacts
+
+CI writes `test-results/performance-node.json` and
+`test-results/performance-browser.json` and retains them in the pinned
+`primary-qualification-evidence` artifact for 30 days, including failed gate
+runs when a result file was produced. Each schema-versioned artifact includes:
+
+- contract and schema versions;
+- fixture fingerprints and deterministic structural counts;
+- raw samples, median, MAD, tolerance, budget, hard limit, and both statuses;
+- Node, browser, operating system, architecture, CPU count, and CI metadata;
+- repository, revision, workflow run, and run-attempt metadata when available;
+- a comparison key for matching compatible environments.
+
+Compare only artifacts with the same format, contract version, tier
+configuration, fixture fingerprint, comparison key, and measurement name.
+Budget changes require review of this document and the numeric contract; hard
+limits should remain broad safety boundaries rather than expected timings.
