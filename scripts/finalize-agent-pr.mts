@@ -3,6 +3,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isAgentBranch } from '../src/coordination/agent-branch.mts';
+import { githubRepositorySlug } from '../src/coordination/github-repository.mts';
 
 function capture(command: string, args: string[]): string {
   return execFileSync(command, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -26,6 +27,7 @@ function main(): void {
   process.chdir(root);
   const branch = capture('git', ['branch', '--show-current']);
   if (!isAgentBranch(branch)) throw new Error(`Refusing to finalize non-agent branch: ${branch || '(detached HEAD)'}`);
+  const repository = githubRepositorySlug(capture('git', ['remote', 'get-url', 'origin']));
   const expectedHead = capture('git', ['rev-parse', 'HEAD']);
   requireExpectedHead(expectedHead, 'before local verification');
   run('npm', ['run', 'verify:local']);
@@ -34,14 +36,14 @@ function main(): void {
   requireExpectedHead(expectedHead, 'after push');
 
   const pr = JSON.parse(capture('gh', [
-    'pr', 'view', '--json', 'number,isDraft,headRefOid,headRefName,baseRefName,url'
+    'pr', 'view', '--repo', repository, '--json', 'number,isDraft,headRefOid,headRefName,baseRefName,url'
   ])) as { number: number; isDraft: boolean; headRefOid: string; headRefName: string; baseRefName: string; url: string };
   if (pr.headRefName !== branch || pr.headRefOid !== expectedHead) {
     throw new Error(`PR head does not match verified HEAD: verified=${expectedHead} remote=${pr.headRefOid}`);
   }
   if (pr.baseRefName !== 'main') throw new Error(`Refusing automatic promotion to non-main base: ${pr.baseRefName}`);
   requireExpectedHead(expectedHead, 'before Ready promotion');
-  if (pr.isDraft) run('gh', ['pr', 'ready', String(pr.number)]);
+  if (pr.isDraft) run('gh', ['pr', 'ready', String(pr.number), '--repo', repository]);
   console.log(`PR #${pr.number} is Ready at exact verified HEAD ${expectedHead}; repository drain automation owns merge completion.`);
 }
 
