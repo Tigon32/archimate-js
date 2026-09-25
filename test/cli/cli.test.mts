@@ -142,9 +142,9 @@ async function reportExportTest(directory: string): Promise<void> {
     const reportSvg = await readFile(path.join(directory, 'report.svg'), 'utf8');
     const reportPng = await readFile(path.join(directory, 'report.png'));
     const reportPdf = await readFile(path.join(directory, 'report.pdf'));
-    assert.match(reportSvg, /viewBox="3 3 534 194"/);
+    assert.match(reportSvg, /viewBox="8 8 524 184"/);
     assert.match(reportSvg, /preserveAspectRatio="xMidYMid meet"/);
-    assert.deepEqual(pngDimensions(reportPng), { width: 1068, height: 388 });
+    assert.deepEqual(pngDimensions(reportPng), { width: 1048, height: 368 });
     assert.equal(reportPdf.subarray(0, 5).toString('ascii'), '%PDF-');
 }
 
