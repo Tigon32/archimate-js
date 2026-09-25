@@ -6,7 +6,7 @@ import type {
   LintReporter, LintResult, LintRule, LintSeverity, LintSubject
 } from './types.mjs';
 
-const RULE_ID = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/;
+const RULE_ID = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*(?:\/[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*)?$/;
 const SEVERITIES = new Set<LintSeverity>(['error', 'warning', 'info']);
 
 export interface LintEngine {
@@ -46,13 +46,16 @@ function runRules(model: DeepReadonly<ModelDto>,
   const findings: LintFinding[] = [];
   const diagnostics: LintDiagnostic[] = [];
   const changedSubjectIds = Object.freeze([...config.changedSubjectIds]);
-  for (const ruleId of config.enabledRuleIds) {
+  const rulesToRun = config.enabledRuleIds.filter((ruleId) =>
+    config.severityOverrides[ruleId] !== 'off');
+  for (const ruleId of rulesToRun) {
     try {
       const rule = rules.get(ruleId)!;
       const drafts = rule.evaluate(model, Object.freeze({ mode: config.mode, changedSubjectIds }));
       if (!Array.isArray(drafts)) throw new TypeError('Rule returned an invalid result.');
+      const severityOverride = config.severityOverrides[ruleId];
       findings.push(...drafts.map((draft) => normalizeFinding(ruleId, draft, model,
-        config.severityOverrides[ruleId])));
+        severityOverride === 'off' ? undefined : severityOverride)));
     } catch {
       diagnostics.push({ code: 'LINT_RULE_FAILED', ruleId,
         message: `Lint rule "${ruleId}" failed; other rules continued.` });
@@ -61,7 +64,7 @@ function runRules(model: DeepReadonly<ModelDto>,
   findings.sort(compareFindings);
   diagnostics.sort((left, right) => compare(left.ruleId, right.ruleId));
   const result = deepFreeze({ findings, diagnostics,
-    execution: { mode: config.mode, rulesRun: config.enabledRuleIds.length } });
+    execution: { mode: config.mode, rulesRun: rulesToRun.length } });
   if (reporter) {
     result.findings.forEach((finding) => reporter.reportFinding(finding));
     result.diagnostics.forEach((diagnostic) => reporter.reportDiagnostic(diagnostic));

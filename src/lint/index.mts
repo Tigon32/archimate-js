@@ -3,5 +3,5 @@ export { BUILTIN_LINT_RULES, lintModel } from './rules.mjs';
 export type {
   DeepReadonly, LintConfig, LintDiagnostic, LintExecutionSummary, LintFinding,
   LintFindingDraft, LintRemediation, LintResult, LintRule, LintRuleContext,
-  LintReporter, LintRunMode, LintSeverity, LintSubject
+  LintReporter, LintRunMode, LintSeverity, LintSeverityOverride, LintSubject
 } from './types.mjs';
