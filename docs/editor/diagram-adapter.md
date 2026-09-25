@@ -38,7 +38,7 @@ adapts a Viewer or Modeler canvas, element factory, event bus, selection
 service, and (for editing) modeling service. Pass the modeling service from
 `instance.get('modeling')` to route native
 `moveElements`, `resizeShape`, `updateLabel`, `createConnection`, `reconnect`,
-and single-item removal operations into the adapter
+and single- or multi-item removal operations into the adapter
 before diagram-js's command stack runs:
 
 ```ts
@@ -55,10 +55,14 @@ const detach = editor.attach(activeViewId, port);
 It draws one active view from plain projection values, maps selection back to
 view IDs, and clears canvas elements and listeners and restores modeling methods
 on detach. Each supported move, resize, label, relationship, or removal gesture becomes one DTO
-command; undo and redo rerender the same active view from DTO history. A move
-is supported for one node within its current parent. Multi-node moves,
-reparenting, and attachment gestures are rejected before diagram-js can mutate
-state. Node projections include semantic type/name and
+command; undo and redo rerender the same active view from DTO history. `move`
+uses absolute diagram-space `x`/`y` coordinates for one node.
+`move-many` uses the same absolute coordinate shape for each entry:
+`{ type: 'move-many', viewId, moves: [{ nodeId, x, y }] }`. All nodes must
+already exist in the same view and remain under their current parent; nested
+children and attached endpoint waypoints follow as they do for single-node
+moves. Reparenting and attachment gestures are rejected before diagram-js can
+mutate state. Node projections include semantic type/name and
 style; connection projections include relationship type/name, style, and
 endpoints. Renderer-only facades and canvas elements remain private to the
 port. The headless `CanvasPort` contract also supports ID-only commands.
@@ -67,9 +71,8 @@ New live relationships require an explicit relationship type accepted by the
 existing ArchiMate rule service. The port stores the semantic relationship and
 view connection in one command. Reconnecting changes semantic endpoints only
 when no other view connection refers to the relationship; shared relationships
-cannot be retargeted through one view. Multi-item deletion is rejected as one
-unsupported gesture. Removing a view node removes attached view connections
-but retains semantic elements and relationships.
+cannot be retargeted through one view. Removing one or more view nodes removes
+attached view connections but retains semantic elements and relationships.
 
 The DTO adapter validates each relationship connect and every
 endpoint-changing reconnect against the reviewed ArchiMate 3.2 decision service
@@ -104,9 +107,18 @@ same reviewed row as `ServingRelationship`. The canvas port's immediate gesture
 affordance still comes from legacy rules; aligning that UI hint and custom
 profiles is separate work under #102.
 
-The adapter's move, resize, connect, reconnect, delete, and presentation label
-commands use a snapshot-backed undo/redo stack. A node move carries its nested
-children and attached endpoints. UI selection is
+The adapter's move, move-many, resize, connect, reconnect, delete, delete-many,
+apply-layout-patch, and presentation label commands use a snapshot-backed
+undo/redo stack. A node move carries its nested children and attached
+endpoints. `delete-many` removes selected view nodes and view connections in
+one undo step, deduplicating overlaps such as a selected connection already
+removed by a selected endpoint node; semantic elements and relationships are
+retained. `apply-layout-patch` applies a `LayoutPatch` from `src/layout` as one
+undoable geometry edit. It validates the patch view, item existence, integer
+node geometry and waypoints, and current geometry (`before` when applying
+`after`, `after` when applying `before`) before changing node bounds or
+connection waypoints. Stale patches fail with stable content-free codes such as
+`DTO_LAYOUT_PATCH_STALE` and leave history unchanged. UI selection is
 ephemeral. `getModel()`, `project()`, and change events return detached values,
 and `serialize()` saves validated DTO JSON.
 

@@ -15,6 +15,7 @@ export type { AccessibleOutlineSearchResult } from './outline-search.js';
 export type { AccessibleOutline, AccessibleOutlineNode, AccessibleOutlineRelationship,
   AccessibleOutlineOptions } from './accessible-outline.js';
 export { DiagramAdapter } from './editor.js';
+export { EditorCommandError } from './editor-view.js';
 export { RelationshipEditError } from './editor-diagnostics.js';
 export type {
   RelationshipEditDiagnostic, RelationshipEditDiagnosticCategory,
@@ -41,6 +42,7 @@ export {
   assessModelDtoEditingEligibility, checkMeffEditingEligibility, createDtoEditorFromMeff
 } from './eligibility.js';
 export type { CanvasPort, CanvasProjection, EditorCommand, EditorEvent } from './editor.js';
+export type { EditorCommandErrorCode } from './editor-view.js';
 export type { DtoEditingEligibility, DtoEditingReason, DtoMeffEditorEntry } from './eligibility.js';
 export type {
   ConceptPropertyDto, DtoDiagnostic, ElementDto, ModelDto, PointDto, PropertyDefinitionDto,

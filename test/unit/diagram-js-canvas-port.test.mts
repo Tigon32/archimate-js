@@ -144,8 +144,9 @@ it('rejects semantic endpoint mismatches and shared relationship retargeting ato
   expect(editor.serialize()).toBe(beforeRetarget);
   expect(connections.get('shared-connection')).toMatchObject({ source: { id: 'node-component' },
     target: { id: 'node-service' } });
-  expect(() => modeling.removeElements([shapes.get('node-component'), shapes.get('node-service')]))
-    .toThrow();
+  modeling.removeElements([shapes.get('node-component'), connections.get('shared-connection')]);
+  expect(editor.getModel().views[0].nodes.some((item) => item.id === 'node-component')).toBe(false);
+  expect(editor.undo()).toBe(true);
   expect(editor.serialize()).toBe(beforeRetarget);
   detach();
 });
@@ -204,6 +205,27 @@ it('routes move, resize, and label intents to one DTO history before native muta
   detach();
   expect(modeling.moveElements).toBe(nativeMove);
   expect(modeling.nativeCalls).toBe(0);
+});
+
+it('routes multi-node move and multi-item deletion as batch DTO commands', () => {
+  const { editor, port, modeling, shapes, connections } = setup();
+  const detach = editor.attach('view-dto-export', port);
+  const original = editor.getModel();
+  modeling.moveElements([shapes.get('node-component'), shapes.get('node-service')], { x: 8, y: 12 });
+  expect(editor.getModel().views[0].nodes[0]).toMatchObject({ x: 28, y: 52 });
+  expect(editor.getModel().views[0].nodes[1]).toMatchObject({ x: 308, y: 52 });
+  expect(editor.undo()).toBe(true);
+  expect(editor.getModel()).toEqual(original);
+
+  modeling.removeElements([shapes.get('node-component'), connections.get('serving-connection')]);
+  expect(editor.getModel().views[0].nodes.some((item) => item.id === 'node-component')).toBe(false);
+  expect(editor.getModel().views[0].connections).toEqual([]);
+  expect(editor.getModel().elements).toEqual(original.elements);
+  expect(editor.getModel().relationships).toEqual(original.relationships);
+  expect(editor.undo()).toBe(true);
+  expect(editor.getModel()).toEqual(original);
+  expect(modeling.nativeCalls).toBe(0);
+  detach();
 });
 
 it('restores modeling hooks when a view is detached or switched', () => {
