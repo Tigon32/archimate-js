@@ -27,6 +27,7 @@
     "test/browser/accessible-outline.mts",
     "scripts/check-secrets.mts",
     "test/security/check-secrets.test.mts",
+    "test/security/codeowners.test.mts",
     "scripts/check-tracked-paths.mts",
     "scripts/local-verification.mts",
     "scripts/finalize-agent-pr.mts",

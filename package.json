@@ -43,7 +43,7 @@
     "test:tokens": "node scripts/build-notation-assets.mjs --check",
     "test:package": "node test/smoke/package.test.mts",
     "check:source-policy": "node scripts/check-source-policy.mjs",
-    "test:security": "node test/security/logger.test.mjs",
+    "test:security": "node test/security/logger.test.mjs && node --test test/security/codeowners.test.mts",
     "test:secrets": "node test/security/check-secrets.test.mts && node scripts/check-secrets.mts",
     "test:fixtures": "node test/security/scan-fixtures.mjs",
     "test:typecheck": "tsc --noEmit && tsc -p tsconfig.cli-tests.json",

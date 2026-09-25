@@ -10,10 +10,12 @@ structural check over the repository's two existing non-code inventories:
   [`docs/research/README.md`](../research/README.md).
 
 This is Phase 1 of [issue #109](https://github.com/Tigon32/archimate-js/issues/109):
-narrow, structural validation for the two inventories that already exist. It
-does not implement the issue's later scope (CODEOWNERS, secrets scanning,
-SBOMs, attestations, or broad heuristic content scanning); those remain open
-follow-up work.
+narrow, structural validation for the two inventories that already exist. The
+review-ownership map for governance paths is tracked separately in
+[child issue #237](https://github.com/Tigon32/archimate-js/issues/237). This
+document does not claim that CODEOWNERS approval is required: repository branch
+protection must enable required code-owner reviews. Other later scope in #109,
+including broader content scanning and reviewed exceptions, remains open.
 
 ## What it checks
 
