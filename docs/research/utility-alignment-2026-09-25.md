@@ -2,65 +2,88 @@
 
 ## Decision
 
-Align the first-party `min-dash` and `min-dom` dependencies with the versions
-required by `diagram-js@15.26.0`:
+Align the first-party `min-dash` and `min-dom` dependencies with
+`diagram-js@15.26.0`:
 
-- `min-dash` `^5.1.0`
-- `min-dom` `^5.3.0`
+- `min-dash` `^3.8.0` to `^5.1.0`
+- `min-dom` `^3.1.3` to `^5.3.0`
 
-Keep `tiny-svg` at `^2.2.2` for now. The version 4 browser experiment retained
-the expected bundle API but was not accepted as a behavior-preserving change
-until the browser smoke failure is independently explained.
+Keep `tiny-svg` at `^2.2.2`. Do not add direct dependencies for `didi`,
+`path-intersection`, or `object-refs`; they are diagram-js internals and
+first-party source does not import them.
 
-No direct dependency was added for `didi`, `path-intersection`, or
-`object-refs`. They are diagram-js internals and are not imported by
-first-party source.
+## First-party import inventory
 
-## Evidence
+The inventory scans `lib/**/*.js` import declarations.
 
-The first-party source imports `min-dash` in renderer, importer, modeling,
-moddle, and feature modules; `min-dom` in canvas and renderer modules; and
-`tiny-svg` in renderer and label-preview modules. No first-party source import
-of `didi`, `path-intersection`, or `object-refs` was found. The existing package
-contract test already asserts that `object-refs` remains owned by diagram-js.
+| Package | Imported symbols |
+| --- | --- |
+| `min-dash` | `assign`, `every`, `filter`, `find`, `findIndex`, `forEach`, `has`, `isArray`, `isDefined`, `isNumber`, `isObject`, `isString`, `isUndefined`, `keys`, `map`, `matchPattern`, `omit`, `pick`, `reduce`, `some`, `sortBy` |
+| `min-dom` | `delegate`, `domify`, `query`, `remove` |
+| `tiny-svg` | `append`, `attr`, `classes`, `create`, `innerSVG`, `remove` |
 
-Before alignment, the lockfile installed:
+`BaseViewer.js` imports `domify`, `query`, and `remove`; `CanvasCreate.js`
+imports `delegate`; `ArchimateRenderer.js` and
+`ArchimateReplacePreview.js` import `query`. This corrects the prior
+incomplete `min-dom` inventory.
 
-| Package | Installed copies | Relevant versions |
-| --- | ---: | --- |
-| `min-dash` | 4 | 3.8.1, 5.1.0 |
-| `min-dom` | 3 | 3.2.1, 5.3.0 |
-| `tiny-svg` | 2 | 2.2.4, 4.1.4 |
-| `didi` | 1 | 11.0.0 |
-| `path-intersection` | 1 | 4.2.1 |
-| `object-refs` | 1 | 0.4.0 |
+## API and changelog review
 
-After alignment, the lockfile installs two `min-dash` copies, one `min-dom`
-copy, and two `tiny-svg` copies. The remaining `min-dash@3.8.1` copy is required
-by the legacy `moddle-xml` dependency tree and is not safely removable by this
-change.
+The public export lists for `min-dash@3.8.1` and `min-dash@5.1.0` are identical
+for every first-party symbol above. `min-dom@3.2.1` and `min-dom@5.3.0` both
+export `delegate`, `domify`, `query`, and `remove`.
 
-The accepted two-package alignment decreases the development browser bundle
-from `3,936,153` bytes to `3,900,900` bytes, a reduction of `35,253` bytes
-(0.9%). The full three-package experiment reached `3,882,444` bytes, but was
-not accepted because the browser smoke gate still failed and the behavior
-impact of the `tiny-svg` change was not isolated.
-Webpack compilation passed in both configurations. The aligned packages expose
-the same imported symbols used by this project; the only observed `min-dom` export change is
-the event/matches implementation, while the existing source imports
-`assignStyle`, `attr`, `classes`, `clear`, `closest`, `delegate`, `query`,
-`queryAll`, and `remove`, all retained by version 5.
+The reviewed upstream changelogs document the compatibility boundary:
 
-The public npm metadata for all six packages declares the MIT license. The
-aligned packages are maintained in the bpmn.io utility repositories and match
-the dependency ranges declared by diagram-js 15.26.0. No license or notice
-change is required.
+- [`min-dash` v5.0.0](https://github.com/bpmn-io/min-dash/blob/v5.1.0/CHANGELOG.md#500)
+  is ESM-only and requires Node 20.12 or later for CommonJS consumers; v4.0.0
+  emits ES2018. This package requires Node `>=22.12.0` and consumes the utility
+  through webpack/browser ESM, so both requirements are satisfied.
+- [`min-dom` v5.0.0](https://github.com/bpmn-io/min-dom/blob/v5.3.0/CHANGELOG.md#500)
+  is ESM-only and drops UMD output. Its v4.0.0 boundary requires ES2018 and
+  native `Element#matches`; the supported browser build already targets modern
+  browsers through webpack. Version 5.3.0 updates `domify` to 3.0.0, but the
+  public default `domify` export and the three other imported functions remain
+  present.
 
-## Validation
+All six reviewed packages declare MIT licenses in the resolved npm metadata.
+No third-party notice changes are required.
 
-The dependency graph, browser compilation, package contract, packed-consumer,
-Node compatibility, and repository verification checks are run as part of the
-issue validation. The browser smoke test fails at the pre-existing
-“import and export named and unnamed connections” stage with the baseline
-dependency set as well as with the aligned `min-dash`/`min-dom` set; this issue
-does not change browser assertions or claim that failure as fixed.
+## Reproducible measurement
+
+Measurements use Node `v26.8.2`, npm `11.19.1`, macOS, clean detached
+worktrees for baseline and accepted alignment, and their committed
+`package-lock.json` files. The browser artifact is
+`.ci-build/archimate-js.js`; the byte count command is:
+
+```sh
+wc -c .ci-build/archimate-js.js
+```
+
+| Variant | Exact checkout | Commands | Bytes | Canonical browser result |
+| --- | --- | --- | ---: | --- |
+| Baseline | `2d502dbd03901d0aa1325713bc173ebfa489e95f` | `npm ci --ignore-scripts && npm run compile:browser && npm run test:browser` | 3,936,153 | pass |
+| Accepted alignment | `26ee0c7bdd3460aae58a25e9c0d430411b546e73` | `npm ci --ignore-scripts && npm run compile:browser && npm run test:browser` | 3,900,900 | pass |
+
+The accepted alignment reduces the development browser artifact by 35,253
+bytes (0.9%).
+
+`tiny-svg` remains unchanged. Its major-version upgrade was not assessed with
+a committed lockfile and retained browser log, so this record makes no
+compatibility, bundle-size, or failure claim about version 4. A future update
+must be evaluated as a separate, reproducible dependency change rather than
+being inferred from this alignment.
+
+`npm run test:browser` is the canonical browser command. It first runs
+`compile:model-dto`, `compile:browser`, `compile:model-dto:browser`, and
+`compile:read-only-example`, then runs browser smoke, DTO save, theme contrast,
+accessible outline, and diagram-js 15 core checks. Invoking
+`node test/browser/smoke.mjs` alone is not equivalent because it skips those
+prebuilds, including `.ci-build/model-dto.js`.
+
+The captured canonical logs have SHA-256 digests:
+
+| Variant | Log SHA-256 |
+| --- | --- |
+| Baseline | `e70e45a0c0c9793793ecee48bb567dfcd77b9dff8fa7ef45f7a4c86139841620` |
+| Accepted alignment | `424c036a43d3a924a4926f71406aee6ac7db8eb48b57cfadf2b4fe5d6920106f` |
