@@ -1,8 +1,8 @@
-import { validateRelationshipSemantics } from '../../dist/language/relationship-semantics.mjs';
+import { validateRelationshipSemantics } from '../../src/language/relationship-semantics.mjs';
 import type {
   RelationshipEndpointKind,
   RelationshipSemanticResult
-} from '../../dist/language/relationship-semantics.mjs';
+} from '../../src/language/relationship-semantics.mjs';
 
 export function decideRelationshipSemantics(sourceType: string, relationshipType: string,
   targetType: string, sourceKind: RelationshipEndpointKind = 'element',

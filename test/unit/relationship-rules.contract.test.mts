@@ -205,11 +205,13 @@ describe('live RuleProvider relationship authority', () => {
   it('does not consult the generated legacy relationship utility in RuleProvider', () => {
     const source = readFileSync('lib/features/rules/ArchimateRules.js', 'utf8');
     const adapter = readFileSync('lib/util/RelationshipSemanticsAdapter.mts', 'utf8');
+    const generatedAdapter = readFileSync('lib/util/RelationshipSemanticsAdapter.js', 'utf8');
     expect(source).toContain('RelationshipSemanticsAdapter');
     expect(source).not.toMatch(/isRelationshipAllowed|RelationshipUtil/);
     expect(adapter).toContain('validateRelationshipSemantics');
-    expect(adapter).toContain('../../dist/language/relationship-semantics.mjs');
+    expect(adapter).toContain('../../src/language/relationship-semantics.mjs');
     expect(adapter).not.toMatch(/isRelationshipAllowed|RelationshipUtil/);
+    expect(generatedAdapter).toContain('../../dist/language/relationship-semantics.mjs');
   });
 });
 
