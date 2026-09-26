@@ -346,6 +346,22 @@
     "content_sha256": "08796564f14f4ae94faedef404130798d09cefe2148991b459e4febafae898b6"
   },
   {
+    "id": "synthetic-theme-chooser-two-view-meff",
+    "path": "test/fixtures/synthetic/theme-chooser-two-view-meff.xml",
+    "classification": "SYNTHETIC",
+    "purpose": "Exercise the read-only example theme chooser persistence across a real BaseViewer.openView switch.",
+    "provenance": "Hand-authored from the repository's synthetic read-only showcase MEFF fixture using generic labels and a second synthetic diagram view; contains no third-party or private architecture data.",
+    "contains_private_data": false,
+    "expected_coverage": [
+      "real browser viewer mount",
+      "two diagram views",
+      "first-view-only and second-view-only rendered node ids",
+      "theme persistence across openView"
+    ],
+    "review_after": "2026-12-23",
+    "content_sha256": "44d4cd2dca5fc6037375d01229e7d650630e1d2249e66a0d6d90f471b7b222a9"
+  },
+  {
     "id": "synthetic-lint-cli-clean",
     "path": "test/fixtures/synthetic/lint-cli-clean.xml",
     "classification": "SYNTHETIC",
