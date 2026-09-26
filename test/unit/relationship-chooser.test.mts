@@ -3,6 +3,7 @@
 import { expect, it } from 'vitest';
 import {
   RelationshipChooser,
+  clampChooserPosition,
   evaluateRelationshipChoices,
   quickCreateCandidates
 } from '../../src/modeler/relationship-chooser.js';
@@ -76,4 +77,43 @@ it('supports keyboard selection, direction, accessible names, and Escape cancell
     .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   expect(cancelled).toBe(true);
   void escape;
+});
+
+it('clamps placement, contains focus and pointer interaction, and keeps one chooser active', () => {
+  expect(clampChooserPosition({ x: 790, y: 590 }, { width: 360, height: 220 },
+    { width: 800, height: 600 })).toEqual({ x: 428, y: 368 });
+  const background = document.createElement('button');
+  document.body.append(background);
+  const editor = { onChoose: () => {}, onCancel: () => {} };
+  const choice = evaluateRelationshipChoices('ApplicationComponent', 'ApplicationFunction',
+    ['Serving']);
+  const first = new RelationshipChooser({ choice, anchor: { x: 790, y: 590 }, ...editor });
+  expect(document.querySelector<HTMLElement>('[role="dialog"]')?.style.left).toBe('652px');
+  const second = new RelationshipChooser({ choice, returnFocus: background, ...editor });
+  expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1);
+  background.focus();
+  expect(document.activeElement).toBe(document.querySelector('[role="dialog"] input'));
+  background.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+  expect(document.activeElement).toBe(document.querySelector('[role="dialog"] input'));
+  second.close();
+  void first;
+});
+
+it('shows distinct feedback when all candidates are unsupported or disallowed', () => {
+  const unsupported = new RelationshipChooser({
+    choice: evaluateRelationshipChoices('SyntheticSource', 'SyntheticTarget', ['Flow'],
+      () => ({ archimateVersion: '3.2', decision: 'unsupported', reasonCode: 'COMBINATION_UNSUPPORTED' })),
+    onChoose: () => {}
+  });
+  expect(document.querySelector('[role="status"]')?.textContent)
+    .toBe('No allowed relationship types. 1 unsupported for this direction.');
+  unsupported.close(false);
+  const disallowed = new RelationshipChooser({
+    choice: evaluateRelationshipChoices('SyntheticSource', 'SyntheticTarget', ['Flow'],
+      () => ({ archimateVersion: '3.2', decision: 'disallowed', reasonCode: 'MATRIX_DISALLOWED' })),
+    onChoose: () => {}
+  });
+  expect(document.querySelector('[role="status"]')?.textContent)
+    .toBe('No allowed relationship types. 1 known disallowed.');
+  disallowed.close(false);
 });

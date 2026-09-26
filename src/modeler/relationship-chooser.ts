@@ -85,6 +85,22 @@ export interface RelationshipChooserOptions {
   returnFocus?: { focus(): void } | null;
 }
 
+export function clampChooserPosition(
+  anchor: { x: number; y: number },
+  dialog: { width: number; height: number },
+  viewport: { width: number; height: number },
+  margin = 12
+): { x: number; y: number } {
+  const maxX = Math.max(margin, viewport.width - dialog.width - margin);
+  const maxY = Math.max(margin, viewport.height - dialog.height - margin);
+  return {
+    x: Math.min(Math.max(margin, anchor.x), maxX),
+    y: Math.min(Math.max(margin, anchor.y), maxY)
+  };
+}
+
+const activeChoosers = new WeakMap<Document, RelationshipChooser>();
+
 export class RelationshipChooser {
   private readonly dialog = document.createElement('div');
   private readonly input = document.createElement('input');
@@ -93,11 +109,28 @@ export class RelationshipChooser {
   private readonly returnFocus: { focus(): void } | null;
   private selectedIndex = 0;
   private closed = false;
+  private readonly containFocus = (event: FocusEvent): void => {
+    if (event.target instanceof Node && !this.dialog.contains(event.target)) this.input.focus();
+  };
+  private readonly preventBackgroundPointer = (event: Event): void => {
+    if (event.target instanceof Node && !this.dialog.contains(event.target)) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.input.focus();
+    }
+  };
 
   constructor(private readonly options: RelationshipChooserOptions) {
     this.returnFocus = options.returnFocus ?? document.activeElement as { focus(): void } | null;
+    activeChoosers.get(document)?.close(false);
+    activeChoosers.set(document, this);
     this.configure();
     document.body.append(this.dialog);
+    this.position();
+    document.addEventListener('focusin', this.containFocus, true);
+    document.addEventListener('pointerdown', this.preventBackgroundPointer, true);
+    document.addEventListener('mousedown', this.preventBackgroundPointer, true);
+    document.addEventListener('click', this.preventBackgroundPointer, true);
     this.render();
     this.input.focus();
   }
@@ -105,8 +138,13 @@ export class RelationshipChooser {
   close(cancel = true): void {
     if (this.closed) return;
     this.closed = true;
+    document.removeEventListener('focusin', this.containFocus, true);
+    document.removeEventListener('pointerdown', this.preventBackgroundPointer, true);
+    document.removeEventListener('mousedown', this.preventBackgroundPointer, true);
+    document.removeEventListener('click', this.preventBackgroundPointer, true);
     this.dialog.remove();
     this.returnFocus?.focus();
+    if (activeChoosers.get(document) === this) activeChoosers.delete(document);
     if (cancel) this.options.onCancel?.();
   }
 
@@ -123,10 +161,6 @@ export class RelationshipChooser {
       padding: '16px', border: '1px solid #8b929a', borderRadius: '8px',
       background: '#fff', color: '#202124', boxShadow: '0 8px 28px rgb(0 0 0 / 24%)'
     });
-    if (this.options.anchor) {
-      this.dialog.style.left = `${this.options.anchor.x}px`;
-      this.dialog.style.top = `${this.options.anchor.y}px`;
-    }
     this.input.type = 'search';
     this.input.setAttribute('aria-label', 'Filter relationships');
     this.input.setAttribute('aria-controls', 'am-relationship-chooser-options');
@@ -137,6 +171,20 @@ export class RelationshipChooser {
     this.dialog.append(title, this.direction(), this.input, this.status, this.list);
     this.input.addEventListener('input', () => this.render());
     this.input.addEventListener('keydown', (event) => this.keydown(event));
+  }
+
+  private position(): void {
+    if (!this.options.anchor) return;
+    const bounds = this.dialog.getBoundingClientRect();
+    const position = clampChooserPosition(this.options.anchor, {
+      width: bounds.width || 360,
+      height: bounds.height || 220
+    }, {
+      width: window.innerWidth,
+      height: window.innerHeight
+    });
+    this.dialog.style.left = `${position.x}px`;
+    this.dialog.style.top = `${position.y}px`;
   }
 
   private direction(): HTMLParagraphElement {
@@ -153,8 +201,7 @@ export class RelationshipChooser {
       candidate.type.toLowerCase().includes(needle));
     this.selectedIndex = Math.min(this.selectedIndex, Math.max(0, results.length - 1));
     this.status.textContent = results.length ? `${results.length} relationship types available` :
-      `${this.options.choice.disallowed.length} known disallowed; ` +
-      `${this.options.choice.unsupported.length} unsupported for this direction`;
+      this.feedbackText();
     this.list.replaceChildren(...results.map((candidate, index) => {
       const option = document.createElement('li');
       option.id = `am-relationship-option-${index}`;
@@ -172,6 +219,18 @@ export class RelationshipChooser {
       results.length ? `am-relationship-option-${this.selectedIndex}` : '');
   }
 
+  private feedbackText(): string {
+    const { disallowed, unsupported } = this.options.choice;
+    if (!disallowed.length && unsupported.length) {
+      return `No allowed relationship types. ${unsupported.length} unsupported for this direction.`;
+    }
+    if (disallowed.length && !unsupported.length) {
+      return `No allowed relationship types. ${disallowed.length} known disallowed.`;
+    }
+    return `No allowed relationship types. ${disallowed.length} known disallowed; ` +
+      `${unsupported.length} unsupported for this direction.`;
+  }
+
   private keydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
       event.preventDefault();
@@ -185,6 +244,9 @@ export class RelationshipChooser {
     } else if (event.key === 'Enter' && this.list.children.length) {
       event.preventDefault();
       (this.list.children[this.selectedIndex] as HTMLElement).click();
+    } else if (event.key === 'Tab') {
+      event.preventDefault();
+      this.input.focus();
     }
   }
 }

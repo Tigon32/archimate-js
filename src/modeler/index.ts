@@ -29,6 +29,7 @@ import type { ModelDto } from '../model-dto/types.js';
 export { DiagramJsCanvasPort, DtoModelerSession };
 export {
   RelationshipChooser,
+  clampChooserPosition,
   evaluateRelationshipChoices,
   quickCreateCandidates,
   relationshipLabel

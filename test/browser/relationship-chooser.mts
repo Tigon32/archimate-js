@@ -95,7 +95,7 @@ try {
   });
   assert.deepEqual(result, {
     selected: 'Flow',
-    unsupportedStatus: '0 known disallowed; 6 unsupported for this direction',
+    unsupportedStatus: 'No allowed relationship types. 6 unsupported for this direction.',
     unchanged: true
   });
   console.log('relationship chooser browser flow passed');
