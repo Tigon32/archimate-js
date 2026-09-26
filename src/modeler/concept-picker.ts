@@ -48,6 +48,7 @@ export interface ConceptPickerResult {
 
 const NODE_WIDTH = 140;
 const NODE_HEIGHT = 70;
+const activePickers = new WeakMap<Document, ConceptPicker>();
 
 export function conceptLabel(record: Pick<ConceptRecord, 'type'>): string {
   return record.type.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
@@ -139,6 +140,8 @@ export class ConceptPicker {
     this.input = document.createElement('input');
     this.list = document.createElement('ul');
     this.resultsStatus = document.createElement('p');
+    activePickers.get(document)?.close();
+    activePickers.set(document, this);
     this.initialize(options.host ?? document.body);
   }
 
@@ -149,6 +152,7 @@ export class ConceptPicker {
     document.removeEventListener('click', this.preventBackgroundPointer, true);
     this.dialog.remove();
     this.returnFocus?.focus();
+    if (activePickers.get(document) === this) activePickers.delete(document);
   }
 
   private initialize(host: HTMLElement): void {

@@ -117,3 +117,24 @@ it('keeps background focus and pointer interaction inside the modal', () => {
   expect(document.activeElement).toBe(input);
   picker.close();
 });
+
+it('replaces an already-open picker in the same document without competing focus traps', () => {
+  const editor = { createId: () => 'unused', execute: () => {}, startNameEditing: () => {} };
+  const first = new ConceptPicker({
+    viewId: 'view-synthetic', position: { x: 10, y: 20 }, anchor: { x: 10, y: 20 },
+    registry: CONCEPT_REGISTRY, editor
+  });
+  const second = new ConceptPicker({
+    viewId: 'view-synthetic', position: { x: 30, y: 40 }, anchor: { x: 30, y: 40 },
+    registry: CONCEPT_REGISTRY, editor
+  });
+  const dialogs = document.querySelectorAll('[role="dialog"]');
+  expect(dialogs).toHaveLength(1);
+  expect(dialogs[0]?.getAttribute('aria-modal')).toBe('true');
+  expect((dialogs[0] as HTMLElement).style.left).toBe('30px');
+  expect(document.activeElement).toBe(dialogs[0]?.querySelector('input'));
+  first.close();
+  expect(document.querySelector('[role="dialog"]')).toBe(dialogs[0]);
+  second.close();
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+});
