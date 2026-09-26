@@ -7,14 +7,21 @@ export interface LayoutOptions {
   padding?: number;
   clearance?: number;
   routeConnections?: boolean;
-  pins?: readonly unknown[];
+  pins?: readonly LayoutPin[];
+  changedNodeIds?: readonly string[];
+}
+
+export interface LayoutPin {
+  nodeId: string;
+  strength: 'hard' | 'soft';
 }
 
 export interface LayoutDiagnostic {
   code: 'INVALID_MODEL' | 'VIEW_NOT_FOUND' | 'UNSUPPORTED_STRATEGY' |
     'UNSUPPORTED_MODE' | 'UNSUPPORTED_CONSTRAINT' | 'UNSUPPORTED_CONNECTION' |
-    'INVALID_OPTIONS' | 'LAYOUT_FAILED';
-  severity: 'error';
+    'INVALID_OPTIONS' | 'LAYOUT_FAILED' | 'PIN_NODE_NOT_FOUND' |
+    'CHANGED_NODE_NOT_FOUND' | 'SOFT_PIN_DISPLACED' | 'INCREMENTAL_DISPLACEMENT';
+  severity: 'error' | 'warning';
   message: string;
 }
 
@@ -40,8 +47,12 @@ export interface LayoutMetrics {
   overlapCountAfter: number;
   boundsBefore: LayoutGeometry;
   boundsAfter: LayoutGeometry;
+  softPinDisplacement: number;
+  unaffectedNodeDisplacement: number;
+  violatedConstraintCount: number;
+  pinDisplacements: { nodeId: string; strength: LayoutPin['strength']; distance: number }[];
 }
 
 export type LayoutResult =
-  | { status: 'ok'; view: ViewDto; patch: LayoutPatch; metrics: LayoutMetrics; diagnostics: [] }
+  | { status: 'ok'; view: ViewDto; patch: LayoutPatch; metrics: LayoutMetrics; diagnostics: LayoutDiagnostic[] }
   | { status: 'unsupported' | 'invalid' | 'failed'; diagnostics: LayoutDiagnostic[] };

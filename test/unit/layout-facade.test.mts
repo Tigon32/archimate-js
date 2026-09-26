@@ -71,8 +71,7 @@ it('rejects unavailable requests explicitly and preserves source geometry', asyn
     const before = JSON.stringify(input);
     const options = [
       [{ strategy: 'elk-layered' }, 'UNSUPPORTED_STRATEGY'],
-      [{ strategy: 'builtin', mode: 'incremental' }, 'UNSUPPORTED_MODE'],
-      [{ strategy: 'builtin', pins: [] }, 'UNSUPPORTED_CONSTRAINT'],
+      [{ strategy: 'builtin', mode: 'incremental' }, 'INVALID_OPTIONS'],
       [{ strategy: 'builtin', hardPins: [] }, 'INVALID_OPTIONS']
     ] as const;
     for (const [request, code] of options) {
@@ -85,6 +84,92 @@ it('rejects unavailable requests explicitly and preserves source geometry', asyn
       expect('metrics' in result).toBe(false);
     }
     expect(JSON.stringify(input)).toBe(before);
+});
+
+it('keeps hard-pinned nodes fixed and reroutes connections around their final geometry', async () => {
+  const input = model();
+  const before = JSON.stringify(input);
+  const result = await layoutView(input, 'synthetic-view', {
+    strategy: 'builtin', pins: [{ nodeId: 'node-b', strength: 'hard' }]
+  });
+  expect(result.status).toBe('ok');
+  if (result.status !== 'ok') return;
+  expect(JSON.stringify(input)).toBe(before);
+  expect(result.view.nodes[1]).toMatchObject({ x: 50, y: 45, width: 100, height: 50 });
+  expect(result.metrics.pinDisplacements).toEqual([
+    { nodeId: 'node-b', strength: 'hard', distance: 0 }
+  ]);
+  expect(result.metrics.unaffectedNodeDisplacement).toBe(0);
+  expect(result.view.connections[0].waypoints[0]).toMatchObject({ kind: 'sourceAttachment' });
+  expect(result.view.connections[0].waypoints.at(-1)).toMatchObject({ kind: 'targetAttachment' });
+});
+
+it('keeps a hard-pinned container and its nested subtree unchanged', async () => {
+  const input = model();
+  const children = input.views[0].nodes;
+  input.views[0].nodes = [{ id: 'container', kind: 'container', x: 0, y: 0,
+    width: 220, height: 150, nodes: children }];
+  const before = JSON.stringify(input.views[0].nodes);
+  const result = await layoutView(input, 'synthetic-view', {
+    strategy: 'builtin', pins: [{ nodeId: 'container', strength: 'hard' }]
+  });
+  expect(result.status).toBe('ok');
+  if (result.status !== 'ok') return;
+  expect(result.view.nodes).toEqual(input.views[0].nodes);
+  expect(JSON.stringify(input.views[0].nodes)).toBe(before);
+  expect(result.patch.nodes).toEqual([]);
+});
+
+it('reports soft-pin displacement in metrics and a stable warning', async () => {
+  const input = model();
+  const result = await layoutView(input, 'synthetic-view', {
+    strategy: 'builtin', pins: [{ nodeId: 'node-b', strength: 'soft' }]
+  });
+  expect(result.status).toBe('ok');
+  if (result.status !== 'ok') return;
+  const pin = result.metrics.pinDisplacements[0];
+  expect(pin.strength).toBe('soft');
+  expect(pin.distance).toBeGreaterThan(0);
+  expect(result.metrics.softPinDisplacement).toBe(pin.distance);
+  expect(result.diagnostics).toEqual([expect.objectContaining({
+    code: 'SOFT_PIN_DISPLACED', severity: 'warning'
+  })]);
+});
+
+it('incremental layout preserves unchanged nodes and reports their displacement', async () => {
+  const input = model();
+  const options = { strategy: 'builtin' as const, mode: 'incremental' as const,
+    changedNodeIds: ['node-b'] };
+  const first = await layoutView(input, 'synthetic-view', options);
+  const second = await layoutView(input, 'synthetic-view', options);
+  expect(first.status).toBe('ok');
+  expect(second).toEqual(first);
+  if (first.status !== 'ok') return;
+  expect(first.view.nodes[0]).toMatchObject({ x: 40, y: 40, width: 100, height: 50 });
+  expect(first.metrics.unaffectedNodeDisplacement).toBe(0);
+  expect(first.metrics.movedNodeCount).toBe(1);
+});
+
+it('rejects missing pin targets and malformed incremental requests explicitly', async () => {
+  const input = model();
+  const missingPin = await layoutView(input, 'synthetic-view', {
+    strategy: 'builtin', pins: [{ nodeId: 'missing', strength: 'hard' }]
+  });
+  const missingChanged = await layoutView(input, 'synthetic-view', {
+    strategy: 'builtin', mode: 'incremental', changedNodeIds: ['missing']
+  });
+  const malformed = await layoutView(input, 'synthetic-view', {
+    strategy: 'builtin', pins: [{ nodeId: 'node-a', strength: 'soft', weight: 0.5 } as never]
+  });
+  expect(missingPin).toMatchObject({ status: 'invalid', diagnostics: [
+    { code: 'PIN_NODE_NOT_FOUND' }
+  ] });
+  expect(missingChanged).toMatchObject({ status: 'invalid', diagnostics: [
+    { code: 'CHANGED_NODE_NOT_FOUND' }
+  ] });
+  expect(malformed).toMatchObject({ status: 'invalid', diagnostics: [
+    { code: 'INVALID_OPTIONS' }
+  ] });
 });
 
 it('rejects missing endpoints and invalid DTOs without modifying the original', async () => {
