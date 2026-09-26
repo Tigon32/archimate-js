@@ -91,6 +91,9 @@ jobs:
           npm run compile:model-dto:browser
           node test/performance/browser-benchmark.mts --assert --output=test-results/performance-browser.json
 
+      - name: Measure synthetic layout quality
+        run: npm run layout:quality -- --output=artifacts/layout-quality
+
       - name: Retain primary qualification evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -101,6 +104,7 @@ jobs:
             test-results/performance-dto-diff.json
             test-results/performance-browser.json
             test-results/read-only-showcase.png
+            artifacts/layout-quality/
           if-no-files-found: warn
           retention-days: 30
 
