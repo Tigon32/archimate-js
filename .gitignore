@@ -3,6 +3,7 @@ node_modules/
 dist/
 coverage/
 test-results/
+artifacts/
 /examples/read-only/viewer.js
 /examples/read-only/outline-bridge.js
 .idea
