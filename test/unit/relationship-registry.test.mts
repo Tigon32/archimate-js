@@ -37,6 +37,49 @@ const existingRows = [
 const rowKey = (row: typeof RELATIONSHIP_SEMANTIC_ROWS[number]): string =>
   [row.sourceType, row.relationshipType, row.targetType, row.decision].join('|');
 
+function syntheticProfileInput(): unknown {
+  return {
+    id: 'synthetic-org-profile',
+    version: '2026.09',
+    kind: 'organization',
+    rows: [{
+      archimateVersion: '3.2',
+      sourceType: 'BusinessActor',
+      relationshipType: 'ServingRelationship',
+      targetType: 'TechnologyService',
+      decision: 'allowed',
+      evidenceSourceId: 'profile:synthetic-org-reviewed',
+      nonNormative: true,
+      interpretation: 'SYNTHETIC organization extension for unit testing only.'
+    }, {
+      archimateVersion: '3.2',
+      sourceType: 'ApplicationFunction',
+      relationshipType: 'AccessRelationship',
+      targetType: 'DataObject',
+      decision: 'disallowed',
+      evidenceSourceId: 'profile:synthetic-org-shadow',
+      nonNormative: true
+    }]
+  };
+}
+
+function invalidProfileInput(evidenceSourceId: string, nonNormative: boolean): unknown {
+  return {
+    id: 'synthetic-invalid',
+    version: '2026.09',
+    kind: 'organization',
+    rows: [{
+      archimateVersion: '3.2',
+      sourceType: 'BusinessActor',
+      relationshipType: 'ServingRelationship',
+      targetType: 'TechnologyService',
+      decision: 'allowed',
+      evidenceSourceId,
+      nonNormative
+    }]
+  };
+}
+
 describe('reviewed relationship registry extraction', () => {
   it('keeps the complete reviewed tuple baseline and a single frozen public projection', () => {
     expect(RELATIONSHIP_SEMANTIC_ROWS).toBe(sourceRows);
@@ -74,85 +117,45 @@ describe('reviewed relationship registry extraction', () => {
       decision: 'unsupported', reasonCode: 'RELATIONSHIP_ENDPOINT_UNSUPPORTED'
     });
   });
+});
 
+describe('semantic profile registry layering', () => {
   it('layers a non-normative profile only over unsupported core combinations', () => {
-      const before = structuredClone(sourceRows);
-      const profile = parseSemanticProfile({
-        id: 'synthetic-org-profile',
-        version: '2026.09',
-        kind: 'organization',
-        rows: [{
-          archimateVersion: '3.2',
-          sourceType: 'BusinessActor',
-          relationshipType: 'ServingRelationship',
-          targetType: 'TechnologyService',
-          decision: 'allowed',
-          evidenceSourceId: 'profile:synthetic-org-reviewed',
-          nonNormative: true,
-          interpretation: 'SYNTHETIC organization extension for unit testing only.'
-        }, {
-          archimateVersion: '3.2',
-          sourceType: 'ApplicationFunction',
-          relationshipType: 'AccessRelationship',
-          targetType: 'DataObject',
-          decision: 'disallowed',
-          evidenceSourceId: 'profile:synthetic-org-shadow',
-          nonNormative: true
-        }]
-      });
+    const before = structuredClone(sourceRows);
+    const profile = parseSemanticProfile(syntheticProfileInput());
 
-      expect(validateRelationshipSemantics({
-        sourceType: 'BusinessActor',
-        relationshipType: 'ServingRelationship',
-        targetType: 'TechnologyService'
-      }, profile)).toMatchObject({
-        decision: 'allowed',
-        decisionLayer: 'synthetic-org-profile',
-        reasonCode: 'PROFILE_ALLOWED',
-        nonNormative: true
-      });
-      expect(validateRelationshipSemantics({
-        sourceType: 'ApplicationFunction',
-        relationshipType: 'AccessRelationship',
-        targetType: 'DataObject'
-      }, profile)).toMatchObject({
-        decision: 'allowed',
-        decisionLayer: 'core',
-        reasonCode: 'MATRIX_ALLOWED'
-      });
-      expect(Object.isFrozen(sourceRows)).toBe(true);
-      expect(sourceRows.every((row) => Object.isFrozen(row))).toBe(true);
-      expect(sourceRows).toEqual(before);
+    expect(validateRelationshipSemantics({
+      sourceType: 'BusinessActor',
+      relationshipType: 'ServingRelationship',
+      targetType: 'TechnologyService'
+    }, profile)).toMatchObject({
+      decision: 'allowed',
+      decisionLayer: 'synthetic-org-profile',
+      reasonCode: 'PROFILE_ALLOWED',
+      nonNormative: true
+    });
+    expect(validateRelationshipSemantics({
+      sourceType: 'ApplicationFunction',
+      relationshipType: 'AccessRelationship',
+      targetType: 'DataObject'
+    }, profile)).toMatchObject({
+      decision: 'allowed',
+      decisionLayer: 'core',
+      reasonCode: 'MATRIX_ALLOWED'
+    });
+    expect(Object.isFrozen(sourceRows)).toBe(true);
+    expect(sourceRows.every((row) => Object.isFrozen(row))).toBe(true);
+    expect(sourceRows).toEqual(before);
   });
+});
 
+describe('semantic profile boundary validation', () => {
   it('rejects invalid profile rows with explicit boundary errors', () => {
-      expect(() => parseSemanticProfile({
-        id: 'synthetic-invalid',
-        version: '2026.09',
-        kind: 'organization',
-        rows: [{
-          archimateVersion: '3.2',
-          sourceType: 'BusinessActor',
-          relationshipType: 'ServingRelationship',
-          targetType: 'TechnologyService',
-          decision: 'allowed',
-          evidenceSourceId: 'opengroup-archimate-3.2-reference-cards',
-          nonNormative: true
-        }]
-      })).toThrow(/evidenceSourceId must be non-normative/);
-      expect(() => parseSemanticProfile({
-        id: 'synthetic-invalid',
-        version: '2026.09',
-        kind: 'experimental',
-        rows: [{
-          archimateVersion: '3.2',
-          sourceType: 'BusinessActor',
-          relationshipType: 'ServingRelationship',
-          targetType: 'TechnologyService',
-          decision: 'allowed',
-          evidenceSourceId: 'profile:synthetic',
-          nonNormative: false
-        }]
-      })).toThrow(/nonNormative must be true/);
+    expect(() => parseSemanticProfile(invalidProfileInput(
+      'opengroup-archimate-3.2-reference-cards', true
+    ))).toThrow(/evidenceSourceId must be non-normative/);
+    expect(() => parseSemanticProfile(invalidProfileInput(
+      'profile:synthetic', false
+    ))).toThrow(/nonNormative must be true/);
   });
 });
