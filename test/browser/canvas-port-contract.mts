@@ -87,6 +87,9 @@ try {
   assert.deepEqual(passed, [
     'attaches and renders the active view projection',
     'routes gesture commands through the adapter and rerenders geometry',
+    'routes batch move gestures as one undoable command',
+    'routes multi-item deletion as one undoable command',
+    'applies reversible layout patches as one undoable command',
     'maps selection ids from engine to adapter and back',
     'keeps model and history unchanged for rejected gestures',
     'rerenders identical projections across undo and redo',

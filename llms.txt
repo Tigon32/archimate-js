@@ -22,6 +22,8 @@ Hard boundary:
 Current mission:
 
 - Stabilize an embeddable ArchiMate browser modeler.
+- Use the experimental `archimate-js/modeler` entry for public modeler API
+  work; keep diagram-js objects behind the adapter boundary.
 - Add deterministic SVG/report rendering.
 - Support a single model/view source for both HTML diagrams and Markdown-rendered images.
 - Ground interoperability in The Open Group ArchiMate standard and exchange artifacts.

@@ -31,6 +31,44 @@ if (result.eligible) {
 }
 ```
 
+DTO-owned creation commands use deterministic caller-provided IDs and validate
+the complete detached candidate before committing:
+
+```ts
+editor.execute({
+  type: 'create-element',
+  viewId: 'view-one',
+  element: { id: 'process-new', type: 'archimate:ApplicationProcess',
+    name: 'Synthetic process' },
+  node: { id: 'node-process-new', kind: 'element', elementId: 'process-new',
+    x: 420, y: 80, width: 140, height: 70, nodes: [] }
+});
+editor.execute({
+  type: 'create-relationship',
+  viewId: 'view-one',
+  relationship: { id: 'assignment-new', type: 'archimate:Assignment',
+    sourceId: 'component-one', targetId: 'process-new' },
+  connection: { id: 'connection-new', kind: 'relationship',
+    relationshipId: 'assignment-new', sourceId: 'node-component',
+    targetId: 'node-process-new',
+    waypoints: [
+      { x: 160, y: 75, kind: 'sourceAttachment' },
+      { x: 420, y: 115, kind: 'targetAttachment' }
+    ] }
+});
+```
+
+`create-element` stores its semantic element and view node in one undoable
+snapshot. `create-relationship` stores its semantic relationship and view
+connection in one snapshot. Element types come from the public concept
+registry; relationship types use the supported MEFF vocabulary and endpoint
+tuples pass the reviewed relationship service. Disallowed and unreviewed
+tuples retain the `DTO_RELATIONSHIP_DISALLOWED` versus
+`DTO_RELATIONSHIP_UNSUPPORTED` distinction. Duplicate IDs, invalid fields,
+endpoints, geometry, or round-trip data leave model, undo, and redo history
+unchanged. Native diagram-js creation routing remains pending adapter
+coordination under #372; creation UI remains out of scope for EE-M9/#351.
+
 `DiagramJsCanvasPort` now lives in `src/diagram-js-adapter/`; its compatibility
 re-export from `archimate-js/model-dto` is deprecated until the EE-M4
 `archimate-js/modeler` entry (#346) becomes the public import path. The adapter
@@ -38,7 +76,7 @@ adapts a Viewer or Modeler canvas, element factory, event bus, selection
 service, and (for editing) modeling service. Pass the modeling service from
 `instance.get('modeling')` to route native
 `moveElements`, `resizeShape`, `updateLabel`, `createConnection`, `reconnect`,
-and single-item removal operations into the adapter
+and single- or multi-item removal operations into the adapter
 before diagram-js's command stack runs:
 
 ```ts
@@ -55,10 +93,14 @@ const detach = editor.attach(activeViewId, port);
 It draws one active view from plain projection values, maps selection back to
 view IDs, and clears canvas elements and listeners and restores modeling methods
 on detach. Each supported move, resize, label, relationship, or removal gesture becomes one DTO
-command; undo and redo rerender the same active view from DTO history. A move
-is supported for one node within its current parent. Multi-node moves,
-reparenting, and attachment gestures are rejected before diagram-js can mutate
-state. Node projections include semantic type/name and
+command; undo and redo rerender the same active view from DTO history. `move`
+uses absolute diagram-space `x`/`y` coordinates for one node.
+`move-many` uses the same absolute coordinate shape for each entry:
+`{ type: 'move-many', viewId, moves: [{ nodeId, x, y }] }`. All nodes must
+already exist in the same view and remain under their current parent; nested
+children and attached endpoint waypoints follow as they do for single-node
+moves. Reparenting and attachment gestures are rejected before diagram-js can
+mutate state. Node projections include semantic type/name and
 style; connection projections include relationship type/name, style, and
 endpoints. Renderer-only facades and canvas elements remain private to the
 port. The headless `CanvasPort` contract also supports ID-only commands.
@@ -67,9 +109,8 @@ New live relationships require an explicit relationship type accepted by the
 existing ArchiMate rule service. The port stores the semantic relationship and
 view connection in one command. Reconnecting changes semantic endpoints only
 when no other view connection refers to the relationship; shared relationships
-cannot be retargeted through one view. Multi-item deletion is rejected as one
-unsupported gesture. Removing a view node removes attached view connections
-but retains semantic elements and relationships.
+cannot be retargeted through one view. Removing one or more view nodes removes
+attached view connections but retains semantic elements and relationships.
 
 The DTO adapter validates each relationship connect and every
 endpoint-changing reconnect against the reviewed ArchiMate 3.2 decision service
@@ -104,9 +145,18 @@ same reviewed row as `ServingRelationship`. The canvas port's immediate gesture
 affordance still comes from legacy rules; aligning that UI hint and custom
 profiles is separate work under #102.
 
-The adapter's move, resize, connect, reconnect, delete, and presentation label
-commands use a snapshot-backed undo/redo stack. A node move carries its nested
-children and attached endpoints. UI selection is
+The adapter's move, move-many, resize, connect, reconnect, delete, delete-many,
+apply-layout-patch, and presentation label commands use a snapshot-backed
+undo/redo stack. A node move carries its nested children and attached
+endpoints. `delete-many` removes selected view nodes and view connections in
+one undo step, deduplicating overlaps such as a selected connection already
+removed by a selected endpoint node; semantic elements and relationships are
+retained. `apply-layout-patch` applies a `LayoutPatch` from `src/layout` as one
+undoable geometry edit. It validates the patch view, item existence, integer
+node geometry and waypoints, and current geometry (`before` when applying
+`after`, `after` when applying `before`) before changing node bounds or
+connection waypoints. Stale patches fail with stable content-free codes such as
+`DTO_LAYOUT_PATCH_STALE` and leave history unchanged. UI selection is
 ephemeral. `getModel()`, `project()`, and change events return detached values,
 and `serialize()` saves validated DTO JSON.
 
@@ -151,3 +201,55 @@ and legacy consumers, including imports outside the DTO subset. It does not
 represent edits made through the DTO session. Call `session.save()` to persist
 those edits, and retain the original model through the legacy path when the
 session is ineligible.
+
+## Deterministic operation log
+
+`DiagramAdapter.exportOperationLog(clientId)` returns a detached version-1
+`EditorOperationLog`; `serializeOperationLog(clientId)` emits its deterministic
+JSON representation. `parseOperationLog(json)`,
+`validateOperationLog(value)`, and `serializeOperationLog(value)` validate and
+canonicalize standalone log values. The public `Modeler` facade exposes the
+same export/serialize operations and `replayOperationLog(log)`.
+
+The log envelope has a fixed field order and schema:
+
+```json
+{"schemaVersion":1,"clientId":"stable-client","operations":[{"sequence":1,"operationId":"stable-client:1","action":"command","command":{"nodeId":"node-one","type":"move","viewId":"view-one","x":120,"y":80}}]}
+```
+
+The envelope fields serialize as `schemaVersion`, `clientId`, `operations`;
+operation fields serialize as `sequence`, `operationId`, `action`, and then
+`command` for command entries. Command objects and nested plain-object payloads
+use sorted key order. A caller supplies a stable identifier accepted by the
+DTO identifier syntax; no random, clock-based, or implicit IDs are generated.
+Sequences start at 1 and increase once per accepted state/history operation.
+IDs are exactly `<clientId>:<sequence>`. Rejected commands and no-op undo/redo
+calls do not consume a sequence or create an entry. A log holds at most
+`MAX_EDITOR_OPERATIONS` (100,000) entries; an adapter at that limit rejects
+further commands, undo, and redo with `EDITOR_OPERATION_SEQUENCE_INVALID`
+before changing model or history.
+
+`action: "command"` stores a validated deep copy of the `EditorCommand` payload.
+`action: "undo"` and `"redo"` are explicit history operations, so replay
+reproduces the source adapter's undo/redo result and current model state.
+Selection, selection events, viewport state, renderer objects, and complete
+model payloads are never recorded. Command creation payloads contain only the
+specific DTO entities required by that command.
+
+Replay is performed on a fresh adapter opened from the same base DTO:
+
+```ts
+const replay = new DiagramAdapter(baseDto);
+replay.replayOperationLog(source.serializeOperationLog('stable-client'));
+```
+
+The replay API validates the whole log and builds the complete replay candidate
+before changing the target adapter; a malformed version, sequence, duplicate
+operation ID, or rejected command leaves the target model and operation
+sequence unchanged. Logs do not embed or identify their base DTO, so callers
+must supply the matching base and retain it separately. Replay is single-client
+and local only; it provides no network transport, presence, cursor state,
+collaborative selection, synchronization, distributed conflict resolution, or
+CRDT behavior. Future versions may add transport-neutral extension metadata or
+separately version presence/selection and synchronization contracts without
+coupling this adapter to a collaboration framework.

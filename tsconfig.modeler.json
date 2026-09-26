@@ -7,16 +7,18 @@
     "declaration": true,
     "declarationMap": false,
     "sourceMap": false,
-    "outDir": "dist",
-    "rootDir": "src",
+    "outDir": ".ci-modeler-build",
+    "rootDir": ".",
     "lib": ["ES2022", "DOM"],
     "skipLibCheck": true
   },
   "include": [
+    "src/modeler/**/*.ts",
+    "src/diagram-js-adapter/**/*.ts",
     "src/model-dto/**/*.ts",
-    "src/diagram-js-adapter/canvas-port.ts",
-    "src/diagram-js-adapter/modeler-session.ts",
     "src/language/relationship-decisions.mts",
-    "src/language/relationship-semantics.mts"
+    "src/language/relationship-semantics.mts",
+    "lib/Modeler.ts",
+    "lib/Viewer.ts"
   ]
 }

@@ -1,12 +1,25 @@
 import type {
-  ModelDto, PointDto, PropertyValueDto, RelationshipDto, StyleDto, ViewConnectionDto, ViewNodeDto
+  ElementDto, ModelDto, PointDto, PropertyValueDto, RelationshipDto, StyleDto, ViewConnectionDto, ViewNodeDto
 } from './types.js';
+import type { LayoutPatch } from '../layout/types.js';
 import { exportModelDtoToMeff } from './meff-export.js';
 import { assessModelDtoEditingEligibility, editingIneligibleError } from './eligibility.js';
 import { invalid, isIdentifier, serializeModelDto, validateModelDto } from './validate.js';
 import { validateRelationshipSemantics } from '../language/relationship-semantics.mjs';
 import { rejectRelationshipEdit } from './editor-diagnostics.js';
 import type { RelationshipEditOperation } from './editor-diagnostics.js';
+import {
+  applyLayoutPatch, changeBounds, deleteItem, deleteMany, EditorCommandError, findNode, moveMany, nodesOf
+} from './editor-view.js';
+import { createElement, createRelationship } from './editor-create.js';
+import {
+  buildOperationLog, EditorOperationLogError, MAX_EDITOR_OPERATIONS, parseOperationLog,
+  serializeOperationLog,
+  validateEditorCommand, validateOperationLog
+} from './editor-operation-log.js';
+import type {
+  EditorOperation, EditorOperationAction, EditorOperationLog
+} from './editor-operation-log.js';
 
 /** The canvas receives values and identifiers, never mutable diagram-js objects. */
 export interface CanvasProjection {
@@ -20,12 +33,18 @@ export interface CanvasProjection {
 }
 
 export type EditorCommand =
+  | { type: 'create-element'; viewId: string; element: ElementDto; node: ViewNodeDto }
+  | { type: 'create-relationship'; viewId: string; relationship: RelationshipDto;
+      connection: ViewConnectionDto }
   | { type: 'move'; viewId: string; nodeId: string; x: number; y: number }
+  | { type: 'move-many'; viewId: string; moves: Array<{ nodeId: string; x: number; y: number }> }
   | { type: 'resize'; viewId: string; nodeId: string; x: number; y: number; width: number; height: number }
   | { type: 'connect'; viewId: string; connection: ViewConnectionDto; relationship?: RelationshipDto }
   | { type: 'reconnect'; viewId: string; connectionId: string; sourceId?: string; targetId?: string;
       waypoints: PointDto[] }
   | { type: 'delete'; viewId: string; itemId: string }
+  | { type: 'delete-many'; viewId: string; itemIds: string[] }
+  | { type: 'apply-layout-patch'; viewId: string; patch: LayoutPatch; side: 'after' | 'before' }
   | { type: 'label'; viewId: string; itemId: string; label: string }
   | { type: 'concept-name'; viewId: string; conceptId: string; name?: string }
   | { type: 'concept-documentation'; viewId: string; conceptId: string; documentation?: string }
@@ -40,91 +59,6 @@ export interface CanvasPort {
   onCommand(handler: (command: EditorCommand) => void): () => void;
   onSelection(handler: (ids: string[]) => void): () => void;
   clear?(): void;
-}
-
-function findNode(nodes: ViewNodeDto[], id: string): ViewNodeDto | undefined {
-  for (const node of nodes) {
-    if (node.id === id) return node;
-    const child = findNode(node.nodes, id);
-    if (child) return child;
-  }
-  return undefined;
-}
-
-function nodesOf(nodes: ViewNodeDto[], elements: ModelDto['elements'], parentId?: string): CanvasProjection['nodes'] {
-  return nodes.flatMap((node): CanvasProjection['nodes'] => {
-    const element = elements.find((item) => item.id === node.elementId);
-    return [
-      { id: node.id, kind: node.kind, x: node.x, y: node.y, width: node.width, height: node.height,
-        ...(parentId !== undefined ? { parentId } : {}),
-        ...(node.elementId !== undefined ? { elementId: node.elementId } : {}),
-        ...(element?.type !== undefined ? { type: element.type } : {}),
-        ...(element?.name !== undefined ? { name: element.name } : {}),
-        ...(node.label !== undefined ? { label: node.label } : {}),
-        ...(node.style !== undefined ? { style: structuredClone(node.style) } : {}) },
-    ...nodesOf(node.nodes, elements, node.id)
-    ];
-  });
-}
-
-function moveChildren(node: ViewNodeDto, dx: number, dy: number): void {
-  node.x += dx;
-  node.y += dy;
-  node.nodes.forEach((child) => moveChildren(child, dx, dy));
-}
-
-function descendants(node: ViewNodeDto): Set<string> {
-  const ids = new Set([node.id]);
-  for (const child of node.nodes) for (const id of descendants(child)) ids.add(id);
-  return ids;
-}
-
-function removeNode(nodes: ViewNodeDto[], id: string): ViewNodeDto | undefined {
-  const index = nodes.findIndex((node) => node.id === id);
-  if (index !== -1) return nodes.splice(index, 1)[0];
-  for (const node of nodes) {
-    const removed = removeNode(node.nodes, id);
-    if (removed) return removed;
-  }
-  return undefined;
-}
-
-function changeBounds(view: ModelDto['views'][number], command: Extract<EditorCommand,
-  { type: 'move' | 'resize' }>): void {
-  const node = findNode(view.nodes, command.nodeId);
-  if (!node) invalid();
-  const dx = command.x - node.x;
-  const dy = command.y - node.y;
-  moveChildren(node, dx, dy);
-  if (command.type === 'resize') {
-    node.width = command.width;
-    node.height = command.height;
-  }
-  const movedIds = descendants(node);
-  for (const connection of view.connections) {
-    if (movedIds.has(connection.sourceId || '')) {
-      connection.waypoints[0].x += dx;
-      connection.waypoints[0].y += dy;
-    }
-    if (movedIds.has(connection.targetId || '')) {
-      const last = connection.waypoints.at(-1)!;
-      last.x += dx;
-      last.y += dy;
-    }
-  }
-}
-
-function deleteItem(view: ModelDto['views'][number], itemId: string): void {
-  const node = removeNode(view.nodes, itemId);
-  if (node) {
-    const deletedIds = descendants(node);
-    view.connections = view.connections.filter((item) => !deletedIds.has(item.sourceId || '') &&
-      !deletedIds.has(item.targetId || ''));
-    return;
-  }
-  const index = view.connections.findIndex((item) => item.id === itemId);
-  if (index === -1) invalid();
-  view.connections.splice(index, 1);
 }
 
 function editConcept(model: ModelDto, command: Extract<EditorCommand,
@@ -327,6 +261,9 @@ function viewForCommand(model: ModelDto, command: EditorCommand): ModelDto['view
       targetId: command.type === 'connect' ? command.connection.targetId : command.targetId
     });
   }
+  if (command.type === 'create-element' || command.type === 'create-relationship') {
+    throw new EditorCommandError('DTO_CREATE_VIEW_NOT_FOUND');
+  }
   invalid();
 }
 
@@ -334,11 +271,16 @@ function apply(model: ModelDto, command: EditorCommand): ModelDto {
   if (command.type === 'connect' || command.type === 'reconnect') checkRelationshipIds(command);
   const next = structuredClone(model);
   const view = viewForCommand(next, command);
+  if (command.type === 'create-element') return createElement(next, command);
+  if (command.type === 'create-relationship') return createRelationship(next, command);
 
   switch (command.type) {
   case 'move':
   case 'resize':
     changeBounds(view, command);
+    break;
+  case 'move-many':
+    moveMany(view, command);
     break;
   case 'connect':
     connect(next, view, command);
@@ -348,6 +290,12 @@ function apply(model: ModelDto, command: EditorCommand): ModelDto {
     break;
   case 'delete':
     deleteItem(view, command.itemId);
+    break;
+  case 'delete-many':
+    deleteMany(view, command);
+    break;
+  case 'apply-layout-patch':
+    applyLayoutPatch(view, command);
     break;
   case 'label': {
     const item = findNode(view.nodes, command.itemId) ||
@@ -371,11 +319,21 @@ function apply(model: ModelDto, command: EditorCommand): ModelDto {
   return validated;
 }
 
+function commandForExecution(input: unknown): EditorCommand {
+  try { return validateEditorCommand(input); }
+  catch (error) {
+    if (error instanceof EditorOperationLogError) invalid();
+    throw error;
+  }
+}
+
 /** Owns persistent editor state; callers can only exchange validated DTO values. */
 export class DiagramAdapter {
   private model: ModelDto;
   private past: Array<{ model: ModelDto; viewId: string }> = [];
   private future: Array<{ model: ModelDto; viewId: string }> = [];
+  private operations: Array<Pick<EditorOperation, 'action' | 'command'>> = [];
+  private operationSequence = 0;
   private selection = new Map<string, string[]>();
   private listeners = new Set<(event: EditorEvent) => void>();
   private canvases = new Map<CanvasPort, string>();
@@ -389,6 +347,39 @@ export class DiagramAdapter {
   getModel(): ModelDto { return structuredClone(this.model); }
   serialize(): string { return serializeModelDto(this.model); }
   exportMeff(): string { return exportModelDtoToMeff(this.model); }
+  exportOperationLog(clientId: string): EditorOperationLog {
+    return buildOperationLog(clientId, this.operations);
+  }
+  serializeOperationLog(clientId: string): string {
+    return serializeOperationLog(this.exportOperationLog(clientId));
+  }
+
+  replayOperationLog(input: unknown): void {
+    if (this.operations.length || this.past.length || this.future.length) {
+      throw new EditorOperationLogError('EDITOR_OPERATION_REPLAY_NOT_FRESH');
+    }
+    const log = typeof input === 'string' ? parseOperationLog(input) : validateOperationLog(input);
+    const candidate = new DiagramAdapter(this.model);
+    const changedViewIds = new Set<string>();
+    candidate.subscribe((event) => {
+      if (event.type === 'changed') changedViewIds.add(event.viewId);
+    });
+    for (const entry of log.operations) this.replayOperation(candidate, entry);
+    if (serializeOperationLog(candidate.exportOperationLog(log.clientId)) !==
+        serializeOperationLog(log)) {
+      throw new EditorOperationLogError('EDITOR_OPERATION_LOG_INVALID');
+    }
+    this.model = candidate.model;
+    this.past = candidate.past;
+    this.future = candidate.future;
+    this.operations = candidate.operations;
+    this.operationSequence = candidate.operationSequence;
+    for (const viewId of this.selection.keys()) this.pruneSelection(viewId);
+    for (const viewId of changedViewIds) {
+      this.pruneSelection(viewId);
+      this.emit('changed', viewId);
+    }
+  }
 
   project(viewId: string): CanvasProjection {
     const view = this.model.views.find((item) => item.id === viewId);
@@ -437,32 +428,70 @@ export class DiagramAdapter {
   }
 
   execute(command: EditorCommand): void {
-    const next = apply(this.model, command);
-    this.past.push({ model: this.model, viewId: command.viewId });
+    const safeCommand = commandForExecution(command);
+    const operation = this.prepareOperation('command', safeCommand);
+    const next = apply(this.model, safeCommand);
+    this.past.push({ model: this.model, viewId: safeCommand.viewId });
     this.model = next;
     this.future = [];
-    this.pruneSelection(command.viewId);
-    this.emit('changed', command.viewId);
+    this.commitOperation(operation);
+    this.pruneSelection(safeCommand.viewId);
+    this.emit('changed', safeCommand.viewId);
   }
 
   undo(): boolean {
-    const previous = this.past.pop();
+    const previous = this.past.at(-1);
     if (!previous) return false;
+    const operation = this.prepareOperation('undo');
+    this.past.pop();
     this.future.push({ model: this.model, viewId: previous.viewId });
     this.model = previous.model;
+    this.commitOperation(operation);
     this.pruneSelection(previous.viewId);
     this.emit('changed', previous.viewId);
     return true;
   }
 
   redo(): boolean {
-    const next = this.future.pop();
+    const next = this.future.at(-1);
     if (!next) return false;
+    const operation = this.prepareOperation('redo');
+    this.future.pop();
     this.past.push({ model: this.model, viewId: next.viewId });
     this.model = next.model;
+    this.commitOperation(operation);
     this.pruneSelection(next.viewId);
     this.emit('changed', next.viewId);
     return true;
+  }
+
+  private prepareOperation(action: EditorOperationAction,
+    command?: EditorCommand): Pick<EditorOperation, 'action' | 'command'> {
+    if (this.operationSequence >= MAX_EDITOR_OPERATIONS) {
+      throw new EditorOperationLogError('EDITOR_OPERATION_SEQUENCE_INVALID');
+    }
+    return action === 'command' ?
+      { action, command: validateEditorCommand(command) } : { action };
+  }
+
+  private commitOperation(operation: Pick<EditorOperation, 'action' | 'command'>): void {
+    this.operations.push(operation);
+    this.operationSequence += 1;
+  }
+
+  private replayOperation(candidate: DiagramAdapter, entry: EditorOperation): void {
+    if (entry.action === 'command') {
+      try { candidate.execute(entry.command!); }
+      catch (error) {
+        if (error instanceof TypeError) {
+          throw new EditorOperationLogError('EDITOR_OPERATION_COMMAND_REJECTED');
+        }
+        throw error;
+      }
+      return;
+    }
+    const changed = entry.action === 'undo' ? candidate.undo() : candidate.redo();
+    if (!changed) throw new EditorOperationLogError('EDITOR_OPERATION_COMMAND_REJECTED');
   }
 
   private pruneSelection(viewId: string): void {
