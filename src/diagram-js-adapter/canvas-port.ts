@@ -196,29 +196,7 @@ export class DiagramJsCanvasPort implements CanvasPort {
         return this.routeLabel(element, label, handler);
       }) as (...args: never[]) => unknown);
     this.installTopology(modeling, handler, install);
-    const onConnectEnd = (event: unknown): false | undefined => {
-      if (!this.requestQuickCreate || !event || typeof event !== 'object') return undefined;
-      const { context, x, y } = event as { context?: unknown; x?: unknown; y?: unknown };
-      if (!context || typeof context !== 'object' || !Number.isFinite(x) || !Number.isFinite(y)) {
-        return undefined;
-      }
-      const state = context as { start?: unknown; target?: unknown; hover?: unknown };
-      if (state.target || state.hover || !isElement(state.start)) return undefined;
-      const sourceNode = this.currentNodes.get(state.start.id!);
-      if (!sourceNode?.elementId || sourceNode.kind !== 'element' || !sourceNode.type) return undefined;
-      const sourceType = diagramType(sourceNode.type, '');
-      if (!sourceType) return undefined;
-      this.requestQuickCreate({
-        sourceNodeId: sourceNode.id,
-        sourceElementId: sourceNode.elementId,
-        sourceType,
-        position: { x: x as number, y: y as number },
-        execute: handler
-      });
-      return false;
-    };
-    this.services.eventBus.on('connect.ended', 2000, onConnectEnd);
-    restore.push(() => this.services.eventBus.off('connect.ended', onConnectEnd));
+    this.installQuickCreateListener(handler, restore);
     this.restoreModeling.push(...restore);
     return () => {
       this.clearSemanticNameEdit();
@@ -243,6 +221,35 @@ export class DiagramJsCanvasPort implements CanvasPort {
       ((shape: unknown): undefined => this.routeRemove([shape], handler)) as (...args: never[]) => unknown);
     install('removeConnection', modeling.removeConnection as (...args: never[]) => unknown,
       ((connection: unknown): undefined => this.routeRemove([connection], handler)) as (...args: never[]) => unknown);
+  }
+
+  private installQuickCreateListener(handler: (command: EditorCommand) => void,
+    restore: Array<() => void>): void {
+    const requestQuickCreate = this.requestQuickCreate;
+    if (!requestQuickCreate) return;
+    const onConnectEnd = (event: unknown): false | undefined => {
+      if (!event || typeof event !== 'object') return undefined;
+      const { context, x, y } = event as { context?: unknown; x?: unknown; y?: unknown };
+      if (!context || typeof context !== 'object' || !Number.isFinite(x) || !Number.isFinite(y)) {
+        return undefined;
+      }
+      const state = context as { start?: unknown; target?: unknown; hover?: unknown };
+      if (state.target || state.hover || !isElement(state.start)) return undefined;
+      const sourceNode = this.currentNodes.get(state.start.id!);
+      if (!sourceNode?.elementId || sourceNode.kind !== 'element' || !sourceNode.type) return undefined;
+      const sourceType = diagramType(sourceNode.type, '');
+      if (!sourceType) return undefined;
+      requestQuickCreate({
+        sourceNodeId: sourceNode.id,
+        sourceElementId: sourceNode.elementId,
+        sourceType,
+        position: { x: x as number, y: y as number },
+        execute: handler
+      });
+      return false;
+    };
+    this.services.eventBus.on('connect.ended', 2000, onConnectEnd);
+    restore.push(() => this.services.eventBus.off('connect.ended', onConnectEnd));
   }
 
   onSelection(handler: (ids: string[]) => void): () => void {

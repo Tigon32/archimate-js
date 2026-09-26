@@ -270,13 +270,19 @@ function viewForCommand(model: ModelDto, command: EditorCommand): ModelDto['view
   invalid();
 }
 
+function applyCreateCommand(model: ModelDto, command: EditorCommand): ModelDto | undefined {
+  if (command.type === 'create-element') return createElement(model, command);
+  if (command.type === 'create-relationship') return createRelationship(model, command);
+  if (command.type === 'create-related-element') return createRelatedElement(model, command);
+  return undefined;
+}
+
 function apply(model: ModelDto, command: EditorCommand): ModelDto {
   if (command.type === 'connect' || command.type === 'reconnect') checkRelationshipIds(command);
   const next = structuredClone(model);
   const view = viewForCommand(next, command);
-  if (command.type === 'create-element') return createElement(next, command);
-  if (command.type === 'create-relationship') return createRelationship(next, command);
-  if (command.type === 'create-related-element') return createRelatedElement(next, command);
+  const created = applyCreateCommand(next, command);
+  if (created) return created;
 
   switch (command.type) {
   case 'move':

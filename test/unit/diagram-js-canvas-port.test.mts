@@ -54,6 +54,12 @@ function mockEventBus() {
   };
 }
 
+function updateRelationshipPair(model: ReturnType<typeof importMeffToModelDto>,
+  pair: readonly [string, string]): void {
+  model.elements.find((item) => item.id === 'component-one')!.type = `archimate:${pair[0]}`;
+  model.elements.find((item) => item.id === 'service-two')!.type = `archimate:${pair[1]}`;
+}
+
 function setup(supportedServing = false, rejectLegacyRules = false,
   requestRelationshipType?: RelationshipTypeRequester,
   relationshipPair?: readonly [string, string],
@@ -63,10 +69,7 @@ function setup(supportedServing = false, rejectLegacyRules = false,
     model.elements.find((item) => item.id === 'component-one')!.type = 'archimate:ApplicationService';
     model.elements.find((item) => item.id === 'service-two')!.type = 'archimate:ApplicationComponent';
   }
-  if (relationshipPair) {
-    model.elements.find((item) => item.id === 'component-one')!.type = `archimate:${relationshipPair[0]}`;
-    model.elements.find((item) => item.id === 'service-two')!.type = `archimate:${relationshipPair[1]}`;
-  }
+  if (relationshipPair) updateRelationshipPair(model, relationshipPair);
   model.views.push({ id: 'view-two', nodes: [], connections: [] });
   const editor = new DiagramAdapter(model);
   const shapes = new Map<string, Record<string, unknown>>();
@@ -120,11 +123,10 @@ it('routes semantic connect, reconnect and view deletion through one history', (
   const { editor, port, modeling, shapes, connections } = setup();
   const original = editor.serialize();
   const detach = editor.attach('view-dto-export', port);
-  const source = shapes.get('node-service');
-  const target = shapes.get('node-component');
-  const createdCanvas = modeling.createConnection(source, target, { id: 'new-connection', type: 'Serving',
-    waypoints: [{ x: 300, y: 70 }, { x: 200, y: 80 }, { x: 150, y: 70 }] });
-  expect(createdCanvas).toMatchObject({ id: 'new-connection' });
+  const source = shapes.get('node-service'), target = shapes.get('node-component');
+  expect(modeling.createConnection(source, target, { id: 'new-connection', type: 'Serving',
+    waypoints: [{ x: 300, y: 70 }, { x: 200, y: 80 }, { x: 150, y: 70 }] }))
+    .toMatchObject({ id: 'new-connection' });
   const added = editor.getModel();
   const created = added.views[0].connections.find((item) => item.id === 'new-connection')!;
   const relationship = added.relationships.find((item) => item.id === created.relationshipId)!;
