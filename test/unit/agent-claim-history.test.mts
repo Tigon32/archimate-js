@@ -44,6 +44,146 @@ it('reports expired and explicitly released leases without treating either as ac
     .toMatchObject({ status: 'released', claim_comment_id: '1001', record: { record_type: 'release' } });
 });
 
+function mismatchedBranchRelease() {
+  return {
+    schema: claim.schema, record_type: 'release', issue: 140, claim_comment_id: '1001',
+    actor_id: claim.actor_id, github_login: claim.github_login, lease_id: claim.lease_id,
+    epoch: 1, released_at: '2026-09-25T10:10:00Z', branch: 'agent/synthetic/wrong-branch', state: 'released'
+  };
+}
+
+function selfRelease(reason?: string) {
+  return {
+    schema: claim.schema, record_type: 'release', issue: 140, claim_comment_id: '1001',
+    actor_id: claim.actor_id, github_login: claim.github_login, lease_id: claim.lease_id,
+    epoch: 1, released_at: '2026-09-25T10:11:00Z', ...(reason ? { reason } : {}),
+    branch: claim.branch, state: 'released'
+  };
+}
+
+function maintainerSupersede() {
+  return {
+    schema: claim.schema, record_type: 'supersede', issue: 140, claim_comment_id: '1001',
+    actor_id: 'synthetic-maintainer-action', github_login: 'example-maintainer',
+    lease_id: 'synthetic-resolution-lease', epoch: 1, supersedes_claim_comment_id: '1001',
+    superseded_at: '2026-09-25T10:11:00Z', reason: 'Synthetic resolution of the named claim.',
+    branch: claim.branch, state: 'superseded'
+  };
+}
+
+it('resolves one branch-mismatched release only with an exact same-lease self-release', () => {
+  const result = resolveAgentClaimHistory([
+    comment('1001', claim, '2026-09-25T10:00:01Z'),
+    comment('1002', mismatchedBranchRelease(), '2026-09-25T10:10:01Z'),
+    comment('1003', selfRelease('Corrected release for the same claim.'), '2026-09-25T10:11:01Z')
+  ], 140, '2026-09-25T10:12:00Z');
+  expect(result).toMatchObject({ status: 'released', claim_comment_id: '1001', record: { record_type: 'release' } });
+});
+
+it('resolves a branch-mismatched release with an exact-target maintainer supersede', () => {
+  const result = resolveAgentClaimHistory([
+    comment('1001', claim, '2026-09-25T10:00:01Z'),
+    comment('1002', mismatchedBranchRelease(), '2026-09-25T10:10:01Z'),
+    comment('1003', maintainerSupersede(), '2026-09-25T10:11:01Z')
+  ], 140, '2026-09-25T10:12:00Z');
+  expect(result).toMatchObject({ status: 'released', claim_comment_id: '1001', record: { record_type: 'supersede' } });
+});
+
+it('keeps self-release ambiguous when its timestamp predates the malformed release', () => {
+  const earlierSelfRelease = { ...selfRelease('Corrected resolution.'), released_at: '2026-09-25T10:09:00Z' };
+  const result = resolveAgentClaimHistory([
+    comment('1001', claim, '2026-09-25T10:00:01Z'),
+    comment('1002', mismatchedBranchRelease(), '2026-09-25T10:10:01Z'),
+    comment('1003', earlierSelfRelease, '2026-09-25T10:11:01Z')
+  ], 140, '2026-09-25T10:12:00Z');
+  expect(result.status).toBe('ambiguous');
+});
+
+it('keeps supersede ambiguous when its timestamp predates the malformed release', () => {
+  const earlierSupersede = { ...maintainerSupersede(), superseded_at: '2026-09-25T10:09:00Z' };
+  const result = resolveAgentClaimHistory([
+    comment('1001', claim, '2026-09-25T10:00:01Z'),
+    comment('1002', mismatchedBranchRelease(), '2026-09-25T10:10:01Z'),
+    comment('1003', earlierSupersede, '2026-09-25T10:11:01Z')
+  ], 140, '2026-09-25T10:12:00Z');
+  expect(result.status).toBe('ambiguous');
+});
+
+it('keeps a branch-mismatched release ambiguous without an exact identity resolution', () => {
+  const mismatchedResolution = { ...selfRelease('A reason.'), lease_id: 'synthetic-other-lease' };
+  const result = resolveAgentClaimHistory([
+    comment('1001', claim, '2026-09-25T10:00:01Z'),
+    comment('1002', mismatchedBranchRelease(), '2026-09-25T10:10:01Z'),
+    comment('1003', mismatchedResolution, '2026-09-25T10:11:01Z')
+  ], 140, '2026-09-25T10:12:00Z');
+  expect(result.status).toBe('ambiguous');
+});
+
+it('requires a reason on the corrective same-lease self-release', () => {
+  const result = resolveAgentClaimHistory([
+    comment('1001', claim, '2026-09-25T10:00:01Z'),
+    comment('1002', mismatchedBranchRelease(), '2026-09-25T10:10:01Z'),
+    comment('1003', selfRelease(), '2026-09-25T10:11:01Z')
+  ], 140, '2026-09-25T10:12:00Z');
+  expect(result.status).toBe('ambiguous');
+});
+
+it('does not resolve a branch-mismatched release with a supersede for another branch', () => {
+  const wrongBranch = { ...maintainerSupersede(), branch: 'agent/synthetic/wrong-branch' };
+  const result = resolveAgentClaimHistory([
+    comment('1001', claim, '2026-09-25T10:00:01Z'),
+    comment('1002', mismatchedBranchRelease(), '2026-09-25T10:10:01Z'),
+    comment('1003', wrongBranch, '2026-09-25T10:11:01Z')
+  ], 140, '2026-09-25T10:12:00Z');
+  expect(result.status).toBe('ambiguous');
+});
+
+it('does not recover a transition with another identity mismatch besides its branch', () => {
+  const otherLease = { ...mismatchedBranchRelease(), lease_id: 'synthetic-other-lease' };
+  const result = resolveAgentClaimHistory([
+    comment('1001', claim, '2026-09-25T10:00:01Z'),
+    comment('1002', otherLease, '2026-09-25T10:10:01Z'),
+    comment('1003', selfRelease('A reason.'), '2026-09-25T10:11:01Z')
+  ], 140, '2026-09-25T10:12:00Z');
+  expect(result.status).toBe('ambiguous');
+});
+
+it('does not resolve a claim whose root fails its own timeline validation', () => {
+  const invalidRoot = { ...claim, heartbeat_at: '2026-09-25T10:01:00Z', expires_at: '2026-09-25T12:01:00Z' };
+  const result = resolveAgentClaimHistory([
+    comment('1001', invalidRoot, '2026-09-25T10:00:01Z'),
+    comment('1002', selfRelease('A reason.'), '2026-09-25T10:11:01Z')
+  ], 140, '2026-09-25T10:12:00Z');
+  expect(result.status).toBe('ambiguous');
+});
+
+it('does not resolve a history with duplicated comment IDs', () => {
+  const result = resolveAgentClaimHistory([
+    comment('1001', claim, '2026-09-25T10:00:01Z'),
+    comment('1001', mismatchedBranchRelease(), '2026-09-25T10:10:01Z'),
+    comment('1003', selfRelease('A reason.'), '2026-09-25T10:11:01Z')
+  ], 140, '2026-09-25T10:12:00Z');
+  expect(result.status).toBe('ambiguous');
+});
+
+it('does not let a valid resolution hide an unrelated malformed protocol comment', () => {
+  const result = resolveAgentClaimHistory([
+    comment('1001', claim, '2026-09-25T10:00:01Z'),
+    comment('1002', mismatchedBranchRelease(), '2026-09-25T10:10:01Z'),
+    comment('1003', selfRelease('A reason.'), '2026-09-25T10:11:01Z'),
+    { id: '1004', created_at: '2026-09-25T10:11:02Z', body: 'archimate-js.agent-claim/v1' }
+  ], 140, '2026-09-25T10:12:00Z');
+  expect(result.status).toBe('ambiguous');
+});
+
+it('keeps an unresolved branch-mismatched release ambiguous', () => {
+  const result = resolveAgentClaimHistory([
+    comment('1001', claim, '2026-09-25T10:00:01Z'),
+    comment('1002', mismatchedBranchRelease(), '2026-09-25T10:10:01Z')
+  ], 140, '2026-09-25T10:12:00Z');
+  expect(result.status).toBe('ambiguous');
+});
+
 it('does not let a heartbeat posted after expiry revive an expired lease', () => {
   const lateHeartbeat = heartbeatRecord('2026-09-25T12:30:00Z', '2026-09-25T14:30:00Z', '2026-09-25T12:29:00Z');
   const result = resolveAgentClaimHistory([
