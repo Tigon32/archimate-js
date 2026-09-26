@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
 import { layoutView } from '../../src/layout/index.js';
 import type { ModelDto } from '../../src/model-dto/index.js';
+import { applyLayoutPatch } from '../../src/model-dto/editor-view.js';
 
 // SYNTHETIC: DTO geometry and semantic references only.
 function model(): ModelDto {
@@ -70,7 +71,6 @@ it('rejects unavailable requests explicitly and preserves source geometry', asyn
     const input = model();
     const before = JSON.stringify(input);
     const options = [
-      [{ strategy: 'elk-layered' }, 'UNSUPPORTED_STRATEGY'],
       [{ strategy: 'builtin', mode: 'incremental' }, 'INVALID_OPTIONS'],
       [{ strategy: 'builtin', hardPins: [] }, 'INVALID_OPTIONS']
     ] as const;
@@ -84,6 +84,89 @@ it('rejects unavailable requests explicitly and preserves source geometry', asyn
       expect('metrics' in result).toBe(false);
     }
     expect(JSON.stringify(input)).toBe(before);
+});
+
+function nestedModel(): ModelDto {
+  const input = model();
+  input.views[0].nodes = [{ id: 'container', kind: 'container', x: 20, y: 30,
+    width: 220, height: 150, nodes: [input.views[0].nodes[0]] }, input.views[0].nodes[1]];
+  input.views[0].nodes[0].nodes[0].x = 40;
+  input.views[0].nodes[0].nodes[0].y = 60;
+  input.views[0].nodes[1].id = 'node-b';
+  input.views[0].nodes[1].x = 320;
+  input.views[0].nodes[1].y = 70;
+  input.views[0].connections[0].sourceId = input.views[0].nodes[0].nodes[0].id;
+  input.views[0].connections[0].targetId = 'node-b';
+  return input;
+}
+
+it('lays out nested cross-hierarchy edges with deterministic orthogonal port routes and reversible patches', async () => {
+  const input = nestedModel();
+  const originalView = structuredClone(input.views[0]);
+  const options = { strategy: 'elk-layered' as const };
+  const first = await layoutView(input, 'synthetic-view', options);
+  const second = await layoutView(input, 'synthetic-view', options);
+  expect(first).toEqual(second);
+  expect(first.status).toBe('ok');
+  if (first.status !== 'ok') return;
+  const arranged = first.view;
+  const child = arranged.nodes[0].nodes[0];
+  const external = arranged.nodes[1];
+  expect(child.x).toBeGreaterThanOrEqual(arranged.nodes[0].x);
+  expect(child.y).toBeGreaterThanOrEqual(arranged.nodes[0].y);
+  expect(arranged.connections[0]).toMatchObject({ relationshipId: 'relationship-1',
+    sourceId: child.id, targetId: external.id });
+  const route = arranged.connections[0].waypoints;
+  expect(route[0]).toMatchObject({ x: child.x + child.width + 4,
+    y: child.y + child.height / 2, kind: 'sourceAttachment' });
+  expect(route.at(-1)).toMatchObject({ x: external.x - 4,
+    y: route[0].y, kind: 'targetAttachment' });
+  expect(route.slice(1).every((point, index) => point.x === route[index].x ||
+    point.y === route[index].y)).toBe(true);
+  const working = structuredClone(originalView);
+  const command = { type: 'apply-layout-patch' as const, viewId: originalView.id,
+    patch: first.patch, side: 'after' as const };
+  applyLayoutPatch(working, command);
+  expect(working).toEqual(arranged);
+  applyLayoutPatch(working, { ...command, side: 'before' });
+  expect(working).toEqual(originalView);
+});
+
+it('applies requested first-rank constraints without changing model semantics', async () => {
+  const input = model();
+  input.views[0].nodes[0].x = 280;
+  input.views[0].nodes[1].x = 40;
+  const result = await layoutView(input, 'synthetic-view', {
+    strategy: 'elk-layered', rankConstraints: [{ nodeId: 'node-b', rank: 'first' }]
+  });
+  expect(result.status).toBe('ok');
+  if (result.status !== 'ok') return;
+  expect(result.view.nodes[1].x).toBeLessThan(result.view.nodes[0].x);
+  expect(result.view.connections[0].relationshipId).toBe('relationship-1');
+  expect(result.view.nodes.map(({ elementId }) => elementId)).toEqual(['concept-a', 'concept-b']);
+  const nested = await layoutView(nestedModel(), 'synthetic-view', {
+    strategy: 'elk-layered', rankConstraints: [{ nodeId: 'node-a', rank: 'first' }]
+  });
+  expect(nested.status).toBe('ok');
+});
+
+it('returns stable no-partial-result diagnostics for labels and unsupported constraints', async () => {
+  const input = model();
+  input.views[0].connections[0].label = 'SYNTHETIC edge label';
+  const labeled = await layoutView(input, 'synthetic-view', { strategy: 'elk-layered' });
+  expect(labeled).toMatchObject({ status: 'unsupported', diagnostics: [
+    { code: 'UNSUPPORTED_CONSTRAINT', severity: 'error' }
+  ] });
+  if (labeled.status !== 'ok') {
+    expect('view' in labeled).toBe(false);
+    expect('patch' in labeled).toBe(false);
+  }
+  const incremental = await layoutView(model(), 'synthetic-view', {
+    strategy: 'elk-layered', mode: 'incremental', changedNodeIds: ['node-b']
+  });
+  expect(incremental).toMatchObject({ status: 'unsupported', diagnostics: [
+    { code: 'UNSUPPORTED_CONSTRAINT' }
+  ] });
 });
 
 it('keeps hard-pinned nodes fixed and reroutes connections around their final geometry', async () => {

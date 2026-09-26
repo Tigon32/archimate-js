@@ -1,4 +1,13 @@
 {
   "schemaVersion": 1,
-  "exceptions": []
+  "exceptions": [
+    {
+      "path": "node_modules/elkjs",
+      "version": "0.12.0",
+      "license": "EPL-2.0 OR GPL-3.0-or-later",
+      "owner": "Tigon32",
+      "reason": "ELK Layered is required for compound layout and uses the EPL-2.0 license option; the GPL-3.0-or-later option is declined. Scope this exception to this exact package version.",
+      "expiresOn": "2026-12-25"
+    }
+  ]
 }

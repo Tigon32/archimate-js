@@ -97,17 +97,37 @@ selected connection lacks an endpoint, or the DTO is invalid, it returns a
 diagnostic without a view or patch. Unavailable `elk-layered` options return
 explicit diagnostics, with no fallback to full built-in layout. Unknown
 options are rejected so future controls are not silently ignored. This call
-runs asynchronously at the API boundary, but the
-built-in optimizer itself currently runs on the calling thread. The
-`elk-layered` strategy's ELK.js license and provenance prerequisite review
-is recorded in
-[`docs/research/elkjs-license-and-provenance.md`](../research/elkjs-license-and-provenance.md)
-(#374); no `elkjs` dependency is added by this documentation.
+runs asynchronously at the API boundary, but the built-in optimizer itself
+currently runs on the calling thread.
 
-This is a partial implementation of #100. Layered compound layout, advanced
-labels, worker execution, and
-benchmark/quality metrics beyond those measured by the existing optimizer
-remain open. The headless facade returns plain transport data; only the public
+### Optional compound strategy (#382)
+
+`strategy: 'elk-layered'` selects the exact `elkjs@0.12.0` adapter. It maps
+nested containers and cross-hierarchy edges through fixed-side ports, keeps
+authored container bounds as minimums, and returns orthogonal routes and
+reversible DTO geometry. The adapter is loaded only when explicitly selected;
+it never falls back to the built-in optimizer. Use `rankConstraints` to put
+specific node IDs in the first or last layered rank:
+
+```js
+const result = await layoutView(modelDto, 'selected-view-id', {
+  strategy: 'elk-layered',
+  rankConstraints: [{ nodeId: 'start-node', rank: 'first' }]
+});
+```
+
+This first adapter returns a stable `UNSUPPORTED_CONSTRAINT` diagnostic with
+no partial result when a view has labeled edges, or when incremental layout or
+pins are requested. The current renderer contract cannot faithfully project
+ELK's edge-label rectangles; no label geometry is discarded or committed.
+Other unsupported topology or unsatisfied rank requests also return explicit
+diagnostics. The selected EPL-2.0 path and published integrity are recorded in
+[`docs/research/elkjs-license-and-provenance.md`](../research/elkjs-license-and-provenance.md),
+and the license text ships with `THIRD_PARTY_NOTICES.md`.
+
+This is a partial implementation of #100. Advanced label placement, worker
+execution, and benchmark/quality metrics beyond those measured by the layout
+adapters remain open. The headless facade returns plain transport data; only the public
 modeler facade commits the patch through DTO history. The legacy diagram-js
 command stack remains solely for direct legacy modeler consumers.
 
