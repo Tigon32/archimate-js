@@ -51,6 +51,8 @@ assert.equal(exportEntry('./layout').import, './dist/layout/index.js');
 assert.equal(exportEntry('./layout').types, './dist/layout/index.d.ts');
 assert.equal(exportEntry('./lint').import, './dist/lint/index.mjs');
 assert.equal(exportEntry('./lint').types, './dist/lint/index.d.mts');
+assert.equal(exportEntry('./extensions').import, './dist/extensions/index.mjs');
+assert.equal(exportEntry('./extensions').types, './dist/extensions/index.d.mts');
 assert.equal(packageJson.exports['./app-shell.css'], './assets/design-tokens/app-shell.css');
 assert.ok(packageJson.scripts['compile:browser'].includes('compile:model-dto'),
   'browser bundle builds the shared relationship service');

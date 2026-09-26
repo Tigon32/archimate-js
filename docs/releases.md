@@ -11,6 +11,7 @@ import { importMeffToModelDto, exportModelDtoToMeff, serializeModelDto, parseMod
 import Modeler from 'archimate-js/modeler';
 import { layoutView } from 'archimate-js/layout';
 import { lintModel } from 'archimate-js/lint';
+import { createExtensionRegistry } from 'archimate-js/extensions';
 import { createExportService } from 'archimate-js/export';
 import 'archimate-js/app-shell.css'; // Optional app control styles for a CSS-capable bundler.
 ```
@@ -51,6 +52,12 @@ conformance rules or organization policy. Custom rules and severity overrides
 are configured explicitly. The `incremental` execution mode and changed-subject
 hints are API hooks only: this release still evaluates every enabled rule and
 makes no performance-budget claim.
+The opt-in `extensions` subpath exposes an experimental typed local manifest
+registry for extension-owned property metadata schemas and lint rules. It
+validates API compatibility, rejects duplicate or conflicting contributions
+atomically, and provides deterministic initialization/disposal. It does not
+load code or apply contributions automatically; see the
+[extension registry contract](extensions.md).
 The Node-only `export` subpath accepts bounded XML and one selected view and
 exports SVG, PNG, or PDF through an existing local Chrome/Chromium. Configure
 trusted runtime values such as `chrome` and `outputDirectory` with
@@ -182,9 +189,9 @@ The browser check needs a local Chrome/Chromium binary:
 CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)" npm run release:check
 ```
 
-The packed consumer test compiles the validator, model DTO, lint, layout, and browser artifact, packs the
+The packed consumer test compiles the validator, model DTO, lint, extensions, layout, and browser artifact, packs the
 actual project archive, and installs that archive into an isolated temporary
 consumer with lifecycle scripts disabled. It invokes the installed CLI, bundles
-the root API as a browser consumer, imports the validator, model DTO, lint, and layout subpaths in Node, and
+the root API as a browser consumer, imports the validator, model DTO, lint, extensions, and layout subpaths in Node, and
 checks blocked deep imports. npm may contact the configured registry to resolve
 the archive's declared runtime dependencies; the test never publishes.

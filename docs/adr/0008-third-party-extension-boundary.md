@@ -68,11 +68,13 @@ owned by this application. The decision is limited to these rules:
   is preserved only where a documented exchange contract permits it; otherwise
   the core reports a fidelity diagnostic instead of silently claiming a
   lossless round trip.
-- **DEC-005 — Deferred capabilities:** This record does not select a manifest
-  schema, registry design, renderer or palette hooks, panels, commands, lint
-  contribution shape, exporter hooks, ordering rules, or disposal lifecycle.
-  Those contracts are split into follow-up issues after #96 and #103 decide
-  their owning application surfaces.
+- **DEC-005 — Deferred capabilities:** Issue #422 establishes only the
+  versioned manifest and deterministic registry for extension-owned property
+  metadata schemas and typed lint rules, including registration diagnostics
+  and lifecycle. The registry does not automatically persist metadata or
+  execute contributed lint rules. Renderer or palette hooks, panels, commands,
+  exporter hooks, custom-concept interchange, and remote loading remain
+  deferred to follow-up issues owned by their application surfaces.
 
 ## Consequences
 
@@ -80,15 +82,15 @@ owned by this application. The decision is limited to these rules:
 
 - **POS-001:** Consumers get a direction for extensions that preserves the
   application-owned boundary instead of stabilizing internal dependency APIs.
-- **POS-002:** Trust and compatibility limits are explicit before executable
-  extension loading or packaging is implemented.
-- **POS-003:** The feature can be split into independently reviewable work after
-  the editor and lint owners resolve their contribution surfaces.
+- **POS-002:** Trust and compatibility limits remain explicit while trusted
+  local extension callbacks execute; the registry adds no loader or sandbox.
+- **POS-003:** The manifest/registry foundation is independently reviewable
+  before editor, interchange, and exporter contribution points are designed.
 
 ### Negative
 
-- **NEG-001:** This record does not yet provide a usable extension API; #108
-  remains incomplete and blocked by #96 and #103.
+- **NEG-001:** The foundation is intentionally narrow; #108 remains incomplete
+  until separately reviewed editor and interchange contribution contracts exist.
 - **NEG-002:** Local trusted code can still affect the host application. This
   decision deliberately provides no sandbox or privilege separation.
 - **NEG-003:** Preserving third-party data across an exchange format depends on
@@ -124,9 +126,10 @@ owned by this application. The decision is limited to these rules:
 
 ## Implementation notes
 
-- **IMP-001:** Keep #108 unclaimed as an umbrella. The next child issues should
-  follow #96 and #103 and define only the contribution points those issues
-  actually establish.
+- **IMP-001:** Keep #108 as an umbrella. Child issues define only the
+  contribution points established by their owning application surfaces; #422
+  is the first bounded manifest/registry slice and does not unblock deferred
+  editor or interchange capabilities.
 - **IMP-002:** A later API issue can define the manifest and deterministic
   validation against these boundaries; a separate reference package should
   verify the documented consumer contract without deep imports.
@@ -136,6 +139,10 @@ owned by this application. The decision is limited to these rules:
 - **IMP-004:** Do not copy implementation code from the public precedents. Any
   future copied or adapted material still requires explicit provenance and
   compatible licensing.
+- **IMP-005:** The current `archimate-js/extensions` contract and its
+  experimental `0.1.0` API version are documented in
+  [`docs/extensions.md`](../extensions.md). The package remains `0.y.z`;
+  declared ranges do not imply stable compatibility guarantees.
 
 ## References
 

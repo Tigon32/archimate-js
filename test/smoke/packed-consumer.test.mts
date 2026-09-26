@@ -28,6 +28,7 @@ try {
   run('npm', ['run', 'compile:model-dto'], { cwd: root });
   run('npm', ['run', 'compile:modeler'], { cwd: root });
   run('npm', ['run', 'compile:lint'], { cwd: root });
+  run('npm', ['run', 'compile:extensions'], { cwd: root });
   run('npm', ['run', 'compile:layout'], { cwd: root });
   run('npm', ['run', 'compile:export'], { cwd: root });
   run(process.execPath, ['test/smoke/compile.mts'], { cwd: root });
@@ -42,6 +43,29 @@ try {
   await writeFile(path.join(consumer, 'package.json'), '{"private":true}\n');
   run('npm', [
     'install', '--ignore-scripts', '--no-audit', '--no-fund', '--package-lock=false', archive
+  ], { cwd: consumer });
+  const consumerTypes = path.join(consumer, 'extension-consumer.mts');
+  await writeFile(consumerTypes, `
+    import {
+      createExtensionRegistry, type ArchimateExtension, type ExtensionDiagnosticCode
+    } from 'archimate-js/extensions';
+    import type { LintRule } from 'archimate-js/lint';
+    const rule: LintRule = { id: 'synthetic.types/rule', evaluate: () => [] };
+    const extension: ArchimateExtension = {
+      manifestVersion: 1, id: 'synthetic.types', version: '1.0.0',
+      compatibleApi: '^0.1.0', contributions: { lintRules: [rule] }
+    };
+    // SYNTHETIC: local trusted extension used to exercise the packed bundle.
+    const registry = createExtensionRegistry();
+    const registered: boolean = registry.register(extension).registered;
+    const code: ExtensionDiagnosticCode = 'EXTENSION_MANIFEST_INVALID';
+    void registered;
+    void code;
+  `);
+  run(process.execPath, [
+    path.join(root, 'node_modules/typescript/bin/tsc'),
+    '--noEmit', '--strict', '--module', 'NodeNext', '--moduleResolution', 'NodeNext',
+    '--target', 'ES2022', '--skipLibCheck', consumerTypes
   ], { cwd: consumer });
 
   const dtoImportProbe = spawnSync(process.execPath, [
@@ -63,7 +87,8 @@ try {
       createAccessibleOutline, formatAccessibleOutline } from 'archimate-js/model-dto';
     import Modeler, { DiagramJsCanvasPort, DtoModelerSession } from 'archimate-js/modeler';
     import { layoutView } from 'archimate-js/layout';
-    import { lintModel } from 'archimate-js/lint';
+    import { createLintEngine, lintModel } from 'archimate-js/lint';
+    import { createExtensionRegistry } from 'archimate-js/extensions';
     export default {
       viewer: typeof Viewer,
       mountViewer: typeof mountViewer,
@@ -76,9 +101,29 @@ try {
       canvasPort: typeof DiagramJsCanvasPort,
       dtoSession: typeof DtoModelerSession,
       layoutView: typeof layoutView,
-      lintModel: typeof lintModel
+      lintModel: typeof lintModel,
+      createExtensionRegistry: typeof createExtensionRegistry
     };
-  `);
+    const registry = createExtensionRegistry();
+    const local = registry.register({
+      manifestVersion: 1, id: 'synthetic.bundled', version: '1.0.0',
+      compatibleApi: '^0.1.0',
+      contributions: {
+        propertySchemas: [{ id: 'synthetic.bundled.status', type: 'string' }],
+        lintRules: [{ id: 'synthetic.bundled/example', evaluate: () => [] }]
+      }
+    });
+    const incompatible = registry.register({
+      manifestVersion: 1, id: 'synthetic.bundled.incompatible', version: '1.0.0',
+      compatibleApi: '^0.2.0'
+    });
+    export const extensionProbe = {
+      registered: local.registered,
+      rejectedCode: incompatible.diagnostics[0]?.code,
+      schemaId: registry.propertySchemas[0]?.id,
+      ruleId: registry.lintRules[0]?.id
+    };
+    `);
   const require = createRequire(path.join(root, 'package.json'));
   const webpack = require('webpack');
   const bundlePath = path.join(consumer, 'consumer.cjs');
@@ -106,7 +151,13 @@ try {
     renderViewToSvg: 'function', dtoImport: 'function', dtoExport: 'function',
     outline: 'function', outlineText: 'function',
     modeler: 'function', canvasPort: 'function', dtoSession: 'function',
-    layoutView: 'function', lintModel: 'function' });
+    layoutView: 'function', lintModel: 'function', createExtensionRegistry: 'function' });
+  assert.deepEqual(require(bundlePath).extensionProbe, {
+    registered: true,
+    rejectedCode: 'EXTENSION_API_INCOMPATIBLE',
+    schemaId: 'synthetic.bundled.status',
+    ruleId: 'synthetic.bundled/example'
+  });
   const exportSubpath = [ 'archimate-js', 'export' ].join('/');
   const exportApi = await import(exportSubpath) as {
     exportView: Function;
@@ -186,11 +237,44 @@ try {
 
     const layout = await import('archimate-js/layout');
     const lint = await import('archimate-js/lint');
+    const extensions = await import('archimate-js/extensions');
+    const extensionRegistry = extensions.createExtensionRegistry();
+    // SYNTHETIC: local consumer extension authored for this packed-package check.
+    const localExtension = {
+      manifestVersion: 1,
+      id: 'synthetic.consumer',
+      version: '1.0.0',
+      compatibleApi: '^0.1.0',
+      contributions: {
+        propertySchemas: [{ id: 'synthetic.consumer.reviewed', type: 'string' }],
+        lintRules: [{ id: 'synthetic.consumer/documented', evaluate: () => [] }]
+      }
+    };
+    assert.equal(extensionRegistry.register(localExtension).registered, true);
+    assert.deepEqual(extensionRegistry.propertySchemas.map(({ id }) => id),
+      ['synthetic.consumer.reviewed']);
+    assert.deepEqual(extensionRegistry.lintRules.map(({ id }) => id),
+      ['synthetic.consumer/documented']);
+    const rejectedExtension = { ...localExtension, id: 'synthetic.consumer.incompatible',
+      compatibleApi: '^0.2.0' };
+    assert.deepEqual(extensionRegistry.register(rejectedExtension), {
+      registered: false,
+      diagnostics: [{
+        code: 'EXTENSION_API_INCOMPATIBLE',
+        message: 'Extension API range is incompatible with this host.',
+        extensionIndex: 0
+      }]
+    });
+    await extensionRegistry.initialize();
+    await extensionRegistry.dispose();
     const synthetic = { schemaVersion: 1, id: 'synthetic', elements: [], relationships: [],
       diagnostics: [], views: [{ id: 'view', nodes: [
         { id: 'one', kind: 'container', x: 10, y: 10, width: 40, height: 30, nodes: [] },
         { id: 'two', kind: 'container', x: 15, y: 15, width: 40, height: 30, nodes: [] }
       ], connections: [] }] };
+    const extensionLint = lint.createLintEngine(extensionRegistry.lintRules).run(synthetic);
+    assert.equal(extensionLint.execution.rulesRun, 1);
+    assert.deepEqual(extensionLint.findings, []);
     const laidOut = await layout.layoutView(synthetic, 'view', { strategy: 'builtin' });
     const outline = dto.createAccessibleOutline(synthetic, 'view');
     assert.equal(outline.viewId, 'view');
@@ -230,8 +314,9 @@ try {
   assert.equal(exportEntry('./export').import, './dist/export/index.mjs');
   assert.equal(packageJson.exports['./app-shell.css'], './assets/design-tokens/app-shell.css');
   assert.deepEqual(Object.keys(packageJson.exports).sort(),
-    ['.', './app-shell.css', './export', './layout', './lint', './model-dto', './modeler', './validator']);
+    ['.', './app-shell.css', './export', './extensions', './layout', './lint', './model-dto', './modeler', './validator']);
   await readFile(path.join(packageRoot, 'dist/modeler/index.d.ts'), 'utf8');
+  await readFile(path.join(packageRoot, 'dist/extensions/index.d.mts'), 'utf8');
   const stylePath = consumerRequire.resolve('archimate-js/app-shell.css');
   assert.match(await readFile(stylePath, 'utf8'), /\.am-app \.am-ui-status/);
   await readFile(path.join(packageRoot, 'assets/design-tokens/app.generated.css'), 'utf8');
