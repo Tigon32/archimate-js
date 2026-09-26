@@ -142,6 +142,31 @@
   font-family: var(--am-ui-font-family);
 }
 
+.am-app .djs-container {
+  --canvas-fill-color: var(--am-ui-surface);
+  --accent-color: var(--am-ui-action);
+  --element-hover-outline-fill-color: var(--am-ui-action);
+  --element-selected-outline-stroke-color: var(--am-ui-action);
+  --element-selected-outline-secondary-stroke-color: var(--am-ui-focus);
+  --bendpoint-fill-color: var(--am-ui-action);
+  --bendpoint-stroke-color: var(--am-ui-surface);
+  --lasso-stroke-color: var(--am-ui-action);
+  --lasso-fill-color: color-mix(in srgb, var(--am-ui-action) 24%, transparent);
+  --tooltip-error-background-color: var(--am-ui-invalid-surface);
+  --tooltip-error-border-color: var(--am-ui-error);
+  --tooltip-error-color: var(--am-ui-error);
+  background: var(--am-ui-surface);
+}
+
+.am-app .djs-element.hover > .djs-hit-all,
+.am-app .djs-element.hover > .djs-hit-stroke,
+.am-app .djs-element.hover > .djs-hit-click-stroke {
+  stroke: var(--am-ui-action) !important;
+  stroke-width: 2px !important;
+  stroke-opacity: 1 !important;
+  fill: none !important;
+}
+
 .am-app .djs-palette .entry:hover,
 .am-app .djs-palette .djs-palette-toggle:hover {
   background-color: var(--am-ui-disabled-surface);
@@ -177,6 +202,21 @@
   .am-app .djs-palette .entry:focus-visible,
   .am-app .djs-palette .djs-palette-toggle:focus-visible { outline-color: Highlight; }
   .am-app .djs-palette { border-color: CanvasText; color: CanvasText; }
+  .am-app .djs-container {
+    --canvas-fill-color: Canvas;
+    --accent-color: Highlight;
+    --element-hover-outline-fill-color: Highlight;
+    --element-selected-outline-stroke-color: Highlight;
+    --element-selected-outline-secondary-stroke-color: Highlight;
+    --bendpoint-fill-color: Highlight;
+    --bendpoint-stroke-color: Canvas;
+    --lasso-stroke-color: Highlight;
+    --lasso-fill-color: transparent;
+    --tooltip-error-background-color: Canvas;
+    --tooltip-error-border-color: CanvasText;
+    --tooltip-error-color: CanvasText;
+    background: Canvas;
+  }
   .am-app .djs-palette .entry[aria-selected="true"],
   .am-app .djs-palette .entry[aria-pressed="true"] {
     color: HighlightText; background: Highlight; box-shadow: inset 0 0 0 2px CanvasText;
