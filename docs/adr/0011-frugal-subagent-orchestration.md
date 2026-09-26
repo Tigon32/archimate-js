@@ -68,10 +68,27 @@ frugal and as governable as native subagents.
   `ruvnet-brain`, is permitted only as a measured experiment until this ADR's
   evidence log shows it is at least as frugal. Any ruflo run must end with
   `ruflo daemon stop` and a leftover-process check. External processes receive
-  only public or synthetic prompts and no credentials.
+  only public or synthetic prompts and no credentials. As of 2026-09-26 the
+  Verdict table rejects ruflo `hive-mind` and `swarm` for this harness. A new
+  experiment requires the re-evaluation conditions in the Evidence log and must
+  pass `--no-auto-permissions`.
 - **DEC-007 — Evidence-driven revision:** After every measured batch, append a
   dated entry to the Evidence log and update the DEC-006 verdicts as
   `keep`, `conditional`, or `reject`.
+- **DEC-008 — Verify, don't relay (evidence-derived, 2026-09-26):** The queen
+  never forwards a worker's "all gates pass" as evidence. Every implementation
+  gets an independent reviewer pass before commit. Reviewers must look for
+  vacuous assertions (checks that pass when the feature is absent), stubs
+  standing in for real APIs, and figures without a source. The queen
+  re-measures any number that will be published (ADR text, PR body, or issue
+  comment) against its source.
+- **DEC-009 — Brief workers on tracked-file gates (evidence-derived,
+  2026-09-26):** Some repository gates, such as tracked-path provenance and the
+  research inventory, only see git-tracked files, so a worker's uncommitted
+  local run can't catch them. Worker prompts must say to register new
+  `docs/research/*` files in `docs/research/README.md` and new fixtures in
+  `test/fixtures/manifest.json`, and to verify with `git add -N <paths>` before
+  handoff.
 
 ## Evaluation metrics
 
@@ -109,10 +126,10 @@ frugal and as governable as native subagents.
 
 | Option | Status | Evidence |
 |---|---|---|
-| Native subagents (queen/worker-bee) | Adopted | Historical native-harness batch shows useful isolation with provisional upper-bound cost; continue measuring. |
-| ruflo `hive-mind` | Under evaluation | No repository batch measurement yet; must prove daemon cleanup, public-only prompts, and frugality. |
-| ruflo `swarm` | Under evaluation | No repository batch measurement yet; must prove lower or equal cost and governance clarity. |
-| `ruvnet-brain` lessons | Under evaluation | No repository batch measurement yet; local lessons ledger must avoid private content and show measurable benefit. |
+| Native subagents (queen/worker-bee) | Adopted | 2026-09-26 round: one reusable reviewer caught 5 confirmed defects in 3 worker self-reports of "all gates pass" (see Evidence log). |
+| ruflo `hive-mind` | Rejected for this harness | 2026-09-26 probe: not runnable here, defaults to skipping all permission checks, and hands the queen role to an external process. |
+| ruflo `swarm` | Rejected for this harness | 2026-09-26: uses the same external worker path as `hive-mind`, so it has the same blockers; not measurable. |
+| `ruvnet-brain` lessons | Conditional keep | 2026-09-26: its rules predicted this round's failure mode. Adopted as reviewer/queen rules (DEC-008), not as a runtime. |
 
 ## Evidence log
 
@@ -130,6 +147,72 @@ Usage figures come from the harness's per-session usage records (premium units, 
   units per merged PR. Verdict: queen/worker-bee pattern — keep (provisional);
   ruflo `hive-mind` — pending measurement; ruflo `swarm` — pending;
   `ruvnet-brain` — pending.
+- **2026-09-26 — Native queen/worker round (issue #136 children #389, #390 and
+  #391, plus this ADR's PR #388):** three implementers ran in parallel on
+  non-overlapping worktrees, with one reviewer reused for every review and
+  re-review (DEC-003) instead of a new reviewer per pass.
+  - **Independent review was essential.** All three workers first reported "all
+    local gates pass". The reviewer blocked all three, plus this ADR, with
+    confirmed defects: a content check that a blank diagram would pass
+    (#391); a test that set the dropdown value in script rather than through
+    real keyboard/mouse input, and a stub standing in for a real view change
+    (#390); a hover color compared against the wrong background, a selection
+    check that passed when nothing rendered, and an element mistaken for the
+    connection outline (#389); and an unsourced, mis-attributed baseline
+    (#388). Review cycles to MERGE: #388 3, #391 2, #390 4, #389 at least 3.
+    Every worker was resumed with its context intact (`write_agent`) rather
+    than re-spawned.
+  - **Local runs miss some CI gates.** PR #392 failed CI once because
+    tracked-file gates don't see uncommitted files (see DEC-009). The queen
+    fixed it with a one-line inventory link and warned the other two workers
+    before their PRs.
+  - **Governance:** no ADR-0005, 0009 or 0001 violations. Claims were fenced
+    and renewed on schedule. One worker removed a pre-existing model-payload
+    debug log (`lib/draw/ArchimateRenderer.js`), which improves ADR-0001
+    compliance.
+  - **Verdict:** native queen/worker-bee — keep. DEC-008 and DEC-009 were
+    added from this evidence.
+  - Per-issue premium-unit and token totals for this round will be recorded in
+    a closing entry after the round completes.
+- **2026-09-26 — ruflo `hive-mind` probe (contained, read-only audit task):**
+  `hive-mind init` / `spawn --claude` were run in a disposable worktree, with
+  `--no-auto-permissions` and a tool allow-list excluding edits and GitHub
+  mutations.
+  - **Result: not runnable here.** The external `claude -p` process reached a
+    model 0 times (0 turns, 0 tokens) and exited after 246 s with
+    `API Error: Unable to connect to API (ConnectionRefused)`. It is configured
+    for a local API gateway that was not running. Starting or reconfiguring
+    that gateway is user credential and infrastructure configuration outside
+    agent scope.
+  - **Unsafe default:** `spawn --claude` defaults
+    `--dangerously-skip-permissions` to `true`, which conflicts with DEC-002
+    unless explicitly overridden.
+  - **Conflicts with this ADR's roles:** the generated coordination prompt
+    makes the external process the queen, forbids native Task/Agent tools,
+    and requires ~20 ruflo MCP tools plus byzantine consensus even for one
+    worker. That duplicates and conflicts with DEC-001's queen responsibilities.
+  - **Side effects:** it created untracked `.claude-flow/`, `.hive-mind/`
+    and `ruvector.db` in the worktree. `ruflo` auto-starts a background daemon
+    on any invocation, including `--version`. Both were cleaned up and no
+    leftover process was found.
+  - **Verdict: reject for this harness** (not runnable, unsafe default,
+    conflicts with the queen role). Re-evaluate only if the gateway is
+    available, `--no-auto-permissions` is enforced, and the coordination prompt
+    can run as a worker under a native queen.
+- **2026-09-26 — ruflo `swarm` (inspection only):** `swarm start` and
+  `coordinate` launch a hierarchical mesh of up to 15 agents over the same
+  external worker path as `hive-mind`, so they share the same blockers and
+  auto-start the same daemon. Not measurable here. **Verdict: reject for this
+  harness.**
+- **2026-09-26 — `ruvnet-brain` lessons (read-only):** a local ledger of 12
+  lessons and 134 decision outcomes; reading it costs one file read and needs
+  no daemon.
+  - Lessons L01 ("verify through a capable channel") and L04 ("never relay a
+    subagent result without re-checking") predicted this round's dominant
+    failure mode: the worker self-reports above that the reviewer disproved.
+  - **Verdict: conditional keep.** Its value is as prompt-level queen and
+    reviewer rules, adopted as DEC-008, not as a runtime. Keep the ledger out
+    of the repository; it is local and may contain non-public context.
 
 ## Consequences
 
