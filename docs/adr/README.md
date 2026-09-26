@@ -24,6 +24,7 @@ ADRs record consequential decisions for this fork. They should be short, dated, 
 | 0008 | Establish a bounded third-party extension API boundary | Proposed |
 | 0009 | Apply fail-closed post-merge branch cleanup | Proposed |
 | 0010 | Keep diagram-js behind an engine-neutral editor boundary | Proposed |
+| 0011 | Delegate agent work through frugal queen/worker-bee subagents | Proposed |
 
 ## Template
 
