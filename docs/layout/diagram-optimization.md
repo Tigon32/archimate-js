@@ -131,6 +131,13 @@ adapters remain open. The headless facade returns plain transport data; only the
 modeler facade commits the patch through DTO history. The legacy diagram-js
 command stack remains solely for direct legacy modeler consumers.
 
+## Layout quality comparison (#385)
+
+[`layout-quality.md`](layout-quality.md) documents the SYNTHETIC comparison
+corpus, raw quality metrics, deterministic SVG snapshot generation, and CI
+artifact publication. The metrics compare presentation geometry only and are
+not normative ArchiMate conformance evidence.
+
 ## Pins and incremental layout
 
 The built-in strategy accepts hard and soft pins against the geometry in the

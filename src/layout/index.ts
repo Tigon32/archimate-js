@@ -13,6 +13,10 @@ const runOptimizer = optimizeDiagram as unknown as
 
 export type { LayoutDiagnostic, LayoutGeometry, LayoutMetrics, LayoutOptions,
   LayoutPatch, LayoutPin, LayoutRankConstraint, LayoutResult } from './types.js';
+export { layoutQualityCorpus, type LayoutQualityCorpusCase } from './quality-corpus.js';
+export { computeLayoutQualityMetrics, deterministicQualityMetrics,
+  type LayoutQualityMetrics, type LayoutQualityOptions } from './quality-metrics.js';
+export { renderLayoutQualitySvg } from './quality-svg.js';
 
 function diagnostic(code: LayoutDiagnostic['code'], message: string,
   status: 'unsupported' | 'invalid' | 'failed',
