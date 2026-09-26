@@ -216,6 +216,14 @@ the old lease is released. The receiver derives its next epoch as exactly
 `epoch + 1`, uses a new lease ID, and creates its own authoritative claim
 comment. Do not delete or overwrite the old branch.
 
+#### Worktree location and cleanup
+
+[ADR-0013](../adr/0013-worktree-location-and-lifecycle.md) defines the required
+agent worktree root and lifecycle. Create the worktree under the sibling
+`archimate-js-worktrees/<harness>/<issue>-<slug>` root after posting the claim.
+Remove it when the lease ends, unless the work is handed off unfinished; the
+receiver then removes it when the receiver's lease ends.
+
 ### Expiry and manual takeover
 
 Expiry is a necessary condition, not permission to seize work. A prospective

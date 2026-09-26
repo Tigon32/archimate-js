@@ -26,6 +26,7 @@ ADRs record consequential decisions for this fork. They should be short, dated, 
 | 0010 | Keep diagram-js behind an engine-neutral editor boundary | Proposed |
 | 0011 | Delegate agent work through frugal queen/worker-bee subagents | Proposed |
 | 0012 | Use ELK Layered behind an optional compound-layout adapter | Accepted |
+| 0013 | Use one worktree root and remove worktrees when work ends | Proposed |
 
 ## Template
 
