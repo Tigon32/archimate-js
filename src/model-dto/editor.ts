@@ -10,9 +10,11 @@ import type { SemanticProfile } from '../language/semantic-profile.mjs';
 import { rejectRelationshipEdit } from './editor-diagnostics.js';
 import type { RelationshipEditOperation } from './editor-diagnostics.js';
 import {
-  applyLayoutPatch, changeBounds, deleteItem, deleteMany, EditorCommandError, findNode, moveMany, nodesOf
+  applyLayoutPatch, changeBounds, deleteItem, deleteMany, findNode, moveMany, nodesOf, viewForCommand
 } from './editor-view.js';
-import { createElement, createRelatedElement, createRelationship } from './editor-create.js';
+import {
+  createElement, createRelatedElement, createRelationship, duplicateSelection
+} from './editor-create.js';
 import {
   buildOperationLog, EditorOperationLogError, MAX_EDITOR_OPERATIONS, parseOperationLog,
   serializeOperationLog,
@@ -31,6 +33,9 @@ export type EditorCommand =
       connection: ViewConnectionDto }
   | { type: 'create-related-element'; viewId: string; element: ElementDto; node: ViewNodeDto;
       relationship: RelationshipDto; connection: ViewConnectionDto }
+  | { type: 'duplicate-selection'; viewId: string; elements: ElementDto[];
+      nodes: Array<{ node: ViewNodeDto; parentId?: string }>;
+      relationships: RelationshipDto[]; connections: ViewConnectionDto[] }
   | { type: 'move'; viewId: string; nodeId: string; x: number; y: number }
   | { type: 'move-many'; viewId: string; moves: Array<{ nodeId: string; x: number; y: number }> }
   | { type: 'resize'; viewId: string; nodeId: string; x: number; y: number; width: number; height: number }
@@ -247,30 +252,12 @@ function sameData(source: unknown, target: unknown): boolean {
     Reflect.has(right, key) && sameData(left[key as string], right[key as string]));
 }
 
-function viewForCommand(model: ModelDto, command: EditorCommand): ModelDto['views'][number] {
-  const view = model.views.find((item) => item.id === command.viewId);
-  if (view) return view;
-  if (command.type === 'connect' || command.type === 'reconnect') {
-    rejectRelationshipEdit('DTO_RELATIONSHIP_VIEW_NOT_FOUND', command.type, {
-      viewId: command.viewId,
-      connectionId: command.type === 'connect' ? command.connection.id : command.connectionId,
-      relationshipId: command.type === 'connect' ? command.connection.relationshipId : undefined,
-      sourceId: command.type === 'connect' ? command.connection.sourceId : command.sourceId,
-      targetId: command.type === 'connect' ? command.connection.targetId : command.targetId
-    });
-  }
-  if (command.type === 'create-element' || command.type === 'create-relationship' ||
-      command.type === 'create-related-element') {
-    throw new EditorCommandError('DTO_CREATE_VIEW_NOT_FOUND');
-  }
-  invalid();
-}
-
 function applyCreateCommand(model: ModelDto, command: EditorCommand,
   semanticProfile?: SemanticProfile): ModelDto | undefined {
   if (command.type === 'create-element') return createElement(model, command);
   if (command.type === 'create-relationship') return createRelationship(model, command, semanticProfile);
   if (command.type === 'create-related-element') return createRelatedElement(model, command, semanticProfile);
+  if (command.type === 'duplicate-selection') return duplicateSelection(model, command, semanticProfile);
   return undefined;
 }
 

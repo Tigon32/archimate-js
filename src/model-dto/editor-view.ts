@@ -2,6 +2,7 @@ import type { LayoutGeometry, LayoutPatch } from '../layout/types.js';
 import type { ModelDto, PointDto, StyleDto, ViewNodeDto } from './types.js';
 import { invalid } from './validate.js';
 import type { CanvasProjection, EditorCommand } from './editor.js';
+import { rejectRelationshipEdit } from './editor-diagnostics.js';
 
 type View = ModelDto['views'][number];
 
@@ -24,6 +25,25 @@ export class EditorCommandError extends TypeError {
     super(code);
     this.name = 'EditorCommandError';
   }
+}
+
+export function viewForCommand(model: ModelDto, command: EditorCommand): View {
+  const view = model.views.find((item) => item.id === command.viewId);
+  if (view) return view;
+  if (command.type === 'connect' || command.type === 'reconnect') {
+    rejectRelationshipEdit('DTO_RELATIONSHIP_VIEW_NOT_FOUND', command.type, {
+      viewId: command.viewId,
+      connectionId: command.type === 'connect' ? command.connection.id : command.connectionId,
+      relationshipId: command.type === 'connect' ? command.connection.relationshipId : undefined,
+      sourceId: command.type === 'connect' ? command.connection.sourceId : command.sourceId,
+      targetId: command.type === 'connect' ? command.connection.targetId : command.targetId
+    });
+  }
+  if (command.type === 'create-element' || command.type === 'create-relationship' ||
+      command.type === 'create-related-element' || command.type === 'duplicate-selection') {
+    throw new EditorCommandError('DTO_CREATE_VIEW_NOT_FOUND');
+  }
+  invalid();
 }
 
 function rejectLayoutPatch(code: EditorCommandErrorCode): never {

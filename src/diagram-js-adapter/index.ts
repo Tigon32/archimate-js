@@ -1,5 +1,7 @@
 export { DiagramJsCanvasPort } from './canvas-port.js';
 export { attachConceptPicker } from './concept-picker.js';
+export { attachProductivityToolbar } from './productivity-toolbar.js';
+export type { ProductivityActions } from './productivity-toolbar.js';
 export type {
   ConceptPickerAdapterOptions,
   ConceptPickerEditorService,
@@ -16,6 +18,7 @@ export {
 export type { DiagramJsViewportState } from './viewport.js';
 export type {
   DiagramJsCanvasServices,
+  DuplicateGestureRequester,
   QuickCreateRequest,
   QuickCreateRequester,
   RelationshipTypeRequest,

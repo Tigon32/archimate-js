@@ -1,5 +1,6 @@
 import { DiagramJsCanvasPort, type DiagramJsCanvasServices,
-  type QuickCreateRequester, type RelationshipTypeRequester } from './canvas-port.js';
+  type DuplicateGestureRequester, type QuickCreateRequester, type RelationshipTypeRequester
+} from './canvas-port.js';
 import {
   createDtoEditorFromMeff, editingIneligibleError, type DtoEditingReason
 } from '../model-dto/eligibility.js';
@@ -38,7 +39,7 @@ export class DtoModelerSession {
 
   private constructor(private readonly modeler: DtoModelerServices, xml: string, viewId?: string,
     requestRelationshipType?: RelationshipTypeRequester, requestQuickCreate?: QuickCreateRequester,
-    semanticProfile?: SemanticProfile) {
+    semanticProfile?: SemanticProfile, requestDuplicate?: DuplicateGestureRequester) {
     this.importedModel = modeler.getModel();
     const entry = createDtoEditorFromMeff(xml, { semanticProfile });
     this.eligible = entry.eligible;
@@ -51,7 +52,8 @@ export class DtoModelerSession {
       eventBus: modeler.get('eventBus'), selection: modeler.get('selection'),
       modeling: modeler.get('modeling')
     } as DiagramJsCanvasServices;
-    const port = new DiagramJsCanvasPort(services, requestRelationshipType, requestQuickCreate);
+    const port = new DiagramJsCanvasPort(services, requestRelationshipType, requestQuickCreate,
+      requestDuplicate);
     this.canvasPort = port;
     this.detach = entry.editor.attach(activeViewId, port);
     this.viewId = activeViewId;
@@ -65,10 +67,11 @@ export class DtoModelerSession {
   static async open(modeler: DtoModelerServices, xml: string, viewId?: string,
     requestRelationshipType?: RelationshipTypeRequester,
     requestQuickCreate?: QuickCreateRequester,
-    semanticProfile?: SemanticProfile): Promise<DtoModelerSession> {
+    semanticProfile?: SemanticProfile,
+    requestDuplicate?: DuplicateGestureRequester): Promise<DtoModelerSession> {
     await modeler.importXML(xml, viewId);
-    return new DtoModelerSession(modeler, xml, viewId, requestRelationshipType,
-      requestQuickCreate, semanticProfile);
+    return new DtoModelerSession(modeler, xml, viewId, requestRelationshipType, requestQuickCreate,
+      semanticProfile, requestDuplicate);
   }
 
   /** The caller writes only after both full, validated outputs have been produced. */

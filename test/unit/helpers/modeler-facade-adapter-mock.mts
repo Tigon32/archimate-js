@@ -82,6 +82,7 @@ export function createAdapterMock(state: FacadeMockState) {
     DiagramJsCanvasPort: class {},
     DtoModelerSession: FakeSession,
     attachConceptPicker: vi.fn(() => () => {}),
+    attachProductivityToolbar: vi.fn(() => () => {}),
     createDiagramJsModeler: () => createModeler(state),
     createDiagramJsCapabilities: (modeler: { get(serviceName: string): unknown }) =>
       createCapabilities(modeler),

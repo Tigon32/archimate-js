@@ -78,10 +78,14 @@ modeler.zoom(0.8);
 modeler.zoom('fit');
 const scale = modeler.getZoom();
 modeler.panBy(20, -10);
+modeler.duplicateSelection({ x: 20, y: 20 });
+modeler.alignSelection('left');
+modeler.distributeSelection('horizontal');
+modeler.deleteSelection();
 ```
 
 Supported persistent command discriminants are `create-element`,
-`create-relationship`, `create-related-element`, `move`, `move-many`, `resize`,
+`create-relationship`, `create-related-element`, `duplicate-selection`, `move`, `move-many`, `resize`,
 `connect`, `reconnect`, `delete`, `delete-many`, `apply-layout-patch`, `label`,
 `concept-name`, `concept-documentation`, and `property`. `move-many` uses
 absolute diagram-space target coordinates per node. `apply-layout-patch` accepts
@@ -104,6 +108,14 @@ empty canvas opens a compatible target picker and commits the target concept,
 view node, relationship, and connection as one reversible
 `create-related-element` command. See
 [relationship creation and quick-create](relationship-chooser.md).
+
+The adapter-owned selection toolbar and Alt/Option-drag duplicate flow call the
+same public methods. For eligible element-node hierarchies, duplication clones
+semantic concepts, descendant element nodes, and internal relationships in one
+undoable command. Container/label descendants emit no duplicate command;
+their support depends on broader MEFF/DTO convergence. Alignment and
+distribution reuse `move-many`. See
+[selection productivity interactions](productivity-interactions.md).
 
 The facade can export, serialize, and replay a version-1 operation log:
 
