@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { RELATIONSHIP_SEMANTIC_ROWS as sourceRows } from '../../src/language/relationship-decisions.mjs';
-import { RELATIONSHIP_SEMANTIC_ROWS, validateRelationshipSemantics } from '../../src/validator/index.js';
+import {
+  RELATIONSHIP_SEMANTIC_ROWS,
+  parseSemanticProfile,
+  validateRelationshipSemantics
+} from '../../src/validator/index.js';
 
 // SYNTHETIC migration baseline: tuples reviewed before extraction into src/language.
 const existingRows = [
@@ -52,6 +56,7 @@ describe('reviewed relationship registry extraction', () => {
       expect(validateRelationshipSemantics(row)).toEqual({
         archimateVersion: row.archimateVersion,
         decision: row.decision,
+        decisionLayer: 'core',
         reasonCode: row.decision === 'allowed' ? 'MATRIX_ALLOWED' : 'MATRIX_DISALLOWED',
         evidenceSourceId: row.evidenceSourceId,
         interpretation: row.interpretation
@@ -68,5 +73,86 @@ describe('reviewed relationship registry extraction', () => {
     expect(validateRelationshipSemantics({ ...input, sourceKind: 'relationship' })).toMatchObject({
       decision: 'unsupported', reasonCode: 'RELATIONSHIP_ENDPOINT_UNSUPPORTED'
     });
+  });
+
+  it('layers a non-normative profile only over unsupported core combinations', () => {
+      const before = structuredClone(sourceRows);
+      const profile = parseSemanticProfile({
+        id: 'synthetic-org-profile',
+        version: '2026.09',
+        kind: 'organization',
+        rows: [{
+          archimateVersion: '3.2',
+          sourceType: 'BusinessActor',
+          relationshipType: 'ServingRelationship',
+          targetType: 'TechnologyService',
+          decision: 'allowed',
+          evidenceSourceId: 'profile:synthetic-org-reviewed',
+          nonNormative: true,
+          interpretation: 'SYNTHETIC organization extension for unit testing only.'
+        }, {
+          archimateVersion: '3.2',
+          sourceType: 'ApplicationFunction',
+          relationshipType: 'AccessRelationship',
+          targetType: 'DataObject',
+          decision: 'disallowed',
+          evidenceSourceId: 'profile:synthetic-org-shadow',
+          nonNormative: true
+        }]
+      });
+
+      expect(validateRelationshipSemantics({
+        sourceType: 'BusinessActor',
+        relationshipType: 'ServingRelationship',
+        targetType: 'TechnologyService'
+      }, profile)).toMatchObject({
+        decision: 'allowed',
+        decisionLayer: 'synthetic-org-profile',
+        reasonCode: 'PROFILE_ALLOWED',
+        nonNormative: true
+      });
+      expect(validateRelationshipSemantics({
+        sourceType: 'ApplicationFunction',
+        relationshipType: 'AccessRelationship',
+        targetType: 'DataObject'
+      }, profile)).toMatchObject({
+        decision: 'allowed',
+        decisionLayer: 'core',
+        reasonCode: 'MATRIX_ALLOWED'
+      });
+      expect(Object.isFrozen(sourceRows)).toBe(true);
+      expect(sourceRows.every((row) => Object.isFrozen(row))).toBe(true);
+      expect(sourceRows).toEqual(before);
+  });
+
+  it('rejects invalid profile rows with explicit boundary errors', () => {
+      expect(() => parseSemanticProfile({
+        id: 'synthetic-invalid',
+        version: '2026.09',
+        kind: 'organization',
+        rows: [{
+          archimateVersion: '3.2',
+          sourceType: 'BusinessActor',
+          relationshipType: 'ServingRelationship',
+          targetType: 'TechnologyService',
+          decision: 'allowed',
+          evidenceSourceId: 'opengroup-archimate-3.2-reference-cards',
+          nonNormative: true
+        }]
+      })).toThrow(/evidenceSourceId must be non-normative/);
+      expect(() => parseSemanticProfile({
+        id: 'synthetic-invalid',
+        version: '2026.09',
+        kind: 'experimental',
+        rows: [{
+          archimateVersion: '3.2',
+          sourceType: 'BusinessActor',
+          relationshipType: 'ServingRelationship',
+          targetType: 'TechnologyService',
+          decision: 'allowed',
+          evidenceSourceId: 'profile:synthetic',
+          nonNormative: false
+        }]
+      })).toThrow(/nonNormative must be true/);
   });
 });

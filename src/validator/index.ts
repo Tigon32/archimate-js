@@ -2,6 +2,7 @@ import { SaxesParser } from 'saxes';
 
 import {
   RELATIONSHIP_SEMANTICS_VERSION,
+  parseSemanticProfile,
   validateRelationshipSemantics
 } from './relationship-semantics.js';
 
@@ -197,6 +198,8 @@ function runOrganizationRules(
  */
 export function validateArchimateXml(xml: string, options: ValidatorOptions = {}): ValidationResult {
   const limits = { ...DEFAULT_LIMITS, ...options };
+  const semanticProfile = options.semanticProfile === undefined ? undefined :
+    parseSemanticProfile(options.semanticProfile);
   const diagnostics: Diagnostic[] = [];
   const suggestions: RepairSuggestion[] = [];
   if (typeof xml !== 'string') {
@@ -305,7 +308,7 @@ export function validateArchimateXml(xml: string, options: ValidatorOptions = {}
       targetType,
       sourceKind: sourceRelationship ? 'relationship' : junctionTypes.has(sourceType) ? 'junction' : 'element',
       targetKind: targetRelationship ? 'relationship' : junctionTypes.has(targetType) ? 'junction' : 'element'
-    });
+    }, semanticProfile);
     if (semanticResult.decision === 'disallowed') {
       pushDiagnostic(diagnostics, 'SEMANTICS_RELATIONSHIP_DISALLOWED', 'error', 'semantics', 'The relationship combination is disallowed by the built-in ArchiMate 3.2 profile.', node, id);
     } else if (semanticResult.reasonCode === 'RELATIONSHIP_ENDPOINT_UNSUPPORTED') {
@@ -377,9 +380,13 @@ export type { Diagnostic, OrganizationRule, RepairSuggestion, ValidationResult, 
 export {
   RELATIONSHIP_SEMANTICS_VERSION,
   RELATIONSHIP_SEMANTIC_ROWS,
+  parseSemanticProfile,
   validateRelationshipSemantics
 } from './relationship-semantics.js';
 export type {
+  SemanticProfile,
+  SemanticProfileKind,
+  SemanticProfileRow,
   RelationshipEndpointKind,
   RelationshipSemanticDecision,
   RelationshipSemanticInput,

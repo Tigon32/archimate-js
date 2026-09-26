@@ -3,6 +3,7 @@ import {
   validateRelationshipSemantics,
   type RelationshipSemanticResult
 } from '../language/relationship-semantics.mjs';
+import type { SemanticProfile } from '../language/semantic-profile.mjs';
 import { CONCEPT_REGISTRY, type ConceptRecord } from '../language/concept-registry.mjs';
 
 export interface RelationshipCandidate {
@@ -33,11 +34,13 @@ export function relationshipLabel(type: string): string {
   return type.replace(/Relationship$/, '').replace(/([a-z0-9])([A-Z])/g, '$1 $2');
 }
 
-export function evaluateRelationshipChoices(sourceType: string, targetType: string): RelationshipChoice {
+export function evaluateRelationshipChoices(sourceType: string, targetType: string,
+  semanticProfile?: SemanticProfile): RelationshipChoice {
   const candidates = relationshipTypes.map((type) => ({
     type,
     label: relationshipLabel(type),
-    decision: validateRelationshipSemantics({ sourceType, relationshipType: type, targetType })
+    decision: validateRelationshipSemantics({ sourceType, relationshipType: type, targetType },
+      semanticProfile)
   }));
   const allowed = candidates.filter((candidate) => candidate.decision.decision === 'allowed');
   return {
@@ -50,9 +53,10 @@ export function evaluateRelationshipChoices(sourceType: string, targetType: stri
   };
 }
 
-export function quickCreateCandidates(sourceType: string): QuickCreateCandidate[] {
+export function quickCreateCandidates(sourceType: string,
+  semanticProfile?: SemanticProfile): QuickCreateCandidate[] {
   return CONCEPT_REGISTRY.records.flatMap((concept) =>
-    evaluateRelationshipChoices(sourceType, concept.type).allowed.map((relationship) =>
+    evaluateRelationshipChoices(sourceType, concept.type, semanticProfile).allowed.map((relationship) =>
       ({ concept, relationship })))
     .sort((left, right) => left.concept.layer.localeCompare(right.concept.layer) ||
       left.concept.type.localeCompare(right.concept.type) ||
