@@ -3,7 +3,7 @@ import { DiagramJsCanvasPort, type DiagramJsCanvasServices,
 import {
   createDtoEditorFromMeff, editingIneligibleError, type DtoEditingReason
 } from '../model-dto/eligibility.js';
-import type { DiagramAdapter } from '../model-dto/editor.js';
+import type { CanvasProjection, DiagramAdapter } from '../model-dto/editor.js';
 import type { SemanticProfile } from '../language/semantic-profile.mjs';
 
 /** A narrow, structural interface; the legacy Modeler remains free to serve other imports. */
@@ -29,11 +29,12 @@ export class DtoModelerSession {
   readonly reasons: readonly DtoEditingReason[];
   readonly editor?: DiagramAdapter;
   private readonly importedModel: unknown;
-  private readonly detach?: () => void;
+  private detach?: () => void;
   private readonly canvasPort?: DiagramJsCanvasPort;
   private readonly offNativeMutation?: () => void;
   private nativeMutation = false;
   private closed = false;
+  private viewId?: string;
 
   private constructor(private readonly modeler: DtoModelerServices, xml: string, viewId?: string,
     requestRelationshipType?: RelationshipTypeRequester, requestQuickCreate?: QuickCreateRequester,
@@ -53,6 +54,7 @@ export class DtoModelerSession {
     const port = new DiagramJsCanvasPort(services, requestRelationshipType, requestQuickCreate);
     this.canvasPort = port;
     this.detach = entry.editor.attach(activeViewId, port);
+    this.viewId = activeViewId;
     this.editor = entry.editor;
     const markMutation = (): void => { this.nativeMutation = true; };
     services.eventBus.on('commandStack.executed', markMutation);
@@ -85,6 +87,17 @@ export class DtoModelerSession {
     this.closed = true;
     this.offNativeMutation?.();
     this.detach?.();
+  }
+
+  activeViewId(): string | undefined {
+    return this.viewId;
+  }
+
+  switchView(viewId: string): CanvasProjection {
+    if (this.closed || !this.editor || !this.canvasPort) throw editingIneligibleError();
+    const projection = this.editor.switchAttachedView(this.canvasPort, viewId);
+    this.viewId = viewId;
+    return projection;
   }
 
   startElementNameEditing(nodeId: string): void {

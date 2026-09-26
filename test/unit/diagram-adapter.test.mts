@@ -11,6 +11,66 @@ function fixture(): ModelDto {
   return model;
 }
 
+function fixtureWithSecondNodeView(): ModelDto {
+  const model = fixture();
+  model.views[1].nodes.push({ id: 'node-service-alt', kind: 'element',
+    elementId: 'service-two', x: 520, y: 80, width: 140, height: 70, nodes: [] });
+  return model;
+}
+
+function recordingCanvas() {
+  const renders: CanvasProjection[] = [];
+  let onCommand: ((command: EditorCommand) => void) | undefined;
+  let onSelection: ((ids: string[]) => void) | undefined;
+  let commandOffs = 0, selectionOffs = 0, clears = 0;
+  const port: CanvasPort = {
+    render: (projection) => { renders.push(projection); },
+    onCommand: (handler) => {
+      onCommand = handler;
+      return () => { commandOffs++; onCommand = undefined; };
+    },
+    onSelection: (handler) => {
+      onSelection = handler;
+      return () => { selectionOffs++; onSelection = undefined; };
+    },
+    clear: () => { clears++; }
+  };
+  return {
+    port,
+    renders,
+    command: () => onCommand,
+    selection: () => onSelection,
+    commandOffs: () => commandOffs,
+    selectionOffs: () => selectionOffs,
+    clears: () => clears
+  };
+}
+
+function clearingFailureCanvas(failingViewId: string) {
+  let onCommand: ((command: EditorCommand) => void) | undefined;
+  let onSelection: ((ids: string[]) => void) | undefined;
+  const state = { viewId: '', nodeIds: [] as string[], selectedIds: [] as string[] };
+  const port: CanvasPort = {
+    render: (projection) => {
+      state.viewId = '';
+      state.nodeIds = [];
+      state.selectedIds = [];
+      if (projection.viewId === failingViewId) throw new Error('SYNTHETIC_RENDER_FAILURE');
+      state.viewId = projection.viewId;
+      state.nodeIds = projection.nodes.map((node) => node.id);
+      state.selectedIds = projection.selectedIds;
+    },
+    onCommand: (handler) => { onCommand = handler; return () => { onCommand = undefined; }; },
+    onSelection: (handler) => { onSelection = handler; return () => { onSelection = undefined; }; }
+  };
+  return {
+    port,
+    state,
+    command: () => onCommand,
+    selection: () => onSelection
+  };
+}
+
 it('updates nested geometry and edge attachments through undoable commands', () => {
   const editor = new DiagramAdapter(fixture());
   const before = editor.serialize();
@@ -132,6 +192,106 @@ it('binds an ID-only canvas port and emits detached state with the edited view I
   expect(clears).toBe(2);
   expect(onCommand).toBeUndefined();
   expect(onSelection).toBeUndefined();
+});
+
+it('switches one attached port between DTO views without stale listener routing', () => {
+  const editor = new DiagramAdapter(fixtureWithSecondNodeView());
+  const canvas = recordingCanvas();
+  const events: string[] = [];
+  editor.subscribe((event) => events.push(`${event.type}:${event.viewId}:${event.selectedIds.join(',')}`));
+  const detach = editor.attach('view-dto-export', canvas.port);
+  editor.execute({ type: 'move', viewId: 'view-dto-export', nodeId: 'node-component', x: 41, y: 52 });
+  canvas.selection()?.(['node-component']);
+  expect(editor.switchAttachedView(canvas.port, 'view-two')).toMatchObject({
+    viewId: 'view-two',
+    nodes: [{ id: 'node-service-alt', x: 520, y: 80 }],
+    selectedIds: []
+  });
+  canvas.selection()?.(['node-service-alt']);
+  expect(() => canvas.command()?.({ type: 'move', viewId: 'view-dto-export',
+    nodeId: 'node-component', x: 99, y: 99 })).toThrow();
+  canvas.command()?.({ type: 'move', viewId: 'view-two',
+    nodeId: 'node-service-alt', x: 560, y: 85 });
+  expect(editor.project('view-dto-export').selectedIds).toEqual(['node-component']);
+  expect(editor.project('view-two').selectedIds).toEqual(['node-service-alt']);
+  expect(editor.project('view-dto-export').nodes.find((node) => node.id === 'node-component'))
+    .toMatchObject({ x: 41, y: 52 });
+  expect(editor.project('view-two').nodes[0]).toMatchObject({ x: 560, y: 85 });
+
+  editor.switchAttachedView(canvas.port, 'view-dto-export');
+  expect(canvas.renders.at(-1)).toMatchObject({ viewId: 'view-dto-export',
+    selectedIds: ['node-component'] });
+  expect(editor.undo()).toBe(true);
+  expect(editor.project('view-two').nodes[0]).toMatchObject({ x: 520, y: 80 });
+  editor.switchAttachedView(canvas.port, 'view-two');
+  expect(canvas.renders.at(-1)).toMatchObject({ viewId: 'view-two',
+    selectedIds: ['node-service-alt'] });
+  expect(editor.redo()).toBe(true);
+  expect(editor.project('view-two').nodes[0]).toMatchObject({ x: 560, y: 85 });
+  expect(events).toContain('selection:view-two:node-service-alt');
+  expect(canvas.renders.map((projection) => projection.viewId)).toEqual([
+    'view-dto-export', 'view-dto-export', 'view-dto-export', 'view-two', 'view-two',
+    'view-two', 'view-dto-export',
+    'view-two', 'view-two'
+  ]);
+  expect(canvas.commandOffs()).toBe(0);
+  expect(canvas.selectionOffs()).toBe(0);
+  detach();
+  expect(canvas.commandOffs()).toBe(1);
+  expect(canvas.selectionOffs()).toBe(1);
+  expect(canvas.clears()).toBe(1);
+  expect(canvas.command()).toBeUndefined();
+  expect(canvas.selection()).toBeUndefined();
+});
+
+it('rejects invalid or deleted view switches before changing the attached canvas', () => {
+  const editor = new DiagramAdapter(fixture());
+  const renders: CanvasProjection[] = [];
+  let onSelection: ((ids: string[]) => void) | undefined;
+  const port: CanvasPort = {
+    render: (projection) => { renders.push(projection); },
+    onCommand: () => () => {},
+    onSelection: (handler) => { onSelection = handler; return () => { onSelection = undefined; }; }
+  };
+  const detach = editor.attach('view-dto-export', port);
+  onSelection?.(['node-component']);
+  expect(editor.switchAttachedView(port, 'view-two')).toMatchObject({
+    viewId: 'view-two',
+    nodes: [],
+    connections: []
+  });
+  const renderCount = renders.length;
+  expect(() => editor.switchAttachedView(port, 'missing-view')).toThrow();
+  expect(renders).toHaveLength(renderCount);
+  onSelection?.([]);
+  expect(editor.project('view-two').selectedIds).toEqual([]);
+  expect(editor.project('view-dto-export').selectedIds).toEqual(['node-component']);
+  detach();
+  expect(() => editor.switchAttachedView(port, 'view-dto-export')).toThrow();
+});
+
+it('rerenders the prior view after a target render fails mid-clear', () => {
+  const editor = new DiagramAdapter(fixtureWithSecondNodeView());
+  const canvas = clearingFailureCanvas('view-two');
+  const detach = editor.attach('view-dto-export', canvas.port);
+  canvas.selection()?.(['node-component']);
+  expect(editor.project('view-dto-export').selectedIds).toEqual(['node-component']);
+
+  expect(() => editor.switchAttachedView(canvas.port, 'view-two'))
+    .toThrow('SYNTHETIC_RENDER_FAILURE');
+  expect(canvas.state.viewId).toBe('view-dto-export');
+  expect(canvas.state.nodeIds).toHaveLength(3);
+  expect(canvas.state.nodeIds).toEqual(expect.arrayContaining([
+    'node-component', 'node-service', 'node-service-nested'
+  ]));
+  expect(canvas.state.selectedIds).toEqual(['node-component']);
+  expect(() => canvas.command()?.({ type: 'move', viewId: 'view-two',
+    nodeId: 'node-service-alt', x: 600, y: 90 })).toThrow();
+  canvas.command()?.({ type: 'move', viewId: 'view-dto-export',
+    nodeId: 'node-component', x: 70, y: 80 });
+  expect(editor.project('view-dto-export').nodes.find((node) => node.id === 'node-component'))
+    .toMatchObject({ x: 70, y: 80 });
+  detach();
 });
 
 it('exports the edited DTO through the fail-closed MEFF boundary', () => {

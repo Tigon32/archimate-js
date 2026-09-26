@@ -88,9 +88,15 @@ export interface OpenResult {
   viewId?: string;
 }
 
+export interface ModelerView {
+  id: string;
+  name?: string;
+}
+
 export type ModelerEvent =
   | { type: 'opened'; eligible: boolean; reasons: readonly DtoEditingReason[]; viewId?: string }
   | { type: 'closed' }
+  | { type: 'view-switched'; viewId: string; selectedIds: string[]; model: EditorEvent['model'] }
   | { type: 'changed'; viewId: string; selectedIds: string[]; model: EditorEvent['model'] }
   | { type: 'selection'; viewId: string; selectedIds: string[]; model: EditorEvent['model'] }
   | ({ type: 'viewport' } & DiagramJsViewportState);
@@ -141,22 +147,11 @@ export default class Modeler {
       throw new ModelerError(this.destroyed ? 'MODELER_DESTROYED' : 'MODELER_OPEN_SUPERSEDED');
     }
     this.session = session;
-    this.viewId = options.viewId || session.editor?.getModel().views[0]?.id;
+    this.viewId = session.activeViewId();
     if (session.editor) {
       const editor = session.editor;
       this.offEditor = editor.subscribe((event) => this.emitEditor(event));
-      if (this.viewId) {
-        const idFactory = createConceptIdFactory(editor);
-        this.offConceptPicker = attachConceptPicker({
-          modeler: this.modeler,
-          viewId: this.viewId,
-          editor: {
-            createId: idFactory,
-            execute: (command) => editor.execute(command),
-            startNameEditing: (nodeId) => session.startElementNameEditing(nodeId)
-          } satisfies ConceptPickerEditorService
-        });
-      }
+      if (this.viewId) this.attachConceptPicker(session, editor, this.viewId);
     }
     const result = { eligible: session.eligible, reasons: session.reasons, viewId: this.viewId };
     this.emit({ type: 'opened', ...result });
@@ -293,6 +288,29 @@ export default class Modeler {
     return this.editor().project(this.activeViewId());
   }
 
+  getViews(): ModelerView[] {
+    return this.editor().getModel().views.map(({ id, name }) =>
+      name === undefined ? { id } : { id, name });
+  }
+
+  getActiveViewId(): string {
+    return this.activeViewId();
+  }
+
+  switchView(viewId: string): CanvasProjection {
+    const session = this.currentSession();
+    const editor = this.editor();
+    const projection = session.switchView(viewId);
+    this.viewId = viewId;
+    this.closeChoiceDialogs();
+    this.offConceptPicker?.();
+    this.offConceptPicker = undefined;
+    this.attachConceptPicker(session, editor, viewId);
+    this.emit({ type: 'view-switched', viewId,
+      selectedIds: projection.selectedIds, model: editor.getModel() });
+    return projection;
+  }
+
   fitView(): void {
     this.assertUsable();
     this.viewport.fitView();
@@ -369,6 +387,12 @@ export default class Modeler {
     return this.session.editor;
   }
 
+  private currentSession(): DtoModelerSession {
+    this.assertUsable();
+    if (!this.session?.editor) throw new ModelerError('MODELER_SESSION_INELIGIBLE');
+    return this.session;
+  }
+
   private activeViewId(): string {
     if (!this.viewId) throw new ModelerError('MODELER_SESSION_INELIGIBLE');
     return this.viewId;
@@ -381,6 +405,20 @@ export default class Modeler {
   private emitEditor(event: EditorEvent): void {
     this.emit({ type: event.type, viewId: event.viewId,
       selectedIds: event.selectedIds, model: event.model });
+  }
+
+  private attachConceptPicker(session: DtoModelerSession,
+    editor: NonNullable<DtoModelerSession['editor']>, viewId: string): void {
+    const idFactory = createConceptIdFactory(editor);
+    this.offConceptPicker = attachConceptPicker({
+      modeler: this.modeler,
+      viewId,
+      editor: {
+        createId: idFactory,
+        execute: (command) => editor.execute(command),
+        startNameEditing: (nodeId) => session.startElementNameEditing(nodeId)
+      } satisfies ConceptPickerEditorService
+    });
   }
 
   private emit(event: ModelerEvent): void {
