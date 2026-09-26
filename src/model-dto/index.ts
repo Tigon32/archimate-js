@@ -72,7 +72,7 @@ export type DtoSaveResult = AdapterDtoSaveResult;
 export {
   assessModelDtoEditingEligibility, checkMeffEditingEligibility, createDtoEditorFromMeff
 } from './eligibility.js';
-export type { CanvasPort, CanvasProjection, EditorCommand, EditorEvent } from './editor.js';
+export type { CanvasPort, CanvasProjection, DiagramAdapterOptions, EditorCommand, EditorEvent } from './editor.js';
 export type { EditorCommandErrorCode } from './editor-view.js';
 export type { DtoEditingEligibility, DtoEditingReason, DtoMeffEditorEntry } from './eligibility.js';
 export type {

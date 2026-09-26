@@ -95,7 +95,9 @@ function strictBlockingSnapshot(
   evaluate: (model: ModelDto) => ViewpointAdvisorySnapshot
 ): ViewpointAdvisorySnapshot | undefined {
   if (mode !== 'strict' || command.viewId !== options.viewId) return undefined;
-  const candidate = new DiagramAdapter(options.adapter.getModel());
+  const candidate = new DiagramAdapter(options.adapter.getModel(), {
+    semanticProfile: options.adapter.getSemanticProfile()
+  });
   candidate.execute(command);
   const preview = evaluate(candidate.getModel());
   return preview.blocking ? preview : undefined;

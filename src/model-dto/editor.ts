@@ -5,7 +5,8 @@ import type { LayoutPatch } from '../layout/types.js';
 import { exportModelDtoToMeff } from './meff-export.js';
 import { assessModelDtoEditingEligibility, editingIneligibleError } from './eligibility.js';
 import { invalid, isIdentifier, serializeModelDto, validateModelDto } from './validate.js';
-import { validateRelationshipSemantics } from '../language/relationship-semantics.mjs';
+import { parseSemanticProfile, validateRelationshipSemantics } from '../language/relationship-semantics.mjs';
+import type { SemanticProfile } from '../language/semantic-profile.mjs';
 import { rejectRelationshipEdit } from './editor-diagnostics.js';
 import type { RelationshipEditOperation } from './editor-diagnostics.js';
 import {
@@ -55,6 +56,10 @@ export type EditorCommand =
 
 export type EditorEvent = { type: 'changed' | 'selection'; viewId: string; model: ModelDto;
   selectedIds: string[] };
+
+export interface DiagramAdapterOptions {
+  semanticProfile?: unknown;
+}
 
 export interface CanvasPort {
   render(projection: CanvasProjection): void;
@@ -163,21 +168,23 @@ function checkEndpoints(model: ModelDto, view: ModelDto['views'][number],
 }
 
 function checkRelationshipDecision(model: ModelDto, relationship: RelationshipDto,
-  operation: RelationshipEditOperation, context: RelationshipContext): void {
+  operation: RelationshipEditOperation, context: RelationshipContext,
+  semanticProfile?: SemanticProfile): void {
   const source = model.elements.find((element) => element.id === relationship.sourceId);
   const target = model.elements.find((element) => element.id === relationship.targetId);
   if (!source || !target) {
     rejectRelationshipEdit('DTO_RELATIONSHIP_ENDPOINT_INVALID', operation, context);
   }
   const result = validateRelationshipSemantics({ sourceType: source.type,
-    relationshipType: relationship.type, targetType: target.type });
+    relationshipType: relationship.type, targetType: target.type }, semanticProfile);
   if (result.decision === 'allowed') return;
   rejectRelationshipEdit(result.decision === 'disallowed' ?
     'DTO_RELATIONSHIP_DISALLOWED' : 'DTO_RELATIONSHIP_UNSUPPORTED', operation, context);
 }
 
 function connect(model: ModelDto, view: ModelDto['views'][number],
-  command: Extract<EditorCommand, { type: 'connect' }>): void {
+  command: Extract<EditorCommand, { type: 'connect' }>,
+  semanticProfile?: SemanticProfile): void {
   const context = { viewId: view.id, connectionId: command.connection.id,
     relationshipId: command.connection.relationshipId,
     sourceId: command.connection.sourceId, targetId: command.connection.targetId };
@@ -198,7 +205,8 @@ function connect(model: ModelDto, view: ModelDto['views'][number],
   if (command.connection.kind === 'relationship') {
     const relationship = checkEndpoints(model, view, command.connection, 'connect');
     checkRelationshipDecision(model, relationship, 'connect', { ...context,
-      sourceElementId: relationship.sourceId, targetElementId: relationship.targetId });
+      sourceElementId: relationship.sourceId, targetElementId: relationship.targetId },
+    semanticProfile);
   }
   else if (command.relationship) {
     rejectRelationshipEdit('DTO_RELATIONSHIP_ENDPOINT_INVALID', 'connect', context);
@@ -207,7 +215,8 @@ function connect(model: ModelDto, view: ModelDto['views'][number],
 }
 
 function reconnect(model: ModelDto, view: ModelDto['views'][number],
-  command: Extract<EditorCommand, { type: 'reconnect' }>): void {
+  command: Extract<EditorCommand, { type: 'reconnect' }>,
+  semanticProfile?: SemanticProfile): void {
   const connection = view.connections.find((item) => item.id === command.connectionId);
   if (!connection) rejectRelationshipEdit('DTO_RELATIONSHIP_CONNECTION_NOT_FOUND', 'reconnect',
     { viewId: view.id, connectionId: command.connectionId });
@@ -227,7 +236,7 @@ function reconnect(model: ModelDto, view: ModelDto['views'][number],
       rejectRelationshipEdit('DTO_RELATIONSHIP_RETARGET_CONFLICT', 'reconnect', semanticContext);
     }
     if (changed) checkRelationshipDecision(model, { ...relationship, sourceId, targetId },
-      'reconnect', semanticContext);
+      'reconnect', semanticContext, semanticProfile);
     relationship.sourceId = sourceId;
     relationship.targetId = targetId;
   }
@@ -270,18 +279,19 @@ function viewForCommand(model: ModelDto, command: EditorCommand): ModelDto['view
   invalid();
 }
 
-function applyCreateCommand(model: ModelDto, command: EditorCommand): ModelDto | undefined {
+function applyCreateCommand(model: ModelDto, command: EditorCommand,
+  semanticProfile?: SemanticProfile): ModelDto | undefined {
   if (command.type === 'create-element') return createElement(model, command);
-  if (command.type === 'create-relationship') return createRelationship(model, command);
-  if (command.type === 'create-related-element') return createRelatedElement(model, command);
+  if (command.type === 'create-relationship') return createRelationship(model, command, semanticProfile);
+  if (command.type === 'create-related-element') return createRelatedElement(model, command, semanticProfile);
   return undefined;
 }
 
-function apply(model: ModelDto, command: EditorCommand): ModelDto {
+function apply(model: ModelDto, command: EditorCommand, semanticProfile?: SemanticProfile): ModelDto {
   if (command.type === 'connect' || command.type === 'reconnect') checkRelationshipIds(command);
   const next = structuredClone(model);
   const view = viewForCommand(next, command);
-  const created = applyCreateCommand(next, command);
+  const created = applyCreateCommand(next, command, semanticProfile);
   if (created) return created;
 
   switch (command.type) {
@@ -293,10 +303,10 @@ function apply(model: ModelDto, command: EditorCommand): ModelDto {
     moveMany(view, command);
     break;
   case 'connect':
-    connect(next, view, command);
+    connect(next, view, command, semanticProfile);
     break;
   case 'reconnect':
-    reconnect(next, view, command);
+    reconnect(next, view, command, semanticProfile);
     break;
   case 'delete':
     deleteItem(view, command.itemId);
@@ -347,14 +357,18 @@ export class DiagramAdapter {
   private selection = new Map<string, string[]>();
   private listeners = new Set<(event: EditorEvent) => void>();
   private canvases = new Map<CanvasPort, string>();
+  private readonly semanticProfile?: SemanticProfile;
 
-  constructor(model: unknown) {
+  constructor(model: unknown, options: DiagramAdapterOptions = {}) {
     const eligibility = assessModelDtoEditingEligibility(model);
     if (!eligibility.eligible || !sameData(model, eligibility.model)) throw editingIneligibleError();
     this.model = eligibility.model;
+    this.semanticProfile = options.semanticProfile === undefined ? undefined :
+      parseSemanticProfile(options.semanticProfile);
   }
 
   getModel(): ModelDto { return structuredClone(this.model); }
+  getSemanticProfile(): SemanticProfile | undefined { return this.semanticProfile; }
   serialize(): string { return serializeModelDto(this.model); }
   exportMeff(): string { return exportModelDtoToMeff(this.model); }
   exportOperationLog(clientId: string): EditorOperationLog {
@@ -369,7 +383,7 @@ export class DiagramAdapter {
       throw new EditorOperationLogError('EDITOR_OPERATION_REPLAY_NOT_FRESH');
     }
     const log = typeof input === 'string' ? parseOperationLog(input) : validateOperationLog(input);
-    const candidate = new DiagramAdapter(this.model);
+    const candidate = new DiagramAdapter(this.model, { semanticProfile: this.semanticProfile });
     const changedViewIds = new Set<string>();
     candidate.subscribe((event) => {
       if (event.type === 'changed') changedViewIds.add(event.viewId);
@@ -440,7 +454,7 @@ export class DiagramAdapter {
   execute(command: EditorCommand): void {
     const safeCommand = commandForExecution(command);
     const operation = this.prepareOperation('command', safeCommand);
-    const next = apply(this.model, safeCommand);
+    const next = apply(this.model, safeCommand, this.semanticProfile);
     this.past.push({ model: this.model, viewId: safeCommand.viewId });
     this.model = next;
     this.future = [];

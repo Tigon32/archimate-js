@@ -42,6 +42,8 @@ export interface ValidatorOptions {
   /** Return model identifiers and references only when the caller opts in. */
   includeSummary?: boolean;
   organizationRules?: ReadonlyArray<OrganizationRule>;
+  /** Host-supplied non-normative relationship semantics profile, validated before use. */
+  semanticProfile?: unknown;
 }
 
 export interface ValidationResult {

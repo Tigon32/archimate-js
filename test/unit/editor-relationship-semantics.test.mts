@@ -3,14 +3,41 @@ import { expect, it } from 'vitest';
 // @ts-expect-error Node types are excluded from the browser source project.
 import { readFileSync } from 'node:fs';
 import { RELATIONSHIP_SEMANTIC_ROWS } from '../../src/language/relationship-decisions.mjs';
-import { validateRelationshipSemantics } from '../../src/language/relationship-semantics.mjs';
+import { parseSemanticProfile, validateRelationshipSemantics } from '../../src/language/relationship-semantics.mjs';
 import { DiagramAdapter, importMeffToModelDto } from '../../src/model-dto/index.js';
+import { validateArchimateXml } from '../../src/validator/index.js';
 import type {
   ModelDto, RelationshipDto, RelationshipEditDiagnostic, ViewConnectionDto
 } from '../../src/model-dto/index.js';
 
 const viewId = 'view-dto-export';
 const fixtureXml = readFileSync('test/fixtures/synthetic/dto-export-view.xml', 'utf8');
+
+const semanticProfile = parseSemanticProfile({
+  id: 'synthetic-org-profile',
+  version: '2026.09',
+  kind: 'organization',
+  rows: [{
+    archimateVersion: '3.2',
+    sourceType: 'BusinessActor',
+    relationshipType: 'ServingRelationship',
+    targetType: 'TechnologyService',
+    decision: 'allowed',
+    evidenceSourceId: 'profile:synthetic-org-reviewed',
+    nonNormative: true,
+    interpretation: 'SYNTHETIC organization extension for editor and validator parity.'
+  }]
+});
+
+const semanticXml = `<model id="synthetic-model">
+  <elements>
+    <element id="source" type="BusinessActor"/>
+    <element id="target" type="TechnologyService"/>
+  </elements>
+  <relationships>
+    <relationship id="serving" type="ServingRelationship" source="source" target="target"/>
+  </relationships>
+</model>`;
 
 function relationship(type: string, sourceId = 'component-one', targetId = 'service-two'): RelationshipDto {
   return { id: 'relation-one', type: `archimate:${type.replace(/Relationship$/, '')}`,
@@ -76,6 +103,27 @@ it('rejects absent tuples distinctly and preserves failed-command history', () =
     .toBe('DTO_RELATIONSHIP_UNSUPPORTED');
   expect(editor.serialize()).toBe(before);
   expect(editor.undo()).toBe(false);
+});
+
+it('uses the same non-normative profile in validator and editor decisions', () => {
+  const editor = new DiagramAdapter(model('BusinessActor', 'TechnologyService'),
+    { semanticProfile });
+  const before = editor.serialize();
+  const relation = relationship('ServingRelationship');
+  expect(validateArchimateXml(semanticXml, { semanticProfile }).diagnostics
+    .filter((item) => item.code.startsWith('SEMANTICS_RELATIONSHIP'))).toEqual([]);
+  editor.execute({ type: 'connect', viewId,
+    relationship: relation, connection: connection() });
+  expect(editor.getModel().relationships).toHaveLength(1);
+  expect(editor.undo()).toBe(true);
+  expect(editor.serialize()).toBe(before);
+
+  const baseline = validateArchimateXml(semanticXml).diagnostics
+    .filter((item) => item.code === 'SEMANTICS_RELATIONSHIP_COMBINATION_UNSUPPORTED');
+  expect(baseline).toHaveLength(1);
+  expect(codeOf(() => new DiagramAdapter(model('BusinessActor', 'TechnologyService'))
+    .execute({ type: 'connect', viewId, relationship: relation, connection: connection() })))
+    .toBe('DTO_RELATIONSHIP_UNSUPPORTED');
 });
 
 it('checks changed reconnect endpoints but permits unchanged imported unsupported edges', () => {

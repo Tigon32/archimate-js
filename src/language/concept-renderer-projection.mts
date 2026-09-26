@@ -13,6 +13,7 @@ export const renderConceptRendererProjection = (records: readonly ConceptRecord[
   ));
   return [
     '// Generated from src/language/concept-registry.mts by scripts/concept-renderer-projection.mts.',
+    '// Do not edit by hand; run npm run generate:concept-renderer.',
     `export const CONCEPT_RENDERER_METADATA_BY_ID = Object.freeze(${JSON.stringify(metadata, null, 2)});`,
     `const CANONICAL_ID_BY_ALIAS = Object.freeze(${JSON.stringify(aliases, null, 2)});`,
     'export const resolveCanonicalConceptId = (identity) => CANONICAL_ID_BY_ALIAS[identity];',

@@ -26,6 +26,8 @@ import type {
 } from '../diagram-js-adapter/index.js';
 import type { EditorOperationLog } from '../model-dto/editor-operation-log.js';
 import type { ModelDto } from '../model-dto/types.js';
+import { parseSemanticProfile } from '../language/relationship-semantics.mjs';
+import type { SemanticProfile } from '../language/semantic-profile.mjs';
 import {
   evaluateRelationshipChoices,
   quickCreateCandidates,
@@ -48,6 +50,7 @@ export interface ModelerOptions {
   container: Element;
   width?: number | string;
   height?: number | string;
+  semanticProfile?: unknown;
 }
 
 function createConceptIdFactory(editor: { getModel(): ModelDto }): (kind: string) => string {
@@ -115,8 +118,11 @@ export default class Modeler {
   private readonly viewport: DiagramJsViewport;
   private readonly offViewport: () => void;
   private readonly listeners = new Map<ModelerEvent['type'], Set<(event: ModelerEvent) => void>>();
+  private readonly semanticProfile?: SemanticProfile;
 
   constructor(options: ModelerOptions) {
+    this.semanticProfile = options.semanticProfile === undefined ? undefined :
+      parseSemanticProfile(options.semanticProfile);
     this.modeler = createDiagramJsModeler(options);
     this.viewport = createDiagramJsViewport(this.modeler);
     this.offViewport = this.viewport.onViewport((viewport) => this.emit({ type: 'viewport', ...viewport }));
@@ -128,7 +134,8 @@ export default class Modeler {
     this.closeCurrent();
     const session = await DtoModelerSession.open(this.modeler, xml, options.viewId,
       (request) => this.handleRelationshipTypeRequest(request),
-      (request) => this.handleQuickCreateRequest(request));
+      (request) => this.handleQuickCreateRequest(request),
+      this.semanticProfile);
     if (this.destroyed || generation !== this.generation) {
       session.close();
       throw new ModelerError(this.destroyed ? 'MODELER_DESTROYED' : 'MODELER_OPEN_SUPERSEDED');
@@ -158,7 +165,7 @@ export default class Modeler {
 
   private handleRelationshipTypeRequest(request: RelationshipTypeRequest): void {
     const choice: RelationshipChoice =
-      evaluateRelationshipChoices(request.sourceType, request.targetType);
+      evaluateRelationshipChoices(request.sourceType, request.targetType, this.semanticProfile);
     this.closeChoiceDialogs();
     if (choice.status === 'default') {
       request.choose(choice.allowed[0].type);
@@ -177,7 +184,7 @@ export default class Modeler {
     this.closeChoiceDialogs();
     this.activeQuickCreateChooser = new QuickCreateChooser({
       sourceType: request.sourceType,
-      candidates: quickCreateCandidates(request.sourceType),
+      candidates: quickCreateCandidates(request.sourceType, this.semanticProfile),
       onChoose: (candidate) => this.commitQuickCreate(
         request, candidate, editor, viewId, createConceptIdFactory(editor))
     });

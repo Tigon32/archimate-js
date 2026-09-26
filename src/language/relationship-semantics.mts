@@ -7,9 +7,12 @@ import {
   RELATIONSHIP_SEMANTIC_ROWS
 } from './relationship-decisions.mjs';
 import type { RelationshipSemanticDecision } from './relationship-decisions.mjs';
+import type { SemanticProfile } from './semantic-profile.mjs';
 
 export { RELATIONSHIP_SEMANTICS_VERSION, RELATIONSHIP_SEMANTIC_ROWS } from './relationship-decisions.mjs';
 export type { RelationshipSemanticDecision, RelationshipSemanticRow } from './relationship-decisions.mjs';
+export { parseSemanticProfile } from './semantic-profile.mjs';
+export type { SemanticProfile, SemanticProfileKind, SemanticProfileRow } from './semantic-profile.mjs';
 
 export type RelationshipEndpointKind = 'element' | 'relationship' | 'junction';
 
@@ -25,14 +28,18 @@ export interface RelationshipSemanticInput {
 export interface RelationshipSemanticResult {
   archimateVersion: string;
   decision: RelationshipSemanticDecision;
+  decisionLayer: 'core' | string;
   reasonCode:
     | 'MATRIX_ALLOWED'
     | 'MATRIX_DISALLOWED'
+    | 'PROFILE_ALLOWED'
+    | 'PROFILE_DISALLOWED'
     | 'VERSION_UNSUPPORTED'
     | 'JUNCTION_UNSUPPORTED'
     | 'RELATIONSHIP_ENDPOINT_UNSUPPORTED'
     | 'COMBINATION_UNSUPPORTED';
-  evidenceSourceId?: 'opengroup-archimate-3.2-reference-cards';
+  evidenceSourceId?: string;
+  nonNormative?: true;
   /** Independently authored interpretation of the reviewed row, when matched. */
   interpretation?: string;
 }
@@ -49,10 +56,12 @@ function isJunctionType(value: string): boolean {
 /**
  * Decide one source/relationship/target combination without I/O or mutation.
  */
-export function validateRelationshipSemantics(input: RelationshipSemanticInput): RelationshipSemanticResult {
+export function validateRelationshipSemantics(input: RelationshipSemanticInput,
+  profile?: SemanticProfile): RelationshipSemanticResult {
   const archimateVersion = input.archimateVersion ?? RELATIONSHIP_SEMANTICS_VERSION;
   if (archimateVersion !== RELATIONSHIP_SEMANTICS_VERSION) {
-    return { archimateVersion, decision: 'unsupported', reasonCode: 'VERSION_UNSUPPORTED' };
+    return { archimateVersion, decision: 'unsupported', decisionLayer: 'core',
+      reasonCode: 'VERSION_UNSUPPORTED' };
   }
 
   const sourceType = bareType(input.sourceType);
@@ -65,10 +74,12 @@ export function validateRelationshipSemantics(input: RelationshipSemanticInput):
   const targetKind = input.targetKind ?? 'element';
 
   if (sourceKind === 'junction' || targetKind === 'junction' || isJunctionType(sourceType) || isJunctionType(targetType)) {
-    return { archimateVersion, decision: 'unsupported', reasonCode: 'JUNCTION_UNSUPPORTED' };
+    return { archimateVersion, decision: 'unsupported', decisionLayer: 'core',
+      reasonCode: 'JUNCTION_UNSUPPORTED' };
   }
   if (sourceKind === 'relationship' || targetKind === 'relationship') {
-    return { archimateVersion, decision: 'unsupported', reasonCode: 'RELATIONSHIP_ENDPOINT_UNSUPPORTED' };
+    return { archimateVersion, decision: 'unsupported', decisionLayer: 'core',
+      reasonCode: 'RELATIONSHIP_ENDPOINT_UNSUPPORTED' };
   }
 
   const row = RELATIONSHIP_SEMANTIC_ROWS.find((candidate) =>
@@ -76,14 +87,39 @@ export function validateRelationshipSemantics(input: RelationshipSemanticInput):
     candidate.relationshipType === relationshipType &&
     candidate.targetType === targetType
   );
+  if (!row) return profileDecision(profile, archimateVersion, sourceType, relationshipType, targetType);
+  return {
+    archimateVersion,
+    decision: row.decision,
+    decisionLayer: 'core',
+    reasonCode: row.decision === 'allowed' ? 'MATRIX_ALLOWED' : 'MATRIX_DISALLOWED',
+    evidenceSourceId: row.evidenceSourceId,
+    interpretation: row.interpretation
+  };
+}
+
+function profileDecision(profile: SemanticProfile | undefined, archimateVersion: string,
+  sourceType: string, relationshipType: string, targetType: string): RelationshipSemanticResult {
+  if (!profile) {
+    return { archimateVersion, decision: 'unsupported', decisionLayer: 'core',
+      reasonCode: 'COMBINATION_UNSUPPORTED' };
+  }
+  const row = profile.rows.find((candidate) =>
+    candidate.sourceType === sourceType &&
+    candidate.relationshipType === relationshipType &&
+    candidate.targetType === targetType
+  );
   if (!row) {
-    return { archimateVersion, decision: 'unsupported', reasonCode: 'COMBINATION_UNSUPPORTED' };
+    return { archimateVersion, decision: 'unsupported', decisionLayer: 'core',
+      reasonCode: 'COMBINATION_UNSUPPORTED' };
   }
   return {
     archimateVersion,
     decision: row.decision,
-    reasonCode: row.decision === 'allowed' ? 'MATRIX_ALLOWED' : 'MATRIX_DISALLOWED',
+    decisionLayer: profile.id,
+    reasonCode: row.decision === 'allowed' ? 'PROFILE_ALLOWED' : 'PROFILE_DISALLOWED',
     evidenceSourceId: row.evidenceSourceId,
+    nonNormative: true,
     interpretation: row.interpretation
   };
 }
