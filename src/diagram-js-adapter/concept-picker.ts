@@ -3,6 +3,7 @@ import {
   type ConceptPickerEditor,
   type ConceptPickerPosition
 } from '../../lib/features/concept-picker/ConceptPicker.js';
+import { CONCEPT_REGISTRY } from '../language/concept-registry.mjs';
 import type { EditorCommand } from '../model-dto/editor.js';
 import type { ModelDto } from '../model-dto/types.js';
 
@@ -13,7 +14,7 @@ type Canvas = {
 
 type DirectEditing = {
   isActive(): boolean;
-  activate(element: unknown): void;
+  activate(element: unknown): boolean;
 };
 
 type ElementRegistry = {
@@ -58,14 +59,15 @@ export function attachConceptPicker(options: ConceptPickerAdapterOptions): () =>
       position: clientToDiagram(canvas, svg, client),
       anchor: client,
       returnFocus: svg,
+      registry: CONCEPT_REGISTRY,
       editor: {
         createId: options.editor.createId,
         execute: (command) => options.editor.execute(command),
         startNameEditing: (nodeId) => {
           const shape = elementRegistry.get(nodeId);
           if (!shape) throw new Error('MODELER_CREATED_NODE_UNAVAILABLE');
+          if (!directEditing.activate(shape)) throw new Error('MODELER_NAME_EDIT_UNAVAILABLE');
           options.editor.startNameEditing(nodeId);
-          directEditing.activate(shape);
         }
       }
     });

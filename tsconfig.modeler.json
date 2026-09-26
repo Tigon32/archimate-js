@@ -16,6 +16,7 @@
     "src/modeler/**/*.ts",
     "src/diagram-js-adapter/**/*.ts",
     "src/model-dto/**/*.ts",
+    "src/language/concept-registry.mts",
     "src/language/relationship-decisions.mts",
     "src/language/relationship-semantics.mts",
     "lib/Modeler.ts",

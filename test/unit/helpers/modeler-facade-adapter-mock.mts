@@ -70,6 +70,7 @@ export function createAdapterMock(state: FacadeMockState) {
   return {
     DiagramJsCanvasPort: class {},
     DtoModelerSession: FakeSession,
+    attachConceptPicker: vi.fn(() => () => {}),
     createDiagramJsModeler: () => createModeler(state),
     createDiagramJsCapabilities: (modeler: { get(serviceName: string): unknown }) =>
       createCapabilities(modeler),

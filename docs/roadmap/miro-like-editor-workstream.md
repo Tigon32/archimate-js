@@ -197,15 +197,16 @@ reparenting remains outside the supported persistent command boundary.
 
 ## Modern concept creation
 
-Concept creation starts from domain concepts, not renderer shapes. The concept
-picker should search the reviewed concept registry by ArchiMate layer:
-Business, Application, Technology, Strategy, Motivation, Physical, and
-Implementation & Migration.
+**EE-M9 status:** Implemented. Double-clicking blank canvas opens the
+registry-backed concept picker at the pointer. It searches Business,
+Application, Technology, Strategy, Motivation, Physical, and Implementation &
+Migration concepts, creates semantic elements and view nodes through the DTO
+`create-element` command, and immediately edits the semantic name. IDs are
+deterministic and collision-checked; the adapter converts pointer coordinates.
+The static palette remains available as a secondary workflow.
 
-Primary flow: double-click canvas, open search at the pointer, choose concept,
-create the semantic element and view node at the pointer, then enter name edit.
-The palette remains secondary and can call the same editor operation. This
-depends on #332 for DTO-owned element and relationship creation commands.
+The flow uses domain concepts rather than renderer shape definitions and
+depends on #332 for DTO-owned creation commands.
 
 ## Smart relationship creation
 
@@ -506,7 +507,7 @@ flowchart TD
 | EE-M6 Route Modeler.optimizeDiagram through DTO apply-layout-patch — Implemented for eligible facade sessions | Make optimization use DTO authority. | Layout changes become reversible DTO edits. | Public modeler facade, layout, adapter. | `src/modeler/index.ts`, `src/layout`, adapter command. | EE-M5; #100 still defines advanced layout. | Layout apply/reverse tests and browser optimize smoke. | Optimize returns patch/metrics and commits through DTO command when eligible. | Direct legacy Modeler commandStack path remains; no ELK dependency included. | M |
 | EE-M7 Domain-authoritative relationship rules in diagram-js RuleProvider (with #102/#333) | Make live gesture affordance use domain decision service. | Remove duplicate relationship authority. | Rules, language services, tests. | `lib/features/rules/ArchimateRules.js`, generated utility path, `src/language`. | EE-M2, #102, #333. | Relationship matrix/projection tests plus browser connect tests. | Allowed/disallowed/unsupported decisions are consistent in UI and DTO adapter. | Legacy generated util can remain only as projection of domain service. | M |
 | EE-M8 Viewport & selection interaction pack (pan/zoom/pinch/space-drag/marquee/fit) | Add core whiteboard navigation and selection. | Keep canvas behavior adapter-local. | Diagram-js integration, keyboard/focus tests. | Modeler adapter modules, browser tests. | EE-M5, #97, #107. | Playwright focus/interactions and performance smoke. | Pan, zoom, pinch, space-drag, marquee, fit-to-view/selection work without leaking engine objects. | Preserve existing keyboard shortcuts. | M |
-| EE-M9 Searchable concept picker & create-at-pointer | Add modern concept creation workflow. | Creation starts from domain registry. | Shell/editor UI, concept registry, commands. | `src/language/concept-registry.mts`, modeler UI modules, tests. | EE-M5, #332. | Unit search tests and browser create-at-pointer test. | Double-click search creates semantic element and view node, then name edit. | Palette remains supported. | M |
+| EE-M9 Searchable concept picker & create-at-pointer | Add modern concept creation workflow. | Creation starts from domain registry. | Shell/editor UI, concept registry, commands. | `src/language/concept-registry.mts`, `src/diagram-js-adapter/concept-picker.ts`, `lib/features/concept-picker/`, tests. | EE-M5, #332. | Unit search tests and browser create-at-pointer/semantic-name/MEFF round-trip test. | Double-click search creates semantic element and view node, then edits semantic name. | Palette remains supported as secondary workflow. | M |
 | EE-M10 Smart relationship chooser & quick-create | Add valid relationship chooser and drag-to-empty quick-create. | Relationship semantics stay domain-owned. | Relationship UI, rules, commands. | Rule adapter, UI modules, DTO commands. | EE-M5, EE-M7, #333, #102. | Browser connect/quick-create tests and unit decision tests. | Chooser appears for multiple valid types; unambiguous default works; unsupported/disallowed are distinct. | No silent relationship type fallback. | L |
 | EE-M11 Context toolbar, connector handles, alt-drag duplicate, align/distribute UX, optional minimap | Add productivity interactions. | Advanced UI remains engine integration, shell uses editor API. | Diagram-js modules, UI, clipboard. | Feature modules, optional minimap integration. | EE-M8. | Browser tests for toolbar, handles, duplicate, align/distribute, copy/paste. | Operations commit DTO commands and undo cleanly. | Minimap requires license/provenance approval first. | L |
 | EE-M12 ELK.js layout strategy spike behind src/layout (license review first; coordinate #100) | Evaluate `elk-layered` strategy. | Layout engine is service-level, not editor-engine replacement. | Layout service, license docs, tests. | `src/layout`, docs/layout, third-party notices if accepted. | EE-M6, #100. | Layout unit tests and reversible patch checks. | Spike proves or rejects ELK strategy with license outcome recorded. | Do not distribute until license path is approved. See [`docs/research/elkjs-license-and-provenance.md`](../research/elkjs-license-and-provenance.md) (#374) for the license-path evidence and required repository changes. | M |

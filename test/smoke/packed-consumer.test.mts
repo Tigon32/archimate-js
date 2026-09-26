@@ -90,7 +90,9 @@ try {
     resolve: { extensions: ['.ts', '.js', '.json'] }
   }, (error: WebpackError | null, stats?: Stats) => {
     if (error || !stats || stats.hasErrors()) {
-      reject(new Error('Bundler could not resolve the packed root API.'));
+      const diagnostics = stats?.toJson({ all: false, errors: true }).errors
+        ?.map((item) => item.message).join('\n') || error?.message || 'No bundler diagnostics.';
+      reject(new Error(`Bundler could not resolve the packed root API: ${diagnostics}`));
       return;
     }
     resolve();

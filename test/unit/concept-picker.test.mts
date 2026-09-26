@@ -12,7 +12,7 @@ const layers = [
 ];
 
 it('derives every picker option from the registry and covers each requested layer', () => {
-  const options = searchConcepts('');
+  const options = searchConcepts('', CONCEPT_REGISTRY);
   expect(options).toHaveLength(CONCEPT_REGISTRY.records.length);
   for (const layer of layers) {
     expect(options.some((option) => option.layer === layer)).toBe(true);
@@ -21,9 +21,10 @@ it('derives every picker option from the registry and covers each requested laye
 });
 
 it('searches presentation label, canonical type, and layer without using renderer keys', () => {
-  expect(searchConcepts('business service').map((option) => option.type)).toEqual(['BusinessService']);
-  expect(searchConcepts('ApplicationComponent').map((option) => option.type)).toEqual(['ApplicationComponent']);
-  expect(searchConcepts('implementation & migration').map((option) => option.layer))
+  expect(searchConcepts('business service', CONCEPT_REGISTRY).map((option) => option.type)).toEqual(['BusinessService']);
+  expect(searchConcepts('ApplicationComponent', CONCEPT_REGISTRY).map((option) => option.type))
+    .toEqual(['ApplicationComponent']);
+  expect(searchConcepts('implementation & migration', CONCEPT_REGISTRY).map((option) => option.layer))
     .toEqual(expect.arrayContaining(['Implementation & Migration']));
   expect(conceptLabel({ type: 'ValueStream' })).toBe('Value Stream');
 });
@@ -58,6 +59,7 @@ it('filters, navigates, creates, starts editing, and restores focus accessibly',
     position: { x: 90, y: 120 },
     anchor: { x: 30, y: 45 },
     returnFocus: trigger,
+    registry: CONCEPT_REGISTRY,
     editor: {
       createId: (kind) => `${kind}-synthetic-1`,
       execute: (command) => commands.push(command),
@@ -83,6 +85,7 @@ it('filters, navigates, creates, starts editing, and restores focus accessibly',
 
   const escapePicker = new ConceptPicker({
     viewId: 'view-synthetic', position: { x: 0, y: 0 }, returnFocus: trigger,
+    registry: CONCEPT_REGISTRY,
     editor: { createId: () => 'unused', execute: () => {}, startNameEditing: () => {} }
   });
   const escapeInput = document.querySelector<HTMLInputElement>('[role="dialog"] input')!;
@@ -101,6 +104,7 @@ it('keeps background focus and pointer interaction inside the modal', () => {
   document.body.append(background);
   const picker = new ConceptPicker({
     viewId: 'view-synthetic', position: { x: 0, y: 0 },
+    registry: CONCEPT_REGISTRY,
     editor: { createId: () => 'unused', execute: () => {}, startNameEditing: () => {} }
   });
   const input = document.querySelector<HTMLInputElement>('[role="dialog"] input')!;

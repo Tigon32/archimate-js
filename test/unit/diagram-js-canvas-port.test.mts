@@ -30,6 +30,21 @@ function mockModeling(rejectLegacyRules = false) {
   };
 }
 
+function mockEventBus() {
+  const handlers = new Map<string, Set<(event: unknown) => void>>();
+  return {
+    on(event: string, handler: (event: unknown) => void) {
+      const listeners = handlers.get(event) ?? new Set();
+      listeners.add(handler);
+      handlers.set(event, listeners);
+    },
+    off(event: string, handler: (event: unknown) => void) {
+      handlers.get(event)?.delete(handler);
+    },
+    fire(event: string) { handlers.get(event)?.forEach((handler) => handler({})); }
+  };
+}
+
 function setup(supportedServing = false, rejectLegacyRules = false) {
   const model = importMeffToModelDto(readFileSync('test/fixtures/synthetic/dto-export-view.xml', 'utf8'));
   if (supportedServing) {
@@ -41,20 +56,7 @@ function setup(supportedServing = false, rejectLegacyRules = false) {
   const shapes = new Map<string, Record<string, unknown>>();
   const connections = new Map<string, Record<string, unknown>>();
   const modeling = mockModeling(rejectLegacyRules);
-  const eventHandlers = new Map<string, Set<(event: unknown) => void>>();
-  const eventBus = {
-    on(event: string, handler: (event: unknown) => void) {
-      const handlers = eventHandlers.get(event) ?? new Set();
-      handlers.add(handler);
-      eventHandlers.set(event, handlers);
-    },
-    off(event: string, handler: (event: unknown) => void) {
-      eventHandlers.get(event)?.delete(handler);
-    },
-    fire(event: string) {
-      eventHandlers.get(event)?.forEach((handler) => handler({}));
-    }
-  };
+  const eventBus = mockEventBus();
   const canvas = {
     root: { id: 'root', children: [] as Array<Record<string, unknown>> },
     getRootElement() { return this.root; },

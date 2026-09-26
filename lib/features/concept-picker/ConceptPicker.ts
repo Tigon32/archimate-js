@@ -1,8 +1,4 @@
-import {
-  CONCEPT_REGISTRY,
-  type ConceptRecord,
-  type ConceptRegistry
-} from '../../../src/language/concept-registry.mjs';
+import type { ConceptRecord, ConceptRegistry } from '../../../src/language/concept-registry.mjs';
 
 export interface ConceptPickerPosition {
   x: number;
@@ -37,7 +33,7 @@ export interface ConceptPickerOptions {
   position: ConceptPickerPosition;
   viewId: string;
   host?: HTMLElement;
-  registry?: ConceptRegistry;
+  registry: ConceptRegistry;
   returnFocus?: FocusTarget | null;
 }
 
@@ -71,7 +67,7 @@ export function clampPickerPosition(
   };
 }
 
-export function searchConcepts(query: string, registry: ConceptRegistry = CONCEPT_REGISTRY): ConceptPickerResult[] {
+export function searchConcepts(query: string, registry: ConceptRegistry): ConceptPickerResult[] {
   const needle = query.trim().toLowerCase();
   return registry.records
     .filter((record) => record.category === 'element')
@@ -135,7 +131,7 @@ export class ConceptPicker {
     this.anchor = options.anchor;
     this.editor = options.editor;
     this.position = options.position;
-    this.registry = options.registry ?? CONCEPT_REGISTRY;
+    this.registry = options.registry;
     this.returnFocus = options.returnFocus ?? document.activeElement as FocusTarget | null;
     this.viewId = options.viewId;
     this.results = searchConcepts('', this.registry);
