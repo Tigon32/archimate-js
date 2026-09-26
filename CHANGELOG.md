@@ -35,6 +35,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * `FEAT`: add a searchable, registry-backed concept picker on blank-canvas
   double-click, creating a semantic element and view node at the pointer before
   editing the semantic name; retain the static palette as a secondary workflow.
+* `FEAT`: add domain-authoritative live relationship selection and compatible
+  drag-to-empty quick-create. Ambiguous connections open an accessible chooser,
+  unsupported and disallowed combinations are reported distinctly, and
+  quick-create is one reversible DTO command with no mutation on cancel. The
+  reviewed relationship profile remains limited to 23 rows.
 * `DEPRECATION`: `DiagramJsCanvasPort`, `DtoModelerSession`, and related diagram-js adapter service/result types remain available from `archimate-js/model-dto` but are deprecated pending the EE-M4 `archimate-js/modeler` entry.
 
 ## 0.0.4

@@ -24,6 +24,13 @@ import type {
 } from '../diagram-js-adapter/index.js';
 import type { EditorOperationLog } from '../model-dto/editor-operation-log.js';
 import type { ModelDto } from '../model-dto/types.js';
+import {
+  evaluateRelationshipChoices,
+  quickCreateCandidates,
+  QuickCreateChooser,
+  RelationshipChooser
+} from './relationship-chooser.js';
+import type { RelationshipChoice } from './relationship-chooser.js';
 
 export { DiagramJsCanvasPort, DtoModelerSession };
 export { EditorOperationLogError } from '../model-dto/editor-operation-log.js';
@@ -41,7 +48,7 @@ export interface ModelerOptions {
   height?: number | string;
 }
 
-function createConceptIdFactory(editor: { getModel(): ModelDto }): ConceptPickerEditorService['createId'] {
+function createConceptIdFactory(editor: { getModel(): ModelDto }): (kind: string) => string {
   let sequence = 1;
   return (kind) => {
     const used = collectModelIds(editor.getModel());
@@ -99,6 +106,8 @@ export default class Modeler {
   private viewId?: string;
   private offEditor?: () => void;
   private offConceptPicker?: () => void;
+  private activeRelationshipChooser?: RelationshipChooser;
+  private activeQuickCreateChooser?: QuickCreateChooser;
   private destroyed = false;
   private generation = 0;
   private readonly viewport: DiagramJsViewport;
@@ -115,7 +124,62 @@ export default class Modeler {
     this.assertUsable();
     const generation = ++this.generation;
     this.closeCurrent();
-    const session = await DtoModelerSession.open(this.modeler, xml, options.viewId);
+    const session = await DtoModelerSession.open(this.modeler, xml, options.viewId, (request) => {
+      const choice: RelationshipChoice = evaluateRelationshipChoices(request.sourceType, request.targetType);
+      if (choice.status === 'default') {
+        request.choose(choice.allowed[0].type);
+        return;
+      }
+      this.activeQuickCreateChooser?.close(false);
+      this.activeQuickCreateChooser = undefined;
+      this.activeRelationshipChooser?.close(false);
+      this.activeRelationshipChooser = new RelationshipChooser({
+        choice,
+        onChoose: (candidate) => request.choose(candidate.type)
+      });
+    }, (request) => {
+      const editor = this.session?.editor;
+      const viewId = this.viewId;
+      if (!editor || !viewId) return;
+      const candidates = quickCreateCandidates(request.sourceType);
+      const createId = createConceptIdFactory(editor);
+      this.activeRelationshipChooser?.close(false);
+      this.activeRelationshipChooser = undefined;
+      this.activeQuickCreateChooser?.close(false);
+      this.activeQuickCreateChooser = new QuickCreateChooser({
+        sourceType: request.sourceType,
+        candidates,
+        onChoose: ({ concept, relationship }) => {
+          if (editor !== this.session?.editor || this.viewId !== viewId) {
+            throw new ModelerError('MODELER_OPEN_SUPERSEDED');
+          }
+          const sourceNode = editor.project(viewId).nodes.find((node) =>
+            node.id === request.sourceNodeId);
+          if (!sourceNode) throw new ModelerError('MODELER_SESSION_INELIGIBLE');
+          const elementId = createId('element');
+          const nodeId = createId('node');
+          const relationshipId = createId('relationship');
+          const connectionId = createId('connection');
+          const x = Math.round(request.position.x - 70);
+          const y = Math.round(request.position.y - 35);
+          request.execute({
+            type: 'create-related-element',
+            viewId,
+            element: { id: elementId, type: `archimate:${concept.type}` },
+            node: { id: nodeId, kind: 'element', elementId, x, y, width: 140, height: 70, nodes: [] },
+            relationship: { id: relationshipId, type: `archimate:${relationship.type}`,
+              sourceId: request.sourceElementId, targetId: elementId },
+            connection: { id: connectionId, kind: 'relationship', relationshipId,
+              sourceId: request.sourceNodeId, targetId: nodeId, waypoints: [
+                { x: sourceNode.x + sourceNode.width / 2, y: sourceNode.y + sourceNode.height / 2,
+                  kind: 'sourceAttachment' },
+                { x: request.position.x, y: request.position.y, kind: 'targetAttachment' }
+              ] }
+          });
+          this.session?.startElementNameEditing(nodeId);
+        }
+      });
+    });
     if (this.destroyed || generation !== this.generation) {
       session.close();
       throw new ModelerError(this.destroyed ? 'MODELER_DESTROYED' : 'MODELER_OPEN_SUPERSEDED');
@@ -267,6 +331,10 @@ export default class Modeler {
     this.offEditor = undefined;
     this.offConceptPicker?.();
     this.offConceptPicker = undefined;
+    this.activeRelationshipChooser?.close(false);
+    this.activeRelationshipChooser = undefined;
+    this.activeQuickCreateChooser?.close(false);
+    this.activeQuickCreateChooser = undefined;
     this.session.close();
     this.session = undefined;
     this.viewId = undefined;

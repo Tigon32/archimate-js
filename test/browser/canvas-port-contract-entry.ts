@@ -16,7 +16,8 @@ function removeElement(list, element) {
 function makeEventBus() {
   const listeners = new Map();
   return {
-    on: (name, listener) => {
+    on: (name, priorityOrListener, listener) => {
+      if (typeof priorityOrListener === 'function') listener = priorityOrListener;
       if (!listeners.has(name)) listeners.set(name, new Set());
       listeners.get(name).add(listener);
     },

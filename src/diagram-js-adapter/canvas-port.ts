@@ -29,7 +29,8 @@ interface DiagramJsElementFactory {
 }
 
 interface DiagramJsEventBus {
-  on(event: string, listener: (event: unknown) => void): void;
+  on(event: string, listenerOrPriority: number | ((event: unknown) => void),
+    listener?: (event: unknown) => void): void;
   off(event: string, listener: (event: unknown) => void): void;
 }
 
@@ -51,6 +52,24 @@ interface DiagramJsModeling {
   removeShape(shape: unknown, hints?: unknown): unknown;
   removeConnection(connection: unknown, hints?: unknown): unknown;
 }
+
+export interface RelationshipTypeRequest {
+  sourceType: string;
+  targetType: string;
+  choose(type: string): void;
+}
+
+export type RelationshipTypeRequester = (request: RelationshipTypeRequest) => void;
+
+export interface QuickCreateRequest {
+  sourceNodeId: string;
+  sourceElementId: string;
+  sourceType: string;
+  position: { x: number; y: number };
+  execute(command: EditorCommand): void;
+}
+
+export type QuickCreateRequester = (request: QuickCreateRequest) => void;
 
 /** Minimal service surface accepted from a live Viewer or Modeler instance. */
 export interface DiagramJsCanvasServices {
@@ -113,7 +132,9 @@ export class DiagramJsCanvasPort implements CanvasPort {
     for (const handler of this.selectionHandlers) handler(ids);
   };
 
-  constructor(private readonly services: DiagramJsCanvasServices) {}
+  constructor(private readonly services: DiagramJsCanvasServices,
+    private readonly requestRelationshipType?: RelationshipTypeRequester,
+    private readonly requestQuickCreate?: QuickCreateRequester) {}
 
   beginSemanticNameEdit(nodeId: string): void {
     if (!this.currentNodes.get(nodeId)?.elementId) invalid();
@@ -175,6 +196,29 @@ export class DiagramJsCanvasPort implements CanvasPort {
         return this.routeLabel(element, label, handler);
       }) as (...args: never[]) => unknown);
     this.installTopology(modeling, handler, install);
+    const onConnectEnd = (event: unknown): false | undefined => {
+      if (!this.requestQuickCreate || !event || typeof event !== 'object') return undefined;
+      const { context, x, y } = event as { context?: unknown; x?: unknown; y?: unknown };
+      if (!context || typeof context !== 'object' || !Number.isFinite(x) || !Number.isFinite(y)) {
+        return undefined;
+      }
+      const state = context as { start?: unknown; target?: unknown; hover?: unknown };
+      if (state.target || state.hover || !isElement(state.start)) return undefined;
+      const sourceNode = this.currentNodes.get(state.start.id!);
+      if (!sourceNode?.elementId || sourceNode.kind !== 'element' || !sourceNode.type) return undefined;
+      const sourceType = diagramType(sourceNode.type, '');
+      if (!sourceType) return undefined;
+      this.requestQuickCreate({
+        sourceNodeId: sourceNode.id,
+        sourceElementId: sourceNode.elementId,
+        sourceType,
+        position: { x: x as number, y: y as number },
+        execute: handler
+      });
+      return false;
+    };
+    this.services.eventBus.on('connect.ended', 2000, onConnectEnd);
+    restore.push(() => this.services.eventBus.off('connect.ended', onConnectEnd));
     this.restoreModeling.push(...restore);
     return () => {
       this.clearSemanticNameEdit();
@@ -343,19 +387,27 @@ export class DiagramJsCanvasPort implements CanvasPort {
     const rawType = data.relationshipRef?.type ?? data.type;
     if (typeof rawType !== 'string' || !rawType) invalid();
     const type = diagramType(rawType, '');
-    if (!type || type === 'Relationship') invalid();
     const relationshipId = data.relationshipRef?.id ?? `relationship-${crypto.randomUUID()}`;
     const id = data.id ?? `connection-${crypto.randomUUID()}`;
     if (typeof relationshipId !== 'string' || typeof id !== 'string') invalid();
     const sourceElement = this.currentNodes.get(sourceId)!.elementId!;
     const targetElement = this.currentNodes.get(targetId)!.elementId!;
-    const connection = { id, kind: 'relationship' as const, relationshipId, sourceId, targetId,
-      waypoints: this.waypoints(data.waypoints, source, target) };
-    handler({ type: 'connect', viewId: this.viewId, connection,
-      relationship: data.relationshipRef ? undefined :
-        { id: relationshipId, type: `archimate:${type}`, sourceId: sourceElement,
-          targetId: targetElement } });
-    return this.connections.get(id);
+    const commit = (relationshipType: string): unknown => {
+      if (!relationshipType || relationshipType === 'Relationship') invalid();
+      const connection = { id, kind: 'relationship' as const, relationshipId, sourceId, targetId,
+        waypoints: this.waypoints(data.waypoints, source, target) };
+      handler({ type: 'connect', viewId: this.viewId, connection,
+        relationship: data.relationshipRef ? undefined :
+          { id: relationshipId, type: `archimate:${relationshipType}`, sourceId: sourceElement,
+            targetId: targetElement } });
+      return this.connections.get(id);
+    };
+    if (type !== 'Relationship' || data.relationshipRef) return commit(type);
+    const sourceType = diagramType(this.currentNodes.get(sourceId)?.type, '');
+    const targetType = diagramType(this.currentNodes.get(targetId)?.type, '');
+    if (!sourceType || !targetType || !this.requestRelationshipType) invalid();
+    this.requestRelationshipType({ sourceType, targetType, choose: commit });
+    return undefined;
   }
 
   private routeReconnect(connection: unknown, source: unknown, target: unknown, docking: unknown,

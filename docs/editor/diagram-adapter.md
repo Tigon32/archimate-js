@@ -66,8 +66,12 @@ tuples pass the reviewed relationship service. Disallowed and unreviewed
 tuples retain the `DTO_RELATIONSHIP_DISALLOWED` versus
 `DTO_RELATIONSHIP_UNSUPPORTED` distinction. Duplicate IDs, invalid fields,
 endpoints, geometry, or round-trip data leave model, undo, and redo history
-unchanged. Native diagram-js creation routing remains pending adapter
-coordination under #372; creation UI remains out of scope for EE-M9/#351.
+unchanged. The M10 diagram-js integration intercepts generic
+element-to-element connection gestures for relationship selection. Dragging a
+connector into empty canvas opens a compatible target chooser. Its selected
+concept, node, relationship, and connection use the single
+`create-related-element` command; the entire candidate is validated before
+commit, so cancel and invalid input leave no partial concept or history entry.
 
 `DiagramJsCanvasPort` now lives in `src/diagram-js-adapter/`; its compatibility
 re-export from `archimate-js/model-dto` is deprecated until the EE-M4
