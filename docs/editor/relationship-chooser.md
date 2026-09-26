@@ -28,17 +28,18 @@ The existing direct drag gesture, connection popup, and static palette remain
 available as secondary workflows. The legacy rule adapter supplies reviewed
 allowed candidates while DTO commands perform persistent edits.
 
-## Quick-create
+## Quick-create follow-up
 
-Dragging a connector from an element to empty canvas can use the searchable
-concept registry to find compatible element targets. After a concept is
-chosen, the editor executes the existing `create-element` and
-`create-relationship` commands with deterministic IDs, then starts semantic
-name editing on the new target. No renderer shape or duplicate relationship
-table is creation authority.
+The quick-create design is intentionally retained as a follow-up slice rather
+than blocking the connect/reconnect chooser. Its intended flow is to drag a
+connector from an element to empty canvas, use the searchable concept registry
+to find compatible element targets, execute the existing `create-element` and
+`create-relationship` commands with deterministic IDs, and start semantic name
+editing on the new target. No renderer shape or duplicate relationship table
+is creation authority.
 
-Creation and relationship insertion are two existing undoable command
-boundaries, not a new transaction framework. Each command validates
-atomically. A cancelled or rejected relationship choice must not leave an
-orphan target; integrations should stage the target after relationship
-selection or undo the already-created target before returning focus.
+When implemented, creation and relationship insertion will be two existing
+undoable command boundaries, not a new transaction framework. Each command
+must validate atomically. A cancelled or rejected relationship choice must not
+leave an orphan target; the target should be staged after relationship
+selection or undone before returning focus.
