@@ -42,6 +42,7 @@
     "test/browser/theme-export-invariance.mts",
     "test/browser/export-api.mts",
     "test/browser/theme-contrast.mts",
+    "test/browser/theme-chooser.mts",
     "test/performance/browser-benchmark.mts",
     "test/browser/accessible-outline.mts",
     "test/browser/viewer-lifecycle.mts",

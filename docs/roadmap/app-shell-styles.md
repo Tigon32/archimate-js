@@ -51,17 +51,33 @@ covered by its narrow source-policy exception until its typed runner exists.
 
 The public CSS contract is the `.am-app` root and its `data-theme` attribute.
 An absent attribute retains the original light palette; existing hosts setting
-`data-theme="dark"` continue to work. Set the attribute on the app root only,
-never on the diagram or an exported SVG. The example's native labeled select
-offers Default, Light, Dark, High contrast light, and High contrast dark.
-It stores an explicit choice under `localStorage['archimate-js.ui-theme']` when
-storage is available. With no saved choice, Default follows the OS dark/light
-preference; explicit Default also follows the OS. Light, Dark, and either high
-contrast choice override that preference and survive reload and view changes.
-If storage is blocked, the choice lasts for the current page only. The example
-resolves Default into `data-theme="light"` or `"dark"` and updates on OS change;
-hosts may use the same policy or set an explicit mode directly. Native select
-exposes the active choice and supports keyboard and pointer input.
+`data-theme="dark"` continue to work as a migration path for pre-chooser hosts.
+Set the attribute on the app root only, never on the diagram or an exported SVG.
+The example-owned persistence contract is implemented in
+`examples/read-only/theme.js`; it is a reference implementation for the
+read-only embed, not a package API. The example's native labeled select offers
+Default, Light, Dark, High contrast light, and High contrast dark. It stores the
+current choice under `localStorage['archimate-js.ui-theme']` when storage is
+available. On load, a valid saved value takes precedence over the visible
+default, and invalid saved values are ignored. With no saved choice, Default
+follows the OS dark/light preference; explicit Default also follows the OS.
+Light, Dark, and either high contrast choice override that preference and
+survive reload and view changes. If storage is blocked, reads and writes are
+ignored without surfacing an error; the selected choice lasts for the current
+page lifetime only and resets on reload. The example resolves Default into
+`data-theme="light"` or `"dark"` and updates on OS preference changes; explicit
+choices do not change when the OS preference changes. Hosts may use the same
+policy or set an explicit `data-theme` mode directly. Native select text and its
+accessible name expose the active choice and support keyboard and pointer input.
+The Chromium automation covers keyboard-only choice changes with native select
+typeahead. Headless Chromium does not expose the macOS native select popup as
+clickable page DOM, so the pointer evidence renders the same native select as a
+test-only five-row listbox with the `size` attribute and clicks each real
+`option`; this keeps product markup unchanged while asserting pointer-driven
+`input` and `change` events update `data-theme`. The read-only example has one
+visible view and no public multi-view switcher; the browser evidence serves a
+two-view synthetic fixture and calls the mounted viewer's `openView` method
+without reloading to prove the theme state survives a view change.
 
 The new semantic roles cover link/icon colors, hover/pressed/selected/invalid
 surfaces, overlays, status borders, focus, and disabled controls. Status states
@@ -87,10 +103,12 @@ these variables onto `.am-diagram`, exported SVG, or model-authored notation
 styles.
 
 These controls are currently present in the read-only embed: toolbar, theme
-select, navigation link, and status. Panel, dialog, inspector, and palette
-styles are reusable contracts, but full editor controls and their keyboard
-behavior await #96. #136 remains open for rendered-state audits, zoom/reflow,
-screen-reader checks, and the complete editor once those controls exist.
+select, navigation link, and status. The modeler chrome and canvas interaction
+layer are gated by `test/browser/modeler-theme-contrast.mts` (#389). Panel,
+dialog, inspector, tree, and palette/picker surfaces do not exist yet; each
+inherits the #136 theme gate through its own issue (#351, #356, #361, #363,
+#364). The consolidated evidence for #136 is in
+[`docs/research/theme-accessibility-matrix-2026-09-26.md`](../research/theme-accessibility-matrix-2026-09-26.md).
 
 ### Verification snapshot (2026-09-24)
 
