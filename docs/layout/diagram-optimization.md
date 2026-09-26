@@ -94,19 +94,57 @@ crossing, sibling-overlap, movement, reroute, and view-bound metrics. It does
 not inspect or alter diagram-js runtime objects. Pass `strategy: 'builtin'`
 explicitly; simply importing or rendering a view does not lay it out. If a
 selected connection lacks an endpoint, or the DTO is invalid, it returns a
-diagnostic without a view or patch. Unavailable `elk-layered`, `incremental`,
-and `pins` options also return explicit diagnostics, with no fallback to full
-built-in layout. Unknown options are rejected so future controls are not
-silently ignored. This call runs asynchronously at the API boundary, but the
+diagnostic without a view or patch. Unavailable `elk-layered` options return
+explicit diagnostics, with no fallback to full built-in layout. Unknown
+options are rejected so future controls are not silently ignored. This call
+runs asynchronously at the API boundary, but the
 built-in optimizer itself currently runs on the calling thread. The
 `elk-layered` strategy's ELK.js license and provenance prerequisite review
 is recorded in
 [`docs/research/elkjs-license-and-provenance.md`](../research/elkjs-license-and-provenance.md)
 (#374); no `elkjs` dependency is added by this documentation.
 
-This is a partial implementation of #100. Layered compound layout, hard and
-soft pins, incremental stability, advanced labels, worker execution, and
+This is a partial implementation of #100. Layered compound layout, advanced
+labels, worker execution, and
 benchmark/quality metrics beyond those measured by the existing optimizer
 remain open. The headless facade returns plain transport data; only the public
 modeler facade commits the patch through DTO history. The legacy diagram-js
 command stack remains solely for direct legacy modeler consumers.
+
+## Pins and incremental layout
+
+The built-in strategy accepts hard and soft pins against the geometry in the
+input view:
+
+```js
+const result = await layoutView(modelDto, 'selected-view-id', {
+  strategy: 'builtin',
+  pins: [
+    { nodeId: 'authored-node', strength: 'hard' },
+    { nodeId: 'preferred-node', strength: 'soft' }
+  ]
+});
+```
+
+A hard pin preserves the node's full input bounds. Pinning a container also
+preserves its descendant subtree. Connections are routed again around the
+resulting fixed geometry unless `routeConnections: false` is requested. A soft
+pin leaves the built-in strategy free to move the node, reports its Euclidean
+position displacement in `metrics.pinDisplacements` and
+`metrics.softPinDisplacement`, and adds a deterministic warning when moved.
+
+Incremental mode lists the changed nodes explicitly; all omitted nodes retain
+their input bounds:
+
+```js
+const result = await layoutView(modelDto, 'selected-view-id', {
+  strategy: 'builtin', mode: 'incremental',
+  changedNodeIds: ['new-node', 'container-that-may-resize']
+});
+```
+
+List every node whose geometry may change, including a container or descendant
+that the optimizer may reposition. `metrics.unaffectedNodeDisplacement` reports
+the total position movement of omitted nodes. Invalid or missing pin/change
+targets return explicit diagnostics. All results remain detached and reversible
+through the same geometry patch; source DTOs are not modified.
