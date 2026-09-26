@@ -115,9 +115,11 @@ criteria:
 2. **Core editing:** select and navigate; create, move, resize, delete, connect,
    and reconnect; enforce ArchiMate relationship rules; edit labels and
    properties; support undo/redo for every persistent action.
-3. **Modeling workflow:** provide palette/search, model tree, properties
-   inspector, multiple views, keyboard access, and viewpoint feedback. Viewpoint
-   checks default to warnings; team policies may opt into stricter validation.
+3. **Modeling workflow:** provide search-first concept creation with the
+   existing palette retained as a secondary drag/create workflow, model tree,
+   properties inspector, multiple views, keyboard access, and viewpoint
+   feedback. Viewpoint checks default to warnings; team policies may opt into
+   stricter validation.
 4. **Diagram productivity:** clipboard, replacement, alignment, snapping, route
    editing, reversible optimize/layout, and large-view performance work.
 5. **Quality gate:** browser interaction tests for keyboard and pointer flows,
