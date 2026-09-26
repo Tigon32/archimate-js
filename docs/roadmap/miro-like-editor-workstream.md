@@ -32,8 +32,8 @@ An engine-neutral foundation already exists in `src/model-dto/`:
 `EditorCommand`, and `EditorEvent`. `DiagramAdapter` owns validated DTO state,
 snapshot undo/redo, `project(viewId)`, `attach(viewId, port)`, `select`,
 `execute`, `undo`, and `redo`. `DiagramJsCanvasPort` bridges diagram-js
-gestures to DTO commands, but currently rejects multi-node moves, reparenting,
-and multi-delete. `DtoModelerSession` opens a DTO editing session over a
+gestures to DTO commands. It supports multi-node moves and multi-delete while
+still rejecting reparenting. `DtoModelerSession` opens a DTO editing session over a
 legacy `Modeler` import and saves MEFF XML plus DTO JSON.
 
 The main architectural debt is dual state. The legacy path attaches moddle
@@ -183,8 +183,8 @@ Target interactions:
 | Undo/redo UX | DTO history is authoritative for saved edits. |
 | Fit-to-selection, fit-to-view, optional minimap | Viewport capability; no semantic state. |
 
-Multi-select edits require `DiagramJsCanvasPort` to support multi-node move
-and multi-delete; both are currently rejected and are an EE-M5 dependency.
+Multi-select edits route through DTO `move-many` and `delete-many` commands;
+reparenting remains outside the supported persistent command boundary.
 
 ## Modern concept creation
 
@@ -267,13 +267,13 @@ Application intents map to discriminated, serializable, deterministic
 
 | Application intent | Existing or planned command |
 | --- | --- |
-| `CreateElement` | Gap: `create-element` |
+| `CreateElement` | Pending #332; not part of the EE-M5 batch/layout slice. |
 | `CreateRelationship` | Existing `connect` partially covers this; needs creation intent support. |
-| `MoveViewNode(s)` | Existing `move` for one node; gap for multi-node or batch. |
+| `MoveViewNode(s)` | Existing `move` for one node; `move-many` implemented for absolute-coordinate batch moves. |
 | `ResizeViewNode` | Existing `resize` |
-| `DeleteSelection` | Existing `delete` for one item; gap for batch selection delete. |
+| `DeleteSelection` | Existing `delete` for one item; `delete-many` implemented for batch selection delete. |
 | `ChangeElementName` | Existing `concept-name` |
-| `ApplyLayoutPatch` | Gap: `apply-layout-patch` |
+| `ApplyLayoutPatch` | `apply-layout-patch` implemented for reversible DTO layout geometry patches. |
 | Composite operations | Gap: batch/`transaction` command |
 
 Decision: use DTOs plus one editor service. Do not introduce another command
@@ -284,15 +284,18 @@ for persistent edits in DTO sessions.
 ## Layout
 
 Keep the existing layout functions: `optimizeDiagram`,
-`routeViewConnections`, and `applyLayoutPatch`. Keep commandStack integration
-while legacy `Modeler.optimizeDiagram` needs it, but migrate it to execute a
-DTO `apply-layout-patch` command in EE-M6.
+`routeViewConnections`, and `applyLayoutPatch`. The public modeler facade now
+commits optimization via a DTO `apply-layout-patch` command (EE-M6); direct
+legacy `Modeler.optimizeDiagram` retains commandStack compatibility.
 
 `src/layout/types.ts` already defines `LayoutOptions.strategy` as `'builtin' |
 'elk-layered'`, plus `LayoutPatch` and `LayoutResult`. ELK.js belongs behind
 the existing `src/layout` strategy boundary and must be coordinated with #100.
 Its package license expression is `EPL-2.0 OR GPL-3.0-or-later`, so the chosen
-license path needs review before distribution.
+license path needs review before distribution. The license/provenance
+prerequisite review is recorded in
+[`docs/research/elkjs-license-and-provenance.md`](../research/elkjs-license-and-provenance.md)
+(#374).
 
 All layout strategies should produce common reversible `LayoutPatch` values.
 Layouts are geometry-only, undoable, and must not persist diagram-js engine
@@ -322,7 +325,7 @@ Dependency reversals or legacy couplings today:
 | `lib/import/Importer.js` and legacy import path | Builds diagram-js/moddle objects directly from XML. | EE-M13 |
 | `BaseViewer.saveXML()` | Serializes moddle mutated by legacy command handlers. | EE-M13 |
 | `lib/features/modeling/cmd/*` | Mutates moddle/businessObject state through diagram-js commands. | EE-M13 |
-| `lib/Modeler.ts` | `optimizeDiagram` reads `canvas`, `elementRegistry`, and executes `commandStack`. | EE-M6 |
+| `lib/Modeler.ts` | Direct legacy `optimizeDiagram` reads `canvas`, `elementRegistry`, and executes `commandStack`; the public facade uses DTO layout intents. | EE-M6 (legacy compatibility retained) |
 | `lib/features/rules/ArchimateRules.js` | Gesture authority lives in diagram-js `RuleProvider`. | EE-M7 |
 | Renderer and feature modules reading `businessObject` | Rendering depends on moddle objects attached to shapes. | EE-M13 |
 
@@ -490,17 +493,17 @@ flowchart TD
 | EE-M2 Engine contract test suite (headless fake port + DiagramJsCanvasPort) | Implemented by the reusable CanvasPort contract suite in #344. | Make adapters interchangeable by contract. | DTO editor, adapter, tests. | `test/contract`, `test/browser`, `src/model-dto`. | EE-M1. | Headless fake port plus browser port tests. | Render, command, selection, detach, undo/redo behavior is covered. | Must not require React or new engine. | M |
 | EE-M3 Relocate diagram-js adapter out of engine-neutral model-dto entry (with re-export deprecation) — Implemented | Move `DiagramJsCanvasPort` and `DtoModelerSession` exports behind modeler/adapter area. | Keep `model-dto` engine-neutral. | Package exports, DTO index, docs. | `src/model-dto/index.ts`, future modeler entry, docs/releases notes. | EE-M1. | Package export and packed-consumer tests. | Old re-export warns/deprecates; new path works. | Deprecation window for early users. | M |
 | EE-M4 Public `archimate-js/modeler` entry, lifecycle, events, TypeScript declarations, packed-consumer test — Implemented | Expose experimental public modeler API. | Move consumers from internal paths to supported boundary. | Package exports, declarations, modeler facade. | `package.json`, `dist/modeler`, tests, docs. | EE-M3. | `test/smoke/package.test.mts`, packed consumer, type checks. | `import Modeler from 'archimate-js/modeler'` works. | Experimental under `0.y.z`; changelog must call breaks. | L |
-| EE-M5 Editor intents: batch/multi-select move/delete, create-element (with #332), apply-layout-patch | Add missing serializable commands. | Support Miro-like editing without engine state. | DTO adapter, commands, validation, tests. | `src/model-dto/editor.ts`, DTO types if needed. | EE-M2, #332. | Unit contract tests and browser gesture tests. | Multi-node move/delete, create-element, batch, and layout patch are undoable. | Preserve single-item command behavior. | L |
-| EE-M6 Route Modeler.optimizeDiagram through DTO apply-layout-patch | Make optimization use DTO authority. | Layout changes become reversible DTO edits. | Modeler, layout, adapter. | `lib/Modeler.ts`, `src/layout`, adapter command. | EE-M5, #100. | Layout apply/reverse tests and browser optimize smoke. | Optimize returns patch/metrics and commits through DTO command when eligible. | Legacy commandStack path remains for ineligible sessions. | M |
+| EE-M5 Editor intents: batch/multi-select move/delete and apply-layout-patch implemented; create-element remains with #332 | Add missing serializable commands. | Support Miro-like editing without engine state. | DTO adapter, commands, validation, tests. | `src/model-dto/editor.ts`, `src/model-dto/editor-view.ts`, DTO types if needed. | EE-M2, #332 for creation. | Unit contract tests and browser gesture tests. | Multi-node move/delete, batch, and layout patch are undoable; create-element remains pending #332. | Preserve single-item command behavior. | L |
+| EE-M6 Route Modeler.optimizeDiagram through DTO apply-layout-patch — Implemented for eligible facade sessions | Make optimization use DTO authority. | Layout changes become reversible DTO edits. | Public modeler facade, layout, adapter. | `src/modeler/index.ts`, `src/layout`, adapter command. | EE-M5; #100 still defines advanced layout. | Layout apply/reverse tests and browser optimize smoke. | Optimize returns patch/metrics and commits through DTO command when eligible. | Direct legacy Modeler commandStack path remains; no ELK dependency included. | M |
 | EE-M7 Domain-authoritative relationship rules in diagram-js RuleProvider (with #102/#333) | Make live gesture affordance use domain decision service. | Remove duplicate relationship authority. | Rules, language services, tests. | `lib/features/rules/ArchimateRules.js`, generated utility path, `src/language`. | EE-M2, #102, #333. | Relationship matrix/projection tests plus browser connect tests. | Allowed/disallowed/unsupported decisions are consistent in UI and DTO adapter. | Legacy generated util can remain only as projection of domain service. | M |
 | EE-M8 Viewport & selection interaction pack (pan/zoom/pinch/space-drag/marquee/fit) | Add core whiteboard navigation and selection. | Keep canvas behavior adapter-local. | Diagram-js integration, keyboard/focus tests. | Modeler adapter modules, browser tests. | EE-M5, #97, #107. | Playwright focus/interactions and performance smoke. | Pan, zoom, pinch, space-drag, marquee, fit-to-view/selection work without leaking engine objects. | Preserve existing keyboard shortcuts. | M |
 | EE-M9 Searchable concept picker & create-at-pointer | Add modern concept creation workflow. | Creation starts from domain registry. | Shell/editor UI, concept registry, commands. | `src/language/concept-registry.mts`, modeler UI modules, tests. | EE-M5, #332. | Unit search tests and browser create-at-pointer test. | Double-click search creates semantic element and view node, then name edit. | Palette remains supported. | M |
 | EE-M10 Smart relationship chooser & quick-create | Add valid relationship chooser and drag-to-empty quick-create. | Relationship semantics stay domain-owned. | Relationship UI, rules, commands. | Rule adapter, UI modules, DTO commands. | EE-M5, EE-M7, #333, #102. | Browser connect/quick-create tests and unit decision tests. | Chooser appears for multiple valid types; unambiguous default works; unsupported/disallowed are distinct. | No silent relationship type fallback. | L |
 | EE-M11 Context toolbar, connector handles, alt-drag duplicate, align/distribute UX, optional minimap | Add productivity interactions. | Advanced UI remains engine integration, shell uses editor API. | Diagram-js modules, UI, clipboard. | Feature modules, optional minimap integration. | EE-M8. | Browser tests for toolbar, handles, duplicate, align/distribute, copy/paste. | Operations commit DTO commands and undo cleanly. | Minimap requires license/provenance approval first. | L |
-| EE-M12 ELK.js layout strategy spike behind src/layout (license review first; coordinate #100) | Evaluate `elk-layered` strategy. | Layout engine is service-level, not editor-engine replacement. | Layout service, license docs, tests. | `src/layout`, docs/layout, third-party notices if accepted. | EE-M6, #100. | Layout unit tests and reversible patch checks. | Spike proves or rejects ELK strategy with license outcome recorded. | Do not distribute until license path is approved. | M |
+| EE-M12 ELK.js layout strategy spike behind src/layout (license review first; coordinate #100) | Evaluate `elk-layered` strategy. | Layout engine is service-level, not editor-engine replacement. | Layout service, license docs, tests. | `src/layout`, docs/layout, third-party notices if accepted. | EE-M6, #100. | Layout unit tests and reversible patch checks. | Spike proves or rejects ELK strategy with license outcome recorded. | Do not distribute until license path is approved. See [`docs/research/elkjs-license-and-provenance.md`](../research/elkjs-license-and-provenance.md) (#374) for the license-path evidence and required repository changes. | M |
 | EE-M13 Converge legacy moddle save path with DTO authority (compat plan for ineligible imports) | Reduce dual state and clarify save semantics. | Persistent edits should not diverge. | Importer, saver, modeling commands, renderer. | `BaseViewer.saveXML`, `lib/import`, `lib/features/modeling/cmd`, DTO MEFF bridge. | EE-M6, EE-M7. | XML/MEFF round trips, browser edit/save tests, legacy compatibility tests. | Eligible edits save through DTO authority; ineligible imports retain legacy path with explicit diagnostics. | Highest-risk migration; keep legacy compatibility until evidence is strong. | XL |
 | EE-M14 Application shell integration over editor service (tree, inspector, lint panel, layout controls) | Build shell features over editor/domain APIs. | Shell must not depend on diagram-js. | App shell, styles, lint/validation UI. | App shell modules, CSS tokens, docs. | EE-M4, #96, #104, #108, #136. | Browser shell tests, accessibility tests, package tests. | Tree, inspector, lint, layout controls, import/export work through editor service. | No React in core without separate ADR. | L |
-| EE-M15 Collaboration-readiness: deterministic IDs & op log serialization (no sync) | Prepare operations for future collaboration. | Deterministic commands enable replay later. | DTO commands, ID generation, serialization tests. | Editor command types, ID service, tests. | EE-M5. | Unit replay tests and deterministic serialization tests. | Commands can be serialized/replayed deterministically for one client. | No distributed sync or conflict resolver yet. | M |
+| EE-M15 Collaboration-readiness: deterministic IDs & op log serialization (no sync) — Implemented in #357 | Prepare DTO operations for future collaboration. | Deterministic commands enable local replay later. | DTO commands, operation log, serialization/replay tests. | `src/model-dto/editor-operation-log.ts`, adapter tests, editor docs. | EE-M5. | Synthetic unit replay tests and deterministic serialization tests. | Versioned commands can be serialized/replayed deterministically for one client. | No network, presence, synchronization, or distributed conflict resolution. | M |
 
 ## Related issues and dependencies
 

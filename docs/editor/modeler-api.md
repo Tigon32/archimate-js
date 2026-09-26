@@ -14,6 +14,10 @@ const opened = await modeler.open(xml, { viewId: 'view-dto-export' });
 
 if (opened.eligible) {
   modeler.execute({ type: 'move', viewId: opened.viewId!, nodeId: 'node-component', x: 40, y: 50 });
+  modeler.execute({ type: 'move-many', viewId: opened.viewId!,
+    moves: [{ nodeId: 'node-component', x: 60, y: 70 }, { nodeId: 'node-service', x: 260, y: 70 }] });
+  const { patch, metrics } = await modeler.optimizeDiagram();
+  // modeler.undo() reverses the entire optimization; modeler.redo() reapplies it.
   const { xml: meffXml, dtoJson } = modeler.save();
   // Write artifacts only after save() returns both validated outputs.
 }
@@ -62,6 +66,54 @@ modeler.zoom('fit');
 const scale = modeler.getZoom();
 modeler.panBy(20, -10);
 ```
+
+Supported persistent command discriminants are `create-element`,
+`create-relationship`, `move`, `move-many`, `resize`,
+`connect`, `reconnect`, `delete`, `delete-many`, `apply-layout-patch`, `label`,
+`concept-name`, `concept-documentation`, and `property`. `move-many` uses
+absolute diagram-space target coordinates per node. `apply-layout-patch` accepts
+a DTO `LayoutPatch` and `side: 'after' | 'before'`; it applies node bounds and
+connection waypoints only, validates current geometry to reject stale patches,
+and commits as one undo step. `create-element` and `create-relationship` require
+deterministic caller-provided IDs and commit semantic and presentation records
+atomically; see [the DTO command boundary](diagram-adapter.md) for payloads and
+validation. Adapter gesture routing remains pending #372, and creation UI
+remains EE-M9/#351.
+
+The facade can export, serialize, and replay a version-1 operation log:
+
+```ts
+const operationJson = modeler.serializeOperationLog('stable-client-session');
+// Use a separate facade opened from the exact same base DTO:
+const replayModeler = new Modeler({ container: replayContainer });
+await replayModeler.open(xml, { viewId: opened.viewId });
+replayModeler.replayOperationLog(operationJson);
+```
+
+Pass a caller-owned stable client/session identifier to `exportOperationLog`
+or `serializeOperationLog`; operation IDs are deterministically
+`<clientId>:<sequence>`. The schema and replay rules are defined in the
+[adapter operation-log contract](diagram-adapter.md#deterministic-operation-log).
+Replay requires a fresh DTO editor for the same base model and commits only
+after the entire candidate succeeds. No network or shared-session behavior is
+provided.
+
+`await modeler.optimizeDiagram(options?)` computes layout from the active view
+of the detached DTO model and commits only its geometry patch via one
+`apply-layout-patch` command. The default is the built-in full strategy; it
+returns `{ patch, metrics }` as plain values. `undo()` restores the preceding
+DTO geometry and `redo()` reapplies it; `save()` exports the resulting DTO/MEFF.
+Routed waypoints are rounded to MEFF-compatible integer coordinates and
+typed as source attachment, bendpoints, and target attachment. The facade
+rejects a layout that cannot round-trip through MEFF before committing it.
+For explicit patch replay or reversal, call
+`modeler.applyLayoutPatch(patch, 'after' | 'before')`. Each call is a separate
+undoable edit and requires the current geometry to match the opposite side of
+the patch. Stale patches are rejected. Missing/ineligible sessions and
+unsupported options throw content-free coded errors; `elk-layered` is not
+available. If the session closes or is replaced during layout, the result is
+discarded. The direct legacy `lib/Modeler.ts` optimizer remains a separate
+diagram-js command-stack compatibility path, not the DTO facade.
 
 `project()` returns an engine-neutral `CanvasProjection` with DTO identifiers,
 geometry, labels, style, and selected IDs. Viewport methods route through the
@@ -124,7 +176,7 @@ label/direct-editing text field has focus.
 
 | Surface | Classification | Compatibility |
 | --- | --- | --- |
-| `Modeler`, `ModelerOptions`, `OpenResult`, `ModelerEvent`, lifecycle, save, events, operations, `EditorCommand`, `CanvasProjection` | Stable-experimental public API | Documented public boundary while `0.y.z`; breaking changes may occur before `1.0.0` with changelog notes. |
+| `Modeler`, `ModelerOptions`, `OpenResult`, `ModelerEvent`, lifecycle, save, events, operations, `EditorCommand`, `CanvasProjection`, versioned operation-log types | Stable-experimental public API | Documented public boundary while `0.y.z`; breaking changes may occur before `1.0.0` with changelog notes. |
 | `DiagramJsCanvasPort`, `DtoModelerSession`, and their service/result types from `archimate-js/modeler` | Adapter-level advanced API | Public home for advanced integrations, but still tied to the current diagram-js adapter. Prefer the facade for application code. |
 | `getEngineCapabilities('diagram-js')` | Engine-specific escape hatch | Explicitly **UNSTABLE** and not covered by compatibility policy. It returns `{ get(serviceName) }` for opt-in diagram-js service access. Normal editing must not require it. |
 

@@ -198,3 +198,23 @@ sources:
       - Does not establish that this repository implements the complete relationship matrix.
       - Implementations must not reproduce protected tables or claim conformance from this source alone.
     review_after: 2026-12-23
+
+  - id: elkjs-license-provenance
+    title: kieler/elkjs package, license, and NOTICE evidence
+    publisher: Kiel University / Eclipse Layout Kernel project
+    url: https://github.com/kieler/elkjs
+    version: elkjs 0.12.0 (npm dist-tag latest), tag https://github.com/kieler/elkjs/tree/0.12.0
+    retrieved_at: 2026-09-26
+    license_or_terms: "EPL-2.0 OR GPL-3.0-or-later (SPDX expression from package.json)"
+    redistribution: Link and summarize only; do not bundle or vendor elkjs source until the license path is adopted with required repository changes.
+    source_revision: elkjs 0.12.0 tag; package.json gitHead ff5771d7165445c42c408bb8a090c8035272218c
+    confidence: high
+    claims:
+      - elkjs's package.json declares the SPDX expression EPL-2.0 OR GPL-3.0-or-later.
+      - The EPL-2.0 Secondary License mechanism (upstream eclipse/elk NOTICE.md) is the source of the GPL-3.0-or-later option, not an independent elkjs dual-license choice.
+      - elkjs ships compiled GWT-generated JavaScript artifacts (elk-worker.js, elk-worker.min.js, elk.bundled.js) under lib/ with no per-file license headers.
+      - elkjs's published package.json lists no runtime dependencies, only devDependencies.
+    constraints:
+      - This is a documentation-only research note under docs/research/elkjs-license-and-provenance.md; it does not authorize adding the elkjs dependency.
+      - Do not treat this entry as legal advice; unresolved licensing questions are recorded in the linked note.
+    review_after: 2026-12-26

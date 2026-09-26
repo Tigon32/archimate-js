@@ -4,13 +4,19 @@ import { expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { DiagramJsCanvasPort } from '../../src/diagram-js-adapter/index.js';
 import { DiagramAdapter, importMeffToModelDto } from '../../src/model-dto/index.js';
-import type { DiagramJsCanvasServices } from '../../src/model-dto/index.js';
+import type { DiagramJsCanvasServices, RelationshipEditDiagnostic } from '../../src/model-dto/index.js';
 
-function mockModeling() {
+function mockModeling(rejectLegacyRules = false) {
   return {
     nativeCalls: 0,
-    _archimateRules: { canConnect: (_source: unknown, _target: unknown, connection: unknown) =>
-      (connection as { type: string }).type === 'Serving' ? { type: 'Serving' } : false },
+    _archimateRules: {
+      calls: 0,
+      canConnect(_source: unknown, _target: unknown, connection: unknown) {
+        this.calls++;
+        return !rejectLegacyRules && (connection as { type: string }).type === 'Serving' ?
+          { type: 'Serving' } : false;
+      }
+    },
     moveElements(_shapes: unknown[], _delta: { x: number; y: number }, _target?: unknown,
       _hints?: { attach?: boolean }) { this.nativeCalls++; },
     resizeShape(_shape: unknown, _bounds: { x: number; y: number; width: number; height: number },
@@ -24,7 +30,7 @@ function mockModeling() {
   };
 }
 
-function setup(supportedServing = false) {
+function setup(supportedServing = false, rejectLegacyRules = false) {
   const model = importMeffToModelDto(readFileSync('test/fixtures/synthetic/dto-export-view.xml', 'utf8'));
   if (supportedServing) {
     model.elements.find((item) => item.id === 'component-one')!.type = 'archimate:ApplicationService';
@@ -34,7 +40,7 @@ function setup(supportedServing = false) {
   const editor = new DiagramAdapter(model);
   const shapes = new Map<string, Record<string, unknown>>();
   const connections = new Map<string, Record<string, unknown>>();
-  const modeling = mockModeling();
+  const modeling = mockModeling(rejectLegacyRules);
   const canvas = {
     root: { id: 'root', children: [] as Array<Record<string, unknown>> },
     getRootElement() { return this.root; },
@@ -68,6 +74,14 @@ function setup(supportedServing = false) {
   };
   const port = new DiagramJsCanvasPort(services);
   return { editor, port, modeling, shapes, connections };
+}
+
+function diagnosticOf(action: () => unknown): RelationshipEditDiagnostic | undefined {
+  try { action(); }
+  catch (error) {
+    return (error as { diagnostic?: RelationshipEditDiagnostic }).diagnostic;
+  }
+  return undefined;
 }
 
 it('routes semantic connect, reconnect and view deletion through one history', () => {
@@ -144,9 +158,45 @@ it('rejects semantic endpoint mismatches and shared relationship retargeting ato
   expect(editor.serialize()).toBe(beforeRetarget);
   expect(connections.get('shared-connection')).toMatchObject({ source: { id: 'node-component' },
     target: { id: 'node-service' } });
-  expect(() => modeling.removeElements([shapes.get('node-component'), shapes.get('node-service')]))
-    .toThrow();
+  modeling.removeElements([shapes.get('node-component'), connections.get('shared-connection')]);
+  expect(editor.getModel().views[0].nodes.some((item) => item.id === 'node-component')).toBe(false);
+  expect(editor.undo()).toBe(true);
   expect(editor.serialize()).toBe(beforeRetarget);
+  detach();
+});
+
+it('returns the DTO semantic diagnostic for live connects rejected by legacy rules', () => {
+  const { editor, port, modeling, shapes, connections } = setup(false, true);
+  const detach = editor.attach('view-dto-export', port);
+  const original = editor.serialize();
+  const diagnostic = diagnosticOf(() => modeling.createConnection(shapes.get('node-component'),
+    shapes.get('node-service'), { id: 'unsupported-live-connection', type: 'Serving' }));
+  expect(diagnostic).toMatchObject({ code: 'DTO_RELATIONSHIP_UNSUPPORTED',
+    category: 'unsupported-profile', operation: 'connect',
+    connectionId: 'unsupported-live-connection' });
+  expect(modeling._archimateRules.calls).toBe(0);
+  expect(editor.serialize()).toBe(original);
+  expect(editor.undo()).toBe(false);
+  expect(connections.has('unsupported-live-connection')).toBe(false);
+  detach();
+});
+
+it('returns the DTO semantic diagnostic for live reconnects rejected by legacy rules', () => {
+  const { editor, port, modeling, shapes, connections } = setup(true, true);
+  const detach = editor.attach('view-dto-export', port);
+  const original = editor.serialize();
+  const connection = connections.get('serving-connection');
+  const diagnostic = diagnosticOf(() => modeling.reconnect(connection, shapes.get('node-service'),
+    shapes.get('node-component'), [{ x: 300, y: 75 }, { x: 160, y: 75 }]));
+  expect(diagnostic).toMatchObject({ code: 'DTO_RELATIONSHIP_UNSUPPORTED',
+    category: 'unsupported-profile', operation: 'reconnect',
+    connectionId: 'serving-connection', relationshipId: 'serving-one-two' });
+  expect(modeling._archimateRules.calls).toBe(0);
+  expect(editor.serialize()).toBe(original);
+  expect(editor.undo()).toBe(false);
+  expect(connections.get('serving-connection')).toMatchObject({
+    source: { id: 'node-component' }, target: { id: 'node-service' }
+  });
   detach();
 });
 
@@ -204,6 +254,45 @@ it('routes move, resize, and label intents to one DTO history before native muta
   detach();
   expect(modeling.moveElements).toBe(nativeMove);
   expect(modeling.nativeCalls).toBe(0);
+});
+
+it('routes multi-node move and multi-item deletion as batch DTO commands', () => {
+  const { editor, port, modeling, shapes, connections } = setup();
+  const detach = editor.attach('view-dto-export', port);
+  const original = editor.getModel();
+  modeling.moveElements([shapes.get('node-component'), shapes.get('node-service')], { x: 8, y: 12 });
+  expect(editor.getModel().views[0].nodes[0]).toMatchObject({ x: 28, y: 52 });
+  expect(editor.getModel().views[0].nodes[1]).toMatchObject({ x: 308, y: 52 });
+  expect(editor.undo()).toBe(true);
+  expect(editor.getModel()).toEqual(original);
+
+  modeling.removeElements([shapes.get('node-component'), connections.get('serving-connection')]);
+  expect(editor.getModel().views[0].nodes.some((item) => item.id === 'node-component')).toBe(false);
+  expect(editor.getModel().views[0].connections).toEqual([]);
+  expect(editor.getModel().elements).toEqual(original.elements);
+  expect(editor.getModel().relationships).toEqual(original.relationships);
+  expect(editor.undo()).toBe(true);
+  expect(editor.getModel()).toEqual(original);
+  expect(modeling.nativeCalls).toBe(0);
+  detach();
+});
+
+it('routes mixed top-level and nested batch moves without reparenting', () => {
+  const { editor, port, modeling, shapes } = setup();
+  const detach = editor.attach('view-dto-export', port);
+  const original = editor.getModel();
+  expect(() => modeling.moveElements([shapes.get('node-service'), shapes.get('node-service-nested')],
+    { x: 4, y: 5 }, shapes.get('node-component'))).toThrow('The model DTO is invalid.');
+  expect(editor.getModel()).toEqual(original);
+  expect(editor.undo()).toBe(false);
+  modeling.moveElements([shapes.get('node-service'), shapes.get('node-service-nested')], { x: 4, y: 5 });
+  const view = editor.getModel().views[0];
+  expect(view.nodes[1]).toMatchObject({ id: 'node-service', x: 304, y: 45 });
+  expect(view.nodes[0].nodes[0]).toMatchObject({ id: 'node-service-nested', x: 14, y: 125 });
+  expect(editor.undo()).toBe(true);
+  expect(editor.getModel()).toEqual(original);
+  expect(modeling.nativeCalls).toBe(0);
+  detach();
 });
 
 it('restores modeling hooks when a view is detached or switched', () => {

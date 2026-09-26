@@ -50,6 +50,9 @@ jobs:
       - name: Assert synthetic Node performance budgets
         run: node test/performance/benchmark.mts --smoke --assert --output=test-results/performance-node.json
 
+      - name: Assert synthetic DTO diff performance budgets
+        run: node test/performance/dto-diff-benchmark.mts --assert --output=test-results/performance-dto-diff.json
+
       - name: Assert synthetic browser performance budgets
         run: |
           export CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
@@ -64,6 +67,7 @@ jobs:
           name: primary-qualification-evidence
           path: |
             test-results/performance-node.json
+            test-results/performance-dto-diff.json
             test-results/performance-browser.json
             test-results/read-only-showcase.png
           if-no-files-found: warn

@@ -48,12 +48,24 @@ Metrics report moved nodes, rerouted connections, crossings, sibling overlaps,
 and the view bounds before and after. Source MEFF geometry remains the source
 snapshot; use the returned layout patch to map that source to optimized values.
 
-The internal `Modeler.prototype.optimizeDiagram(options)` applies the same patch
-to the active canvas as one `diagram.optimize` command. The diagram-js command
-stack can undo and redo its node movement and waypoint changes atomically.
-After importing a view, normal `saveSVG()` serializes the rendered canvas with
-its current waypoints. The modeler class is not exported from the package root;
-the headless APIs above are the supported public entry points.
+The public `archimate-js/modeler` facade offers
+`await modeler.optimizeDiagram({ strategy: 'builtin' })`. It runs the DTO
+layout abstraction against the active view, applies only the returned geometry
+patch as one `apply-layout-patch` DTO command, and returns `{ patch, metrics }`.
+Routed points are normalized to integer MEFF attachment/bendpoint waypoints,
+and a layout that cannot round-trip through MEFF is rejected before commit.
+`modeler.undo()` and `modeler.redo()` reverse and restore the whole edit;
+`modeler.applyLayoutPatch(patch, 'before' | 'after')` explicitly applies the
+opposite side as another undoable edit (subject to stale-geometry checks).
+`modeler.save()` exports the authoritative DTO and MEFF geometry. Unsupported
+layout requests reject with content-free codes rather than falling back.
+
+The direct legacy `lib/Modeler.ts` `optimizeDiagram(options)` remains unchanged
+for consumers outside eligible DTO sessions. It applies the legacy optimizer
+patch to the canvas via one `diagram.optimize` command; its diagram-js command
+stack can undo and redo that canvas movement. `saveSVG()` reflects its rendered
+canvas, but legacy moddle saving does not represent DTO facade edits. The
+legacy class is not exported from the package root.
 
 The fixture in `test/unit/diagram-layout.test.mjs` is **SYNTHETIC** and covers
 obstacles, parallel routes, groups, nesting, labels, multiple relationship
@@ -86,11 +98,15 @@ diagnostic without a view or patch. Unavailable `elk-layered`, `incremental`,
 and `pins` options also return explicit diagnostics, with no fallback to full
 built-in layout. Unknown options are rejected so future controls are not
 silently ignored. This call runs asynchronously at the API boundary, but the
-built-in optimizer itself currently runs on the calling thread.
+built-in optimizer itself currently runs on the calling thread. The
+`elk-layered` strategy's ELK.js license and provenance prerequisite review
+is recorded in
+[`docs/research/elkjs-license-and-provenance.md`](../research/elkjs-license-and-provenance.md)
+(#374); no `elkjs` dependency is added by this documentation.
 
 This is a partial implementation of #100. Layered compound layout, hard and
 soft pins, incremental stability, advanced labels, worker execution, and
 benchmark/quality metrics beyond those measured by the existing optimizer
-remain open. The existing diagram-js command stack still owns interactive
-undo and redo; the DTO patch is plain transport data and is not applied to
-the canvas automatically.
+remain open. The headless facade returns plain transport data; only the public
+modeler facade commits the patch through DTO history. The legacy diagram-js
+command stack remains solely for direct legacy modeler consumers.
