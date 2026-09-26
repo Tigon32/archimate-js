@@ -24,7 +24,7 @@ await writeFile(entryPath, `
 `);
 try {
   const compiler = webpack({ mode: 'development', target: 'web', entry: entryPath,
-    output: { path: path.join(root, '.ci-build'), filename: 'concept-picker-test.js' },
+    output: { path: path.join(root, '.ci-build', 'concept-picker'), filename: 'concept-picker-test.js' },
     module: { rules: [{ test: /\\.(css|svg|ttf|woff2?)$/, type: 'asset/inline' }] },
     resolve: { extensions: ['.ts', '.js', '.json'] }, stats: 'errors-warnings' });
   const stats = await new Promise<import('webpack').Stats>((resolve, reject) => {
@@ -39,7 +39,7 @@ try {
 }
 
 const files = new Map([
-  ['/.ci-build/concept-picker-test.js', '.ci-build/concept-picker-test.js'],
+  ['/.ci-build/concept-picker/concept-picker-test.js', '.ci-build/concept-picker/concept-picker-test.js'],
   ['/synthetic.xml', 'test/fixtures/synthetic/dto-export-view.xml'],
   ['/diagram.css', 'node_modules/diagram-js/assets/diagram-js.css']
 ]);
@@ -67,7 +67,7 @@ try {
   const page = await browser.newPage();
   await page.goto(origin);
   await page.addStyleTag({ url: '/diagram.css' });
-  await page.addScriptTag({ url: '/.ci-build/concept-picker-test.js' });
+  await page.addScriptTag({ url: '/.ci-build/concept-picker/concept-picker-test.js' });
   const pointer = await page.evaluate(async () => {
     const { Modeler } = (window as any).ConceptPickerTest;
     const host = document.createElement('div');
