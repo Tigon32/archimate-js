@@ -17,6 +17,7 @@ export default class SpacePan {
     this.canvas = canvas;
     eventBus.on('canvas.init', this.attach);
     eventBus.on('diagram.destroy', this.detach);
+    window.addEventListener('blur', this.onBlur);
   }
 
   private readonly attach = (event: { svg?: SVGSVGElement }): void => {
@@ -24,7 +25,7 @@ export default class SpacePan {
     this.svg = event.svg;
     this.svg.addEventListener('mousedown', this.onMouseDown, true);
     this.svg.addEventListener('keydown', this.onKeyDown, true);
-    this.svg.addEventListener('keyup', this.onKeyUp, true);
+    document.addEventListener('keyup', this.onKeyUp, true);
   };
 
   private readonly onMouseDown = (event: MouseEvent): void => {
@@ -58,7 +59,7 @@ export default class SpacePan {
   };
 
   private readonly onKeyUp = (event: KeyboardEvent): void => {
-    if (!isSpace(event)) return;
+    if (!isSpace(event) || (!this.spacePressed && !this.panStart)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     this.spacePressed = false;
@@ -76,8 +77,14 @@ export default class SpacePan {
     this.spacePressed = false;
     this.svg?.removeEventListener('mousedown', this.onMouseDown, true);
     this.svg?.removeEventListener('keydown', this.onKeyDown, true);
-    this.svg?.removeEventListener('keyup', this.onKeyUp, true);
+    document.removeEventListener('keyup', this.onKeyUp, true);
+    window.removeEventListener('blur', this.onBlur);
     this.svg = undefined;
+  };
+
+  private readonly onBlur = (): void => {
+    this.spacePressed = false;
+    this.stopPan();
   };
 }
 

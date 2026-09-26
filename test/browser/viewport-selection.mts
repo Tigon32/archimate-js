@@ -102,6 +102,9 @@ window.__prepareViewportSelectionTest = async () => {
   await delay();
   const spaceDragPanned = canvas.viewbox().x !== 0 || canvas.viewbox().y !== 0;
   canvas.viewbox({ x: 0, y: 0, width: 800, height: 500 });
+  key('keydown', 'Space', { code: 'Space' });
+  window.dispatchEvent(new Event('blur'));
+  const spaceReleasedOnBlur = engine.get('spacePan').spacePressed === false;
   selection.select(registry.get('node-component'));
   const target = canvas.getGraphics(registry.get('node-service'));
   const targetRect = target.getBoundingClientRect();
@@ -120,7 +123,7 @@ window.__prepareViewportSelectionTest = async () => {
   const lassoIds = selection.get().map((element) => element.id).sort();
   viewportSelectionState = {
     modeler, viewportEvents, container, engine, canvas, selection, registry, svg,
-    delay, wheelZoomed, pinchZoomed, wheelPanned, spaceDragPanned, lassoIds,
+    delay, wheelZoomed, pinchZoomed, wheelPanned, spaceDragPanned, spaceReleasedOnBlur, lassoIds,
     shiftIds
   };
   return true;
@@ -128,7 +131,8 @@ window.__prepareViewportSelectionTest = async () => {
 
 window.__finishViewportSelectionTest = async () => {
   const { modeler, viewportEvents, container, engine, canvas, selection, registry, svg,
-    delay, wheelZoomed, pinchZoomed, wheelPanned, spaceDragPanned, lassoIds, shiftIds } =
+    delay, wheelZoomed, pinchZoomed, wheelPanned, spaceDragPanned, spaceReleasedOnBlur,
+    lassoIds, shiftIds } =
     viewportSelectionState;
   const key = (type, value, options = {}) => svg.dispatchEvent(new KeyboardEvent(type, {
     key: value, bubbles: true, cancelable: true, ...options
@@ -148,7 +152,14 @@ window.__finishViewportSelectionTest = async () => {
   const fitViewScale = modeler.getZoom();
   key('keydown', '@', { shiftKey: true });
   await delay();
-  const fitSelectionChanged = modeler.getZoom() !== fitViewScale || canvas.viewbox().x !== 0;
+  const fitSelectionChanged = modeler.getZoom() > fitViewScale;
+  const fitSelectionBox = canvas.viewbox();
+  const fitSelectionElement = registry.get('node-component');
+  const fitSelectionCentered =
+    Math.abs(fitSelectionBox.x + fitSelectionBox.width / 2 -
+      fitSelectionElement.x - fitSelectionElement.width / 2) < 1 &&
+    Math.abs(fitSelectionBox.y + fitSelectionBox.height / 2 -
+      fitSelectionElement.y - fitSelectionElement.height / 2) < 1;
   engine.get('directEditing').activate(registry.get('node-component'));
   const editor = container.querySelector('.djs-direct-editing-content');
   const beforeEditingViewport = canvas.viewbox();
@@ -169,10 +180,10 @@ window.__finishViewportSelectionTest = async () => {
   const facadeFit = modeler.zoom('fit');
   modeler.destroy();
   container.remove();
-  return { wheelZoomed, pinchZoomed, wheelPanned, spaceDragPanned, lassoIds,
+  return { wheelZoomed, pinchZoomed, wheelPanned, spaceDragPanned, spaceReleasedOnBlur, lassoIds,
     shiftIds, escapeCleared, selectAllCount, fitShortcutScale, fitViewScale,
     fitSelectionChanged, editingIgnoredShortcuts, apiPanChanged, plainViewport,
-    facadeZoom, facadeFit };
+    fitSelectionCentered, facadeZoom, facadeFit };
 };
 `;
 const server = createServer((request: { url?: string }, response: {
@@ -208,6 +219,7 @@ try {
   assert.equal(result.pinchZoomed, true);
   assert.equal(result.wheelPanned, true);
   assert.equal(result.spaceDragPanned, true);
+  assert.equal(result.spaceReleasedOnBlur, true);
   assert.equal(result.lassoIds.length >= 2, true);
   assert.deepEqual(result.shiftIds, ['node-component', 'node-service']);
   assert.equal(result.escapeCleared, true);
@@ -215,6 +227,7 @@ try {
   assert.equal(typeof result.fitShortcutScale, 'number');
   assert.equal(typeof result.fitViewScale, 'number');
   assert.equal(result.fitSelectionChanged, true);
+  assert.equal(result.fitSelectionCentered, true);
   assert.equal(result.editingIgnoredShortcuts, true);
   assert.equal(result.apiPanChanged, true);
   assert.equal(result.plainViewport, true);

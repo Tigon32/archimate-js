@@ -1,9 +1,14 @@
-type CanvasViewbox = { x: number; y: number; width: number; height: number; scale: number };
-type DiagramElement = { id?: string };
+import { getBBox } from 'diagram-js/lib/util/Elements.js';
+import type { Element } from 'diagram-js/lib/model/Types.js';
+
+type CanvasViewbox = {
+  x: number; y: number; width: number; height: number; scale: number;
+  outer?: { width: number; height: number };
+};
+type DiagramElement = Element;
 type CanvasService = {
   zoom(value?: number | 'fit-viewport'): number;
-  viewbox(box?: { x: number; y: number; width: number; height: number }): CanvasViewbox;
-  scrollToElement(element: DiagramElement | DiagramElement[], padding?: number): void;
+  viewbox(box?: false | { x: number; y: number; width: number; height: number }): CanvasViewbox;
   resized?(): void;
 };
 type SelectionService = { get(): DiagramElement[]; select(elements: DiagramElement[] | null): void };
@@ -54,8 +59,7 @@ function registerViewportActions(
   registerOnce(editorActions, 'fitSelection', () => {
     const selected = selection.get();
     if (!selected.length) return editorActions.trigger('fitView');
-    canvas.scrollToElement(selected, 100);
-    return canvas.zoom();
+    return fitSelectedBounds(canvas, selected);
   });
   registerOnce(editorActions, 'clearSelection', () => {
     selection.select(null);
@@ -77,6 +81,26 @@ function registerKeyboardShortcuts(keyboard: Keyboard, editorActions: EditorActi
     if (keyEvent.shiftKey && !hasCommandModifier(keyEvent) && keyboard.isKey([ '2', '@' ], keyEvent)) {
       return trigger(editorActions, 'fitSelection');
     }
+  });
+}
+
+function fitSelectedBounds(canvas: CanvasService, selected: DiagramElement[]): CanvasViewbox {
+  const bounds = getBBox(selected);
+  const padding = 100;
+  const paddedWidth = Math.max(1, bounds.width + padding * 2);
+  const paddedHeight = Math.max(1, bounds.height + padding * 2);
+  const viewport = canvas.viewbox(false);
+  const aspect = viewport.outer && viewport.outer.width > 0 && viewport.outer.height > 0 ?
+    viewport.outer.width / viewport.outer.height : viewport.width / viewport.height;
+  const width = Math.max(paddedWidth, paddedHeight * aspect);
+  const height = Math.max(paddedHeight, paddedWidth / aspect);
+  const centerX = bounds.x + bounds.width / 2;
+  const centerY = bounds.y + bounds.height / 2;
+  return canvas.viewbox({
+    x: centerX - width / 2,
+    y: centerY - height / 2,
+    width,
+    height
   });
 }
 
