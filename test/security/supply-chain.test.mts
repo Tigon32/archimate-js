@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const [dependabot, workflow, releaseWorkflow, policy, notices, readme, packageJson, archimateFontLicense, fontAwesomeLicense] = await Promise.all([
+const [dependabot, workflow, releaseWorkflow, policy, notices, readme, packageJson, archimateFontLicense, fontAwesomeLicense, elkjsLicense] = await Promise.all([
   readFile(new URL('../../.github/dependabot.yml', import.meta.url), 'utf8'),
   readFile(new URL('../../.github/workflows/ci.yml', import.meta.url), 'utf8'),
   readFile(new URL('../../.github/workflows/release-gate.yml', import.meta.url), 'utf8'),
@@ -10,7 +10,8 @@ const [dependabot, workflow, releaseWorkflow, policy, notices, readme, packageJs
   readFile(new URL('../../README.md', import.meta.url), 'utf8'),
   readFile(new URL('../../package.json', import.meta.url), 'utf8'),
   readFile(new URL('../../assets/archimate-font/OFL.txt', import.meta.url), 'utf8'),
-  readFile(new URL('../../assets/font-awesome-5/OFL.txt', import.meta.url), 'utf8')
+  readFile(new URL('../../assets/font-awesome-5/OFL.txt', import.meta.url), 'utf8'),
+  readFile(new URL('../../licenses/elkjs-EPL-2.0.txt', import.meta.url), 'utf8')
 ]);
 
 assert.match(dependabot, /package-ecosystem: npm/);
@@ -85,6 +86,9 @@ assert.match(notices, /MIT/);
 assert.match(notices, /Font Awesome/);
 assert.match(notices, /IBM Plex/);
 assert.match(notices, /assets\/archimate-font\/OFL\.txt/);
+assert.match(notices, /elkjs@0\.12\.0/);
+assert.match(notices, /EPL-2\.0.*GPL-3\.0-or-later/s);
+assert.match(elkjsLicense, /Eclipse Public License - v 2\.0/);
 assert.match(archimateFontLicense, /SIL OPEN FONT LICENSE/);
 assert.match(fontAwesomeLicense, /Reserved Font Name "Font Awesome"/);
 assert.match(notices, /no GPL-licensed dependency or asset/i);

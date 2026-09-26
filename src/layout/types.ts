@@ -9,6 +9,7 @@ export interface LayoutOptions {
   routeConnections?: boolean;
   pins?: readonly LayoutPin[];
   changedNodeIds?: readonly string[];
+  rankConstraints?: readonly LayoutRankConstraint[];
 }
 
 export interface LayoutPin {
@@ -16,11 +17,16 @@ export interface LayoutPin {
   strength: 'hard' | 'soft';
 }
 
+export interface LayoutRankConstraint {
+  nodeId: string;
+  rank: 'first' | 'last';
+}
+
 export interface LayoutDiagnostic {
   code: 'INVALID_MODEL' | 'VIEW_NOT_FOUND' | 'UNSUPPORTED_STRATEGY' |
     'UNSUPPORTED_MODE' | 'UNSUPPORTED_CONSTRAINT' | 'UNSUPPORTED_CONNECTION' |
     'INVALID_OPTIONS' | 'LAYOUT_FAILED' | 'PIN_NODE_NOT_FOUND' |
-    'CHANGED_NODE_NOT_FOUND' | 'SOFT_PIN_DISPLACED' | 'INCREMENTAL_DISPLACEMENT' |
+    'CHANGED_NODE_NOT_FOUND' | 'RANK_NODE_NOT_FOUND' | 'SOFT_PIN_DISPLACED' | 'INCREMENTAL_DISPLACEMENT' |
     'UNSATISFIED_CONSTRAINT';
   severity: 'error' | 'warning';
   message: string;
