@@ -2,8 +2,10 @@ import { SaxesParser } from 'saxes';
 
 import {
   RELATIONSHIP_SEMANTICS_VERSION,
+  parseSemanticProfile,
   validateRelationshipSemantics
 } from './relationship-semantics.js';
+import type { SemanticProfile } from './relationship-semantics.js';
 
 import type {
   Diagnostic,
@@ -22,6 +24,17 @@ type XmlNode = {
   line: number;
   column: number;
 };
+
+interface XmlParseState {
+  diagnostics: Diagnostic[];
+  stack: XmlNode[];
+  root?: XmlNode;
+  nodeCount: number;
+  blocked: boolean;
+}
+
+type XmlParseLimits = Required<Pick<ValidatorOptions, 'maxDepth' | 'maxNodes'>>;
+type XmlInputLimits = Required<Pick<ValidatorOptions, 'maxXmlBytes'>> & XmlParseLimits;
 
 const DEFAULT_LIMITS = {
   maxXmlBytes: 1_048_576,
@@ -93,71 +106,81 @@ function pushDiagnostic(
   });
 }
 
-function parseXml(xml: string, options: Required<Pick<ValidatorOptions, 'maxDepth' | 'maxNodes'>>): {
+function blockXmlParse(state: XmlParseState, code: string, message: string, node?: XmlNode): never {
+  state.blocked = true;
+  pushDiagnostic(state.diagnostics, code, 'error', 'xml', message, node);
+  throw new Error(code);
+}
+
+function parseXmlAttributes(attributes: Record<string, unknown>): Record<string, string> {
+  return Object.fromEntries(Object.entries(attributes).map(([key, value]) => [key, String(value)]));
+}
+
+function createXmlNode(tag: { name: string; attributes: Record<string, unknown> },
+  parser: SaxesParser): XmlNode {
+  return {
+    name: tag.name,
+    attributes: parseXmlAttributes(tag.attributes),
+    children: [],
+    line: parser.line + 1,
+    column: parser.column + 1
+  };
+}
+
+function openXmlNode(state: XmlParseState, node: XmlNode): void {
+  if (state.stack.length) state.stack[state.stack.length - 1].children.push(node);
+  else if (state.root) {
+    blockXmlParse(state, 'XML_MULTIPLE_ROOTS', 'XML must contain exactly one root element.', node);
+  } else state.root = node;
+  state.stack.push(node);
+}
+
+function handleOpenTag(state: XmlParseState, parser: SaxesParser,
+  tag: { name: string; attributes: Record<string, unknown> },
+  options: XmlParseLimits): void {
+  if (state.blocked) return;
+  state.nodeCount += 1;
+  if (state.nodeCount > options.maxNodes) {
+    blockXmlParse(state, 'XML_NODE_LIMIT', 'XML node limit exceeded.');
+  }
+  if (state.stack.length >= options.maxDepth) {
+    blockXmlParse(state, 'XML_DEPTH_LIMIT', 'XML nesting limit exceeded.');
+  }
+  if (Object.keys(tag.attributes).length > 64) {
+    blockXmlParse(state, 'XML_ATTRIBUTE_LIMIT', 'XML attribute limit exceeded.');
+  }
+  openXmlNode(state, createXmlNode(tag, parser));
+}
+
+function parseXml(xml: string, options: XmlParseLimits): {
   root?: XmlNode;
   diagnostics: Diagnostic[];
 } {
-  const diagnostics: Diagnostic[] = [];
-  const stack: XmlNode[] = [];
-  let root: XmlNode | undefined;
-  let nodeCount = 0;
-  let blocked = false;
+  const state: XmlParseState = { diagnostics: [], stack: [], nodeCount: 0, blocked: false };
   const parser = new SaxesParser({ xmlns: false, fragment: false });
 
   parser.on('doctype', () => {
-    blocked = true;
-    pushDiagnostic(diagnostics, 'XML_DTD_FORBIDDEN', 'error', 'xml', 'DOCTYPE declarations are not accepted.');
-    throw new Error('XML_DTD_FORBIDDEN');
+    blockXmlParse(state, 'XML_DTD_FORBIDDEN', 'DOCTYPE declarations are not accepted.');
   });
-  parser.on('opentag', (tag) => {
-    if (blocked) return;
-    nodeCount += 1;
-    if (nodeCount > options.maxNodes) {
-      blocked = true;
-      pushDiagnostic(diagnostics, 'XML_NODE_LIMIT', 'error', 'xml', 'XML node limit exceeded.');
-      throw new Error('XML_NODE_LIMIT');
-    }
-    if (stack.length >= options.maxDepth) {
-      blocked = true;
-      pushDiagnostic(diagnostics, 'XML_DEPTH_LIMIT', 'error', 'xml', 'XML nesting limit exceeded.');
-      throw new Error('XML_DEPTH_LIMIT');
-    }
-    if (Object.keys(tag.attributes).length > 64) {
-      blocked = true;
-      pushDiagnostic(diagnostics, 'XML_ATTRIBUTE_LIMIT', 'error', 'xml', 'XML attribute limit exceeded.');
-      throw new Error('XML_ATTRIBUTE_LIMIT');
-    }
-    const node: XmlNode = {
-      name: tag.name,
-      attributes: Object.fromEntries(Object.entries(tag.attributes).map(([key, value]) => [key, String(value)])),
-      children: [],
-      line: parser.line + 1,
-      column: parser.column + 1
-    };
-    if (stack.length) stack[stack.length - 1].children.push(node);
-    else if (root) {
-      blocked = true;
-      pushDiagnostic(diagnostics, 'XML_MULTIPLE_ROOTS', 'error', 'xml', 'XML must contain exactly one root element.', node);
-      throw new Error('XML_MULTIPLE_ROOTS');
-    } else root = node;
-    stack.push(node);
-  });
-  parser.on('closetag', () => { stack.pop(); });
+  parser.on('opentag', (tag) => { handleOpenTag(state, parser, tag, options); });
+  parser.on('closetag', () => { state.stack.pop(); });
   parser.on('error', () => {
-    if (!blocked) pushDiagnostic(diagnostics, 'XML_MALFORMED', 'error', 'xml', 'XML is malformed or contains unsupported syntax.');
+    if (!state.blocked) {
+      pushDiagnostic(state.diagnostics, 'XML_MALFORMED', 'error', 'xml', 'XML is malformed or contains unsupported syntax.');
+    }
   });
 
   try {
     parser.write(xml).close();
   } catch {
-    if (!blocked && diagnostics.length === 0) {
-      pushDiagnostic(diagnostics, 'XML_MALFORMED', 'error', 'xml', 'XML is malformed or contains unsupported syntax.');
+    if (!state.blocked && state.diagnostics.length === 0) {
+      pushDiagnostic(state.diagnostics, 'XML_MALFORMED', 'error', 'xml', 'XML is malformed or contains unsupported syntax.');
     }
   }
-  if (!root && diagnostics.length === 0) {
-    pushDiagnostic(diagnostics, 'XML_EMPTY', 'error', 'xml', 'XML contains no root element.');
+  if (!state.root && state.diagnostics.length === 0) {
+    pushDiagnostic(state.diagnostics, 'XML_EMPTY', 'error', 'xml', 'XML contains no root element.');
   }
-  return { root, diagnostics };
+  return { root: state.root, diagnostics: state.diagnostics };
 }
 
 function descendants(root: XmlNode, name: string): XmlNode[] {
@@ -190,6 +213,295 @@ function runOrganizationRules(
   }
 }
 
+  interface ValidationParts {
+    elements: XmlNode[];
+    relationships: XmlNode[];
+    views: XmlNode[];
+    identifiers: Map<string, XmlNode>;
+    elementTypes: Map<string, string>;
+    viewElementRefs: Set<string>;
+    missingReferences: Set<string>;
+  }
+
+  function invalidXmlInput(xml: string, limits: XmlInputLimits,
+    diagnostics: Diagnostic[], suggestions: RepairSuggestion[]): ValidationResult | undefined {
+    if (typeof xml !== 'string') {
+      pushDiagnostic(diagnostics, 'XML_INPUT_TYPE', 'error', 'xml', 'Input must be an XML string.');
+      return { diagnostics, suggestions, valid: false };
+    }
+    if (xml.length > limits.maxXmlBytes || new TextEncoder().encode(xml).byteLength > limits.maxXmlBytes) {
+      pushDiagnostic(diagnostics, 'XML_SIZE_LIMIT', 'error', 'xml', 'XML size limit exceeded.');
+      return { diagnostics, suggestions, valid: false };
+    }
+    return undefined;
+  }
+
+  function parseValidRoot(xml: string, limits: XmlParseLimits,
+    diagnostics: Diagnostic[], suggestions: RepairSuggestion[]): XmlNode | ValidationResult {
+    const parsed = parseXml(xml, { maxDepth: limits.maxDepth, maxNodes: limits.maxNodes });
+    diagnostics.push(...parsed.diagnostics);
+    if (!parsed.root || parsed.diagnostics.some((item) => item.severity === 'error')) {
+      return { diagnostics: sortDiagnostics(diagnostics), suggestions, valid: false };
+    }
+    return parsed.root;
+  }
+
+  function checkRoot(root: XmlNode, diagnostics: Diagnostic[],
+    suggestions: RepairSuggestion[]): ValidationResult | undefined {
+    const rootName = localName(root.name);
+    if (rootName !== 'model' && rootName !== 'Model') {
+      pushDiagnostic(diagnostics, 'SCHEMA_ROOT_UNSUPPORTED', 'error', 'schema',
+        'Root element must be an ArchiMate model.', root);
+      return { diagnostics: sortDiagnostics(diagnostics), suggestions, valid: false };
+    }
+    if (!attribute(root, 'id') && !attribute(root, 'identifier')) {
+      pushDiagnostic(diagnostics, 'SCHEMA_MODEL_ID_REQUIRED', 'error', 'schema',
+        'Model root must have an id or identifier.', root);
+    }
+    return undefined;
+  }
+
+  function checkRootChildren(root: XmlNode, diagnostics: Diagnostic[]): void {
+    const allowed = new Set(['name', 'documentation', 'elements', 'relationships', 'views',
+      'organizations', 'propertyDefinitions']);
+    for (const child of root.children) {
+      const name = localName(child.name).toLowerCase();
+      if (!allowed.has(name)) {
+        pushDiagnostic(diagnostics, 'SCHEMA_EXTENSION_UNCHECKED', 'warning', 'schema',
+          'An extension element was not checked by the built-in profile.', child);
+      }
+  }
+}
+
+  function collectParts(root: XmlNode): ValidationParts {
+    return {
+      elements: [...descendants(root, 'element'), ...descendants(root, 'baseelement')],
+      relationships: descendants(root, 'relationship'),
+      views: descendants(root, 'view'),
+      identifiers: new Map<string, XmlNode>(),
+      elementTypes: new Map<string, string>(),
+      viewElementRefs: new Set<string>(),
+      missingReferences: new Set<string>()
+    };
+  }
+
+  function rememberIdentifier(parts: ValidationParts, node: XmlNode,
+    diagnostics: Diagnostic[]): string | undefined {
+    const id = attribute(node, 'id') ?? attribute(node, 'identifier');
+    if (!id) {
+      pushDiagnostic(diagnostics, 'SCHEMA_ID_REQUIRED', 'error', 'schema',
+        'A model concept is missing its identifier.', node);
+      return undefined;
+    }
+    if (parts.identifiers.has(id)) {
+      pushDiagnostic(diagnostics, 'STRUCTURE_DUPLICATE_ID', 'error', 'structure',
+        'Identifier is used more than once.', node, id);
+    } else parts.identifiers.set(id, node);
+    return id;
+  }
+
+  function recordElementType(parts: ValidationParts, node: XmlNode, id: string,
+    diagnostics: Diagnostic[], suggestions: RepairSuggestion[]): void {
+    if (!['element', 'baseelement'].includes(localName(node.name).toLowerCase())) return;
+    const elementType = typeName(node);
+    parts.elementTypes.set(id, elementType);
+    if (!knownElements.has(elementType)) {
+      pushDiagnostic(diagnostics, 'SEMANTICS_ELEMENT_TYPE_UNKNOWN', 'warning', 'semantics',
+        'Element type is outside the built-in ArchiMate vocabulary.', node, id);
+      suggestions.push({ code: 'REVIEW_ELEMENT_TYPE', subjectId: id,
+        message: 'Review the element type against the organization profile.', operation: 'review-type' });
+    }
+  }
+
+  function checkIdentifiableConcepts(parts: ValidationParts,
+    diagnostics: Diagnostic[], suggestions: RepairSuggestion[]): void {
+    for (const node of [...parts.elements, ...parts.relationships, ...parts.views]) {
+      const id = rememberIdentifier(parts, node, diagnostics);
+      if (id) recordElementType(parts, node, id, diagnostics, suggestions);
+    }
+  }
+
+  function relationshipIds(parts: ValidationParts): Set<string> {
+    return new Set(parts.relationships
+      .map((node) => attribute(node, 'id') ?? attribute(node, 'identifier'))
+      .filter((id): id is string => Boolean(id)));
+  }
+
+  function checkRelationshipBasics(parts: ValidationParts,
+    diagnostics: Diagnostic[], suggestions: RepairSuggestion[]): void {
+    const ids = relationshipIds(parts);
+    for (const node of parts.relationships) {
+      const id = attribute(node, 'id') ?? attribute(node, 'identifier') ?? '';
+      const source = attribute(node, 'source');
+      const target = attribute(node, 'target');
+      if (!source || !target) {
+        pushDiagnostic(diagnostics, 'SCHEMA_RELATIONSHIP_ENDPOINT_REQUIRED', 'error', 'schema',
+          'Relationship source and target are required.', node, id);
+        continue;
+      }
+      if (!parts.elementTypes.has(source) && !ids.has(source)) parts.missingReferences.add(source);
+      if (!parts.elementTypes.has(target) && !ids.has(target)) parts.missingReferences.add(target);
+      checkRelationshipType(node, id, diagnostics, suggestions);
+      if (source === target) {
+        pushDiagnostic(diagnostics, 'SEMANTICS_SELF_RELATIONSHIP', 'warning', 'semantics',
+          'Relationship endpoints refer to the same concept; review the model against the selected ArchiMate profile.',
+          node, id);
+      }
+    }
+  }
+
+  function checkRelationshipType(node: XmlNode, id: string,
+    diagnostics: Diagnostic[], suggestions: RepairSuggestion[]): void {
+    const relType = typeName(node);
+    if (relType === 'relationship') {
+      pushDiagnostic(diagnostics, 'SEMANTICS_RELATIONSHIP_TYPE_UNSPECIFIED', 'warning', 'semantics',
+        'Relationship type is not specified in the built-in vocabulary.', node, id);
+    }
+    if (relType !== 'relationship' && !knownRelationships.has(relType)) {
+      pushDiagnostic(diagnostics, 'SEMANTICS_RELATIONSHIP_TYPE_UNKNOWN', 'warning', 'semantics',
+        'Relationship type is outside the built-in ArchiMate vocabulary.', node, id);
+      suggestions.push({ code: 'REVIEW_RELATIONSHIP_TYPE', subjectId: id,
+        message: 'Review the relationship type against the organization profile.', operation: 'review-type' });
+    }
+  }
+
+  function relationshipMap(parts: ValidationParts): Map<string, XmlNode> {
+    return new Map(parts.relationships.flatMap((node) => {
+      const id = attribute(node, 'id') ?? attribute(node, 'identifier');
+      return id ? [[id, node] as const] : [];
+    }));
+  }
+
+  function conceptType(parts: ValidationParts, relationshipsById: Map<string, XmlNode>,
+    id: string | undefined): string | undefined {
+    if (!id) return undefined;
+    const relationship = relationshipsById.get(id);
+    return parts.elementTypes.get(id) ?? (relationship ? typeName(relationship) : undefined);
+  }
+
+  function checkSemanticResult(result: ReturnType<typeof validateRelationshipSemantics>,
+    diagnostics: Diagnostic[], node: XmlNode, id: string): void {
+    if (result.decision === 'disallowed') {
+      pushDiagnostic(diagnostics, 'SEMANTICS_RELATIONSHIP_DISALLOWED', 'error', 'semantics',
+        'The relationship combination is disallowed by the built-in ArchiMate 3.2 profile.', node, id);
+    } else if (result.reasonCode === 'RELATIONSHIP_ENDPOINT_UNSUPPORTED') {
+      pushDiagnostic(diagnostics, 'SEMANTICS_RELATIONSHIP_TO_RELATIONSHIP_UNSUPPORTED', 'warning', 'semantics',
+        'Relationship-to-relationship semantics are not covered by the built-in profile.', node, id);
+    } else if (result.reasonCode === 'JUNCTION_UNSUPPORTED') {
+      pushDiagnostic(diagnostics, 'SEMANTICS_JUNCTION_UNSUPPORTED', 'warning', 'semantics',
+        'Junction semantics are not covered by the built-in profile.', node, id);
+    } else if (result.decision === 'unsupported') {
+      pushDiagnostic(diagnostics, 'SEMANTICS_RELATIONSHIP_COMBINATION_UNSUPPORTED', 'warning', 'semantics',
+        'The relationship combination is outside the built-in ArchiMate 3.2 decision set.', node, id);
+    }
+  }
+
+  function checkRelationshipSemantics(parts: ValidationParts, diagnostics: Diagnostic[],
+    semanticProfile?: SemanticProfile): void {
+    const relationshipsById = relationshipMap(parts);
+    for (const node of parts.relationships) {
+      const id = attribute(node, 'id') ?? attribute(node, 'identifier') ?? '';
+      const source = attribute(node, 'source');
+      const target = attribute(node, 'target');
+      const relType = typeName(node);
+      const sourceType = conceptType(parts, relationshipsById, source);
+      const targetType = conceptType(parts, relationshipsById, target);
+      if (!sourceType || !targetType || relType === 'relationship' || !knownRelationships.has(relType)) continue;
+      checkSemanticResult(validateRelationshipSemantics({
+        sourceType, relationshipType: relType, targetType,
+        sourceKind: relationshipsById.has(source ?? '') ? 'relationship' :
+          junctionTypes.has(sourceType) ? 'junction' : 'element',
+        targetKind: relationshipsById.has(target ?? '') ? 'relationship' :
+          junctionTypes.has(targetType) ? 'junction' : 'element'
+      }, semanticProfile), diagnostics, node, id);
+    }
+  }
+
+  function checkViewNodeReferences(root: XmlNode, parts: ValidationParts): Set<string> {
+    const viewNodeIds = new Set(descendants(root, 'node')
+      .map((node) => attribute(node, 'id'))
+      .filter((id): id is string => Boolean(id)));
+    for (const node of descendants(root, 'node')) {
+      const ref = attribute(node, 'elementRef') ?? attribute(node, 'element');
+      if (ref) {
+        parts.viewElementRefs.add(ref);
+        if (!parts.elementTypes.has(ref)) parts.missingReferences.add(ref);
+      }
+    }
+    return viewNodeIds;
+  }
+
+  function hasRelationship(parts: ValidationParts, id: string): boolean {
+    return parts.relationships.some((node) =>
+      (attribute(node, 'id') ?? attribute(node, 'identifier')) === id);
+  }
+
+  function checkConnectionReferences(root: XmlNode, parts: ValidationParts,
+    viewNodeIds: ReadonlySet<string>): void {
+    for (const node of descendants(root, 'connection')) {
+      const rel = attribute(node, 'relationshipRef') ?? attribute(node, 'relationship');
+      if (rel && !hasRelationship(parts, rel)) parts.missingReferences.add(rel);
+      for (const endpoint of ['source', 'target']) {
+        const ref = attribute(node, endpoint);
+        if (ref && !viewNodeIds.has(ref)) parts.missingReferences.add(ref);
+      }
+    }
+  }
+
+  function reportMissingReferences(parts: ValidationParts,
+    diagnostics: Diagnostic[], suggestions: RepairSuggestion[]): void {
+    for (const ref of [...parts.missingReferences].sort()) {
+      pushDiagnostic(diagnostics, 'STRUCTURE_REFERENCE_UNRESOLVED', 'error', 'structure',
+        'A model reference does not resolve to a supported concept.', undefined, ref);
+      suggestions.push({ code: 'REVIEW_UNRESOLVED_REFERENCE', subjectId: ref,
+        message: 'Review the referenced concept and its identifier.', operation: 'review-reference' });
+    }
+  }
+
+  function checkViewReferences(root: XmlNode, parts: ValidationParts,
+    diagnostics: Diagnostic[], suggestions: RepairSuggestion[]): void {
+    const viewNodeIds = checkViewNodeReferences(root, parts);
+    checkConnectionReferences(root, parts, viewNodeIds);
+    reportMissingReferences(parts, diagnostics, suggestions);
+  }
+
+  function buildSummary(parts: ValidationParts): ModelSummary {
+    return {
+      elements: parts.elements.flatMap((node) => {
+        const id = attribute(node, 'id') ?? attribute(node, 'identifier');
+        return id ? [{ id, type: typeName(node) }] : [];
+      }),
+      relationships: parts.relationships.flatMap((node) => {
+        const id = attribute(node, 'id') ?? attribute(node, 'identifier');
+        const source = attribute(node, 'source');
+        const target = attribute(node, 'target');
+        return id && source && target ? [{ id, type: typeName(node), source, target }] : [];
+      }),
+      views: parts.views.flatMap((node) => {
+        const id = attribute(node, 'id') ?? attribute(node, 'identifier');
+        return id ? [{ id }] : [];
+      }),
+      referencedElementIds: parts.viewElementRefs
+    };
+  }
+
+  function finalizeValidation(options: ValidatorOptions, diagnostics: Diagnostic[],
+    suggestions: RepairSuggestion[], summary: ModelSummary): ValidationResult {
+    const orderedDiagnostics = sortDiagnostics(diagnostics);
+    const orderedSuggestions = suggestions.sort((a, b) =>
+      a.code.localeCompare(b.code) || (a.subjectId ?? '').localeCompare(b.subjectId ?? ''));
+    if (!options.includeSubjectIds) {
+      for (const item of orderedDiagnostics) delete item.subjectId;
+      for (const item of orderedSuggestions) delete item.subjectId;
+    }
+    return {
+      diagnostics: orderedDiagnostics,
+      suggestions: orderedSuggestions,
+      ...(options.includeSummary ? { summary } : {}),
+      valid: !orderedDiagnostics.some((item) => item.severity === 'error')
+    };
+  }
+
 /**
  * Validate a Model Exchange File Format shaped XML document without changing it.
  * This performs bounded XML well-formedness, structural subset, reference, and
@@ -197,189 +509,40 @@ function runOrganizationRules(
  */
 export function validateArchimateXml(xml: string, options: ValidatorOptions = {}): ValidationResult {
   const limits = { ...DEFAULT_LIMITS, ...options };
+  const semanticProfile = options.semanticProfile === undefined ? undefined :
+    parseSemanticProfile(options.semanticProfile);
   const diagnostics: Diagnostic[] = [];
   const suggestions: RepairSuggestion[] = [];
-  if (typeof xml !== 'string') {
-    pushDiagnostic(diagnostics, 'XML_INPUT_TYPE', 'error', 'xml', 'Input must be an XML string.');
-    return { diagnostics, suggestions, valid: false };
-  }
-  if (xml.length > limits.maxXmlBytes || new TextEncoder().encode(xml).byteLength > limits.maxXmlBytes) {
-    pushDiagnostic(diagnostics, 'XML_SIZE_LIMIT', 'error', 'xml', 'XML size limit exceeded.');
-    return { diagnostics, suggestions, valid: false };
-  }
+  const inputError = invalidXmlInput(xml, limits, diagnostics, suggestions);
+  if (inputError) return inputError;
+  const rootOrResult = parseValidRoot(xml, limits, diagnostics, suggestions);
+  if (!('children' in rootOrResult)) return rootOrResult;
+  const rootError = checkRoot(rootOrResult, diagnostics, suggestions);
+  if (rootError) return rootError;
 
-  const parsed = parseXml(xml, { maxDepth: limits.maxDepth, maxNodes: limits.maxNodes });
-  diagnostics.push(...parsed.diagnostics);
-  const root = parsed.root;
-  if (!root || parsed.diagnostics.some((item) => item.severity === 'error')) {
-    return { diagnostics: sortDiagnostics(diagnostics), suggestions, valid: false };
-  }
+  checkRootChildren(rootOrResult, diagnostics);
+  const parts = collectParts(rootOrResult);
+  checkIdentifiableConcepts(parts, diagnostics, suggestions);
+  checkRelationshipBasics(parts, diagnostics, suggestions);
+  checkRelationshipSemantics(parts, diagnostics, semanticProfile);
+  checkViewReferences(rootOrResult, parts, diagnostics, suggestions);
 
-  const rootName = localName(root.name);
-  if (rootName !== 'model' && rootName !== 'Model') {
-    pushDiagnostic(diagnostics, 'SCHEMA_ROOT_UNSUPPORTED', 'error', 'schema', 'Root element must be an ArchiMate model.', root);
-    return { diagnostics: sortDiagnostics(diagnostics), suggestions, valid: false };
-  }
-  if (!attribute(root, 'id') && !attribute(root, 'identifier')) {
-    pushDiagnostic(diagnostics, 'SCHEMA_MODEL_ID_REQUIRED', 'error', 'schema', 'Model root must have an id or identifier.', root);
-  }
-  const allowedRootChildren = new Set(['name', 'documentation', 'elements', 'relationships', 'views', 'organizations', 'propertyDefinitions']);
-  for (const child of root.children) {
-    const name = localName(child.name).toLowerCase();
-    if (!allowedRootChildren.has(name)) {
-      pushDiagnostic(diagnostics, 'SCHEMA_EXTENSION_UNCHECKED', 'warning', 'schema', 'An extension element was not checked by the built-in profile.', child);
-    }
-  }
-
-  const elements = [...descendants(root, 'element'), ...descendants(root, 'baseelement')];
-  const relationships = descendants(root, 'relationship');
-  const views = descendants(root, 'view');
-  const identifiers = new Map<string, XmlNode>();
-  const elementTypes = new Map<string, string>();
-  const viewElementRefs = new Set<string>();
-
-  const identifiable = [...elements, ...relationships, ...views];
-  const missingReferences = new Set<string>();
-  for (const node of identifiable) {
-    const id = attribute(node, 'id') ?? attribute(node, 'identifier');
-    if (!id) {
-      pushDiagnostic(diagnostics, 'SCHEMA_ID_REQUIRED', 'error', 'schema', 'A model concept is missing its identifier.', node);
-      continue;
-    }
-    if (identifiers.has(id)) {
-      pushDiagnostic(diagnostics, 'STRUCTURE_DUPLICATE_ID', 'error', 'structure', 'Identifier is used more than once.', node, id);
-    } else identifiers.set(id, node);
-    if (['element', 'baseelement'].includes(localName(node.name).toLowerCase())) {
-      const elementType = typeName(node);
-      elementTypes.set(id, elementType);
-      if (!knownElements.has(elementType)) {
-        pushDiagnostic(diagnostics, 'SEMANTICS_ELEMENT_TYPE_UNKNOWN', 'warning', 'semantics', 'Element type is outside the built-in ArchiMate vocabulary.', node, id);
-        suggestions.push({ code: 'REVIEW_ELEMENT_TYPE', subjectId: id, message: 'Review the element type against the organization profile.', operation: 'review-type' });
-      }
-    }
-  }
-
-  const relationshipIds = new Set(relationships.map((node) => attribute(node, 'id') ?? attribute(node, 'identifier')).filter((id): id is string => Boolean(id)));
-  for (const node of relationships) {
-    const id = attribute(node, 'id') ?? attribute(node, 'identifier') ?? '';
-    const source = attribute(node, 'source');
-    const target = attribute(node, 'target');
-    if (!source || !target) {
-      pushDiagnostic(diagnostics, 'SCHEMA_RELATIONSHIP_ENDPOINT_REQUIRED', 'error', 'schema', 'Relationship source and target are required.', node, id);
-      continue;
-    }
-    if (!elementTypes.has(source) && !relationshipIds.has(source)) missingReferences.add(source);
-    if (!elementTypes.has(target) && !relationshipIds.has(target)) missingReferences.add(target);
-    if (source === target) {
-      pushDiagnostic(diagnostics, 'SEMANTICS_SELF_RELATIONSHIP', 'warning', 'semantics', 'Relationship endpoints refer to the same concept; review the model against the selected ArchiMate profile.', node, id);
-    }
-    const relType = typeName(node);
-    if (relType === 'relationship') {
-      pushDiagnostic(diagnostics, 'SEMANTICS_RELATIONSHIP_TYPE_UNSPECIFIED', 'warning', 'semantics', 'Relationship type is not specified in the built-in vocabulary.', node, id);
-    }
-    if (relType !== 'relationship' && !knownRelationships.has(relType)) {
-      pushDiagnostic(diagnostics, 'SEMANTICS_RELATIONSHIP_TYPE_UNKNOWN', 'warning', 'semantics', 'Relationship type is outside the built-in ArchiMate vocabulary.', node, id);
-      suggestions.push({ code: 'REVIEW_RELATIONSHIP_TYPE', subjectId: id, message: 'Review the relationship type against the organization profile.', operation: 'review-type' });
-    }
-  }
-
-  const relationshipsById = new Map(relationships.flatMap((node) => {
-    const id = attribute(node, 'id') ?? attribute(node, 'identifier');
-    return id ? [[id, node] as const] : [];
-  }));
-  for (const node of relationships) {
-    const id = attribute(node, 'id') ?? attribute(node, 'identifier') ?? '';
-    const source = attribute(node, 'source');
-    const target = attribute(node, 'target');
-    if (!source || !target) continue;
-    const sourceRelationship = relationshipsById.get(source);
-    const targetRelationship = relationshipsById.get(target);
-    const sourceType = elementTypes.get(source) ?? (sourceRelationship ? typeName(sourceRelationship) : undefined);
-    const targetType = elementTypes.get(target) ?? (targetRelationship ? typeName(targetRelationship) : undefined);
-    const relType = typeName(node);
-    if (!sourceType || !targetType || relType === 'relationship' || !knownRelationships.has(relType)) continue;
-
-    const semanticResult = validateRelationshipSemantics({
-      sourceType,
-      relationshipType: relType,
-      targetType,
-      sourceKind: sourceRelationship ? 'relationship' : junctionTypes.has(sourceType) ? 'junction' : 'element',
-      targetKind: targetRelationship ? 'relationship' : junctionTypes.has(targetType) ? 'junction' : 'element'
-    });
-    if (semanticResult.decision === 'disallowed') {
-      pushDiagnostic(diagnostics, 'SEMANTICS_RELATIONSHIP_DISALLOWED', 'error', 'semantics', 'The relationship combination is disallowed by the built-in ArchiMate 3.2 profile.', node, id);
-    } else if (semanticResult.reasonCode === 'RELATIONSHIP_ENDPOINT_UNSUPPORTED') {
-      pushDiagnostic(diagnostics, 'SEMANTICS_RELATIONSHIP_TO_RELATIONSHIP_UNSUPPORTED', 'warning', 'semantics', 'Relationship-to-relationship semantics are not covered by the built-in profile.', node, id);
-    } else if (semanticResult.reasonCode === 'JUNCTION_UNSUPPORTED') {
-      pushDiagnostic(diagnostics, 'SEMANTICS_JUNCTION_UNSUPPORTED', 'warning', 'semantics', 'Junction semantics are not covered by the built-in profile.', node, id);
-    } else if (semanticResult.decision === 'unsupported') {
-      pushDiagnostic(diagnostics, 'SEMANTICS_RELATIONSHIP_COMBINATION_UNSUPPORTED', 'warning', 'semantics', 'The relationship combination is outside the built-in ArchiMate 3.2 decision set.', node, id);
-    }
-  }
-
-  const viewNodeIds = new Set(descendants(root, 'node').map((node) => attribute(node, 'id')).filter((id): id is string => Boolean(id)));
-  for (const node of descendants(root, 'node')) {
-    const ref = attribute(node, 'elementRef') ?? attribute(node, 'element');
-    if (ref) {
-      viewElementRefs.add(ref);
-      if (!elementTypes.has(ref)) missingReferences.add(ref);
-    }
-  }
-  for (const node of descendants(root, 'connection')) {
-    const rel = attribute(node, 'relationshipRef') ?? attribute(node, 'relationship');
-    if (rel && !relationships.some((candidate) => (attribute(candidate, 'id') ?? attribute(candidate, 'identifier')) === rel)) {
-      missingReferences.add(rel);
-    }
-    for (const endpoint of ['source', 'target']) {
-      const ref = attribute(node, endpoint);
-      if (ref && !viewNodeIds.has(ref)) missingReferences.add(ref);
-    }
-  }
-  for (const ref of [...missingReferences].sort()) {
-    pushDiagnostic(diagnostics, 'STRUCTURE_REFERENCE_UNRESOLVED', 'error', 'structure', 'A model reference does not resolve to a supported concept.', undefined, ref);
-    suggestions.push({ code: 'REVIEW_UNRESOLVED_REFERENCE', subjectId: ref, message: 'Review the referenced concept and its identifier.', operation: 'review-reference' });
-  }
-
-  const summary: ModelSummary = {
-    elements: elements.flatMap((node) => {
-      const id = attribute(node, 'id') ?? attribute(node, 'identifier');
-      return id ? [{ id, type: typeName(node) }] : [];
-    }),
-    relationships: relationships.flatMap((node) => {
-      const id = attribute(node, 'id') ?? attribute(node, 'identifier');
-      const source = attribute(node, 'source');
-      const target = attribute(node, 'target');
-      return id && source && target ? [{ id, type: typeName(node), source, target }] : [];
-    }),
-    views: views.flatMap((node) => {
-      const id = attribute(node, 'id') ?? attribute(node, 'identifier');
-      return id ? [{ id }] : [];
-    }),
-    referencedElementIds: viewElementRefs
-  };
+  const summary = buildSummary(parts);
   if (options.organizationRules?.length) runOrganizationRules(options.organizationRules, summary, diagnostics, suggestions);
-
-  const orderedDiagnostics = sortDiagnostics(diagnostics);
-  const orderedSuggestions = suggestions.sort((a, b) => a.code.localeCompare(b.code) || (a.subjectId ?? '').localeCompare(b.subjectId ?? ''));
-  if (!options.includeSubjectIds) {
-    for (const item of orderedDiagnostics) delete item.subjectId;
-    for (const item of orderedSuggestions) delete item.subjectId;
-  }
-  return {
-    diagnostics: orderedDiagnostics,
-    suggestions: orderedSuggestions,
-    ...(options.includeSummary ? { summary } : {}),
-    valid: !orderedDiagnostics.some((item) => item.severity === 'error')
-  };
+  return finalizeValidation(options, diagnostics, suggestions, summary);
 }
 
 export type { Diagnostic, OrganizationRule, RepairSuggestion, ValidationResult, ValidatorOptions } from './types';
 export {
   RELATIONSHIP_SEMANTICS_VERSION,
   RELATIONSHIP_SEMANTIC_ROWS,
+  parseSemanticProfile,
   validateRelationshipSemantics
 } from './relationship-semantics.js';
 export type {
+  SemanticProfile,
+  SemanticProfileKind,
+  SemanticProfileRow,
   RelationshipEndpointKind,
   RelationshipSemanticDecision,
   RelationshipSemanticInput,

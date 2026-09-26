@@ -8,6 +8,12 @@
 
 This profile records what this repository currently expresses in code and where the evidence stops. It is intended to make later #11 work incremental and auditable. It is not a normative relationship matrix, a complete language definition, or a substitute for The Open Group specification.
 
+The authored registry and generated projections are governed by the
+[semantic registry source-of-truth](semantic-registry.md). Organization and
+experimental semantic profiles are explicitly non-normative layers over that
+implementation subset; they may decide only combinations the core registry
+leaves unsupported.
+
 ## Standards and evidence boundary
 
 The Open Group identifies the ArchiMate Specification as its standard. Its public [ArchiMate overview](https://www.opengroup.org/archimate-forum/archimate-overview) and [ArchiMate 3.2 Specification Reference Cards](https://www.opengroup.org/sites/default/files/docs/downloads/n221p.pdf) are useful public orientation sources. The reference cards are not treated here as a complete machine-readable rule oracle. The Open Group's [Model Exchange File Format page](https://www.opengroup.org/open-group-archimate-model-exchange-file-format) identifies MEFF as a standard format for model exchange; that does not establish this library's import/export conformance.

@@ -5,10 +5,11 @@ artifacts are normative references for language and interchange behavior.
 Behavior observed in Archi or another product is an interoperability reference,
 not a substitute for the standard. See [how to report a suspected gap](../rendering/read-only-html-embed.md#reporting-suspected-standards-gaps).
 
-The current implementation and limits are documented in the [validator
-profile](validator-profile.md), [relationship matrix](relationship-validation-matrix.md),
-and [Model Exchange alignment record](model-exchange-alignment.md). The project
-does not claim ArchiMate or MEFF conformance.
+The current implementation and limits are documented in the [semantic registry
+source-of-truth](semantic-registry.md), [validator profile](validator-profile.md),
+[relationship matrix](relationship-validation-matrix.md), and [Model Exchange
+alignment record](model-exchange-alignment.md). The project does not claim
+ArchiMate or MEFF conformance.
 
 This directory contains public-source-only planning material for ArchiMate semantic validation and Model Exchange File Format alignment.
 

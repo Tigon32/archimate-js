@@ -4,6 +4,7 @@ import {
   createDtoEditorFromMeff, editingIneligibleError, type DtoEditingReason
 } from '../model-dto/eligibility.js';
 import type { DiagramAdapter } from '../model-dto/editor.js';
+import type { SemanticProfile } from '../language/semantic-profile.mjs';
 
 /** A narrow, structural interface; the legacy Modeler remains free to serve other imports. */
 export interface DtoModelerServices {
@@ -35,9 +36,10 @@ export class DtoModelerSession {
   private closed = false;
 
   private constructor(private readonly modeler: DtoModelerServices, xml: string, viewId?: string,
-    requestRelationshipType?: RelationshipTypeRequester, requestQuickCreate?: QuickCreateRequester) {
+    requestRelationshipType?: RelationshipTypeRequester, requestQuickCreate?: QuickCreateRequester,
+    semanticProfile?: SemanticProfile) {
     this.importedModel = modeler.getModel();
-    const entry = createDtoEditorFromMeff(xml);
+    const entry = createDtoEditorFromMeff(xml, { semanticProfile });
     this.eligible = entry.eligible;
     this.reasons = entry.reasons;
     if (!entry.eligible) return;
@@ -60,9 +62,11 @@ export class DtoModelerSession {
   /** Import first so an ineligible session keeps the complete original moddle model. */
   static async open(modeler: DtoModelerServices, xml: string, viewId?: string,
     requestRelationshipType?: RelationshipTypeRequester,
-    requestQuickCreate?: QuickCreateRequester): Promise<DtoModelerSession> {
+    requestQuickCreate?: QuickCreateRequester,
+    semanticProfile?: SemanticProfile): Promise<DtoModelerSession> {
     await modeler.importXML(xml, viewId);
-    return new DtoModelerSession(modeler, xml, viewId, requestRelationshipType, requestQuickCreate);
+    return new DtoModelerSession(modeler, xml, viewId, requestRelationshipType,
+      requestQuickCreate, semanticProfile);
   }
 
   /** The caller writes only after both full, validated outputs have been produced. */

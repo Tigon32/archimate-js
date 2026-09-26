@@ -1,5 +1,6 @@
 import { resolveConcept } from '../language/concept-registry.mjs';
 import { validateRelationshipSemantics } from '../language/relationship-semantics.mjs';
+import type { SemanticProfile } from '../language/semantic-profile.mjs';
 import type { ElementDto, ModelDto, RelationshipDto, ViewConnectionDto, ViewNodeDto } from './types.js';
 import { exportModelDtoToMeff } from './meff-export.js';
 import { EditorCommandError } from './editor-view.js';
@@ -96,7 +97,8 @@ function validateRelationshipType(type: string): void {
 }
 
 function validateRelationshipEndpoints(model: ModelDto, viewId: string,
-  relationship: RelationshipDto, connection: ViewConnectionDto): void {
+  relationship: RelationshipDto, connection: ViewConnectionDto,
+  semanticProfile?: SemanticProfile): void {
   const view = model.views.find((item) => item.id === viewId);
   if (!view) reject('DTO_CREATE_VIEW_NOT_FOUND');
   const source = findNode(view.nodes, connection.sourceId!);
@@ -110,7 +112,7 @@ function validateRelationshipEndpoints(model: ModelDto, viewId: string,
   if (!sourceElement || !targetElement) reject('DTO_CREATE_ENDPOINT_INVALID');
   const decision = validateRelationshipSemantics({
     sourceType: sourceElement.type, relationshipType: relationship.type, targetType: targetElement.type
-  });
+  }, semanticProfile);
   if (decision.decision !== 'allowed') {
     rejectRelationshipEdit(decision.decision === 'disallowed' ?
       'DTO_RELATIONSHIP_DISALLOWED' : 'DTO_RELATIONSHIP_UNSUPPORTED', 'connect', {
@@ -121,7 +123,8 @@ function validateRelationshipEndpoints(model: ModelDto, viewId: string,
   }
 }
 
-function validateNewRelationship(model: ModelDto, command: CreateRelationshipCommand): ModelDto {
+function validateNewRelationship(model: ModelDto, command: CreateRelationshipCommand,
+  semanticProfile?: SemanticProfile): ModelDto {
   const { relationship, connection } = command;
   validateRelationshipType(relationship.type);
   if (connection.kind !== 'relationship' || connection.relationshipId !== relationship.id) {
@@ -130,7 +133,7 @@ function validateNewRelationship(model: ModelDto, command: CreateRelationshipCom
   if (allObjectIds(model).has(relationship.id)) reject('DTO_CREATE_DUPLICATE_ID');
   if (relationship.id === connection.id) reject('DTO_CREATE_CONNECTION_ID_CONFLICT');
   if (allObjectIds(model).has(connection.id)) reject('DTO_CREATE_CONNECTION_ID_CONFLICT');
-  validateRelationshipEndpoints(model, command.viewId, relationship, connection);
+  validateRelationshipEndpoints(model, command.viewId, relationship, connection, semanticProfile);
   const candidate = structuredClone(model);
   candidate.relationships.push(structuredClone(relationship));
   candidate.views.find((item) => item.id === command.viewId)!.connections.push(structuredClone(connection));
@@ -141,16 +144,18 @@ export function createElement(model: ModelDto, command: CreateElementCommand): M
   return validateNewElement(model, command);
 }
 
-export function createRelationship(model: ModelDto, command: CreateRelationshipCommand): ModelDto {
-  return validateNewRelationship(model, command);
+export function createRelationship(model: ModelDto, command: CreateRelationshipCommand,
+  semanticProfile?: SemanticProfile): ModelDto {
+  return validateNewRelationship(model, command, semanticProfile);
 }
 
-export function createRelatedElement(model: ModelDto, command: CreateRelatedElementCommand): ModelDto {
+export function createRelatedElement(model: ModelDto, command: CreateRelatedElementCommand,
+  semanticProfile?: SemanticProfile): ModelDto {
   const withElement = validateNewElement(model, {
     type: 'create-element', viewId: command.viewId, element: command.element, node: command.node
   });
   return validateNewRelationship(withElement, {
     type: 'create-relationship', viewId: command.viewId,
     relationship: command.relationship, connection: command.connection
-  });
+  }, semanticProfile);
 }

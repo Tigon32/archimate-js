@@ -2,6 +2,7 @@ import { importMeffToModelDto } from './meff-import.js';
 import { exportModelDtoToMeff } from './meff-export.js';
 import { validateModelDto } from './validate.js';
 import type { ModelDto } from './types.js';
+import type { DiagramAdapterOptions } from './editor.js';
 
 export interface DtoEditingReason {
   code: 'MEFF_DTO_IMPORT_INVALID' | 'DTO_UNSUPPORTED_FIELDS' | 'DTO_MEFF_ROUNDTRIP_UNSUPPORTED';
@@ -74,11 +75,12 @@ export function checkMeffEditingEligibility(xml: unknown): DtoEditingEligibility
 }
 
 /** Create an editor only for an import proven safe by the DTO→MEFF→DTO round trip. */
-export function createDtoEditorFromMeff(xml: unknown): DtoMeffEditorEntry {
+export function createDtoEditorFromMeff(xml: unknown,
+  options: DiagramAdapterOptions = {}): DtoMeffEditorEntry {
   const eligibility = checkMeffEditingEligibility(xml);
   if (!eligibility.eligible) return eligibility;
   return { eligible: true, model: eligibility.model,
-    editor: new editorModule.DiagramAdapter(eligibility.model), reasons: [] };
+    editor: new editorModule.DiagramAdapter(eligibility.model, options), reasons: [] };
 }
 
 import * as editorModule from './editor.js';
