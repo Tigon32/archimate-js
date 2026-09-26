@@ -39,7 +39,6 @@ interface DiagramJsSelection {
 }
 
 interface DiagramJsModeling {
-  _archimateRules?: { canConnect(source: unknown, target: unknown, connection: unknown): unknown };
   moveElements(shapes: unknown[], delta: { x: number; y: number }, target?: unknown,
     hints?: { attach?: boolean }): unknown;
   resizeShape(shape: unknown, bounds: { x: number; y: number; width: number; height: number },
@@ -175,10 +174,10 @@ export class DiagramJsCanvasPort implements CanvasPort {
       replacement: (...args: never[]) => unknown) => void): void {
     install('createConnection', modeling.createConnection as (...args: never[]) => unknown,
       ((source: unknown, target: unknown, attrs: unknown): unknown =>
-        this.routeConnect(source, target, attrs, modeling, handler)) as (...args: never[]) => unknown);
+        this.routeConnect(source, target, attrs, handler)) as (...args: never[]) => unknown);
     install('reconnect', modeling.reconnect as (...args: never[]) => unknown,
       ((connection: unknown, source: unknown, target: unknown, docking: unknown): undefined =>
-        this.routeReconnect(connection, source, target, docking, modeling, handler)) as (...args: never[]) => unknown);
+        this.routeReconnect(connection, source, target, docking, handler)) as (...args: never[]) => unknown);
     install('removeElements', modeling.removeElements as (...args: never[]) => unknown,
       ((elements: unknown[]): undefined => this.routeRemove(elements, handler)) as (...args: never[]) => unknown);
     install('removeShape', modeling.removeShape as (...args: never[]) => unknown,
@@ -289,13 +288,6 @@ export class DiagramJsCanvasPort implements CanvasPort {
     return id;
   }
 
-  private allowed(source: unknown, target: unknown, type: string,
-    modeling: DiagramJsModeling): void {
-    const result = modeling._archimateRules?.canConnect(source, target, { type });
-    if (!result || typeof result !== 'object' ||
-        (result as { type?: unknown }).type !== type) invalid();
-  }
-
   private point(value: unknown, kind: 'sourceAttachment' | 'bendpoint' | 'targetAttachment') {
     if (!value || typeof value !== 'object') invalid();
     const { x, y } = value as { x?: unknown; y?: unknown };
@@ -319,7 +311,7 @@ export class DiagramJsCanvasPort implements CanvasPort {
   }
 
   private routeConnect(source: unknown, target: unknown, attrs: unknown,
-    modeling: DiagramJsModeling, handler: (command: EditorCommand) => void): unknown {
+    handler: (command: EditorCommand) => void): unknown {
     const sourceId = this.nodeId(source);
     const targetId = this.nodeId(target);
     if (!attrs || typeof attrs !== 'object') invalid();
@@ -329,7 +321,6 @@ export class DiagramJsCanvasPort implements CanvasPort {
     if (typeof rawType !== 'string' || !rawType) invalid();
     const type = diagramType(rawType, '');
     if (!type || type === 'Relationship') invalid();
-    this.allowed(source, target, type, modeling);
     const relationshipId = data.relationshipRef?.id ?? `relationship-${crypto.randomUUID()}`;
     const id = data.id ?? `connection-${crypto.randomUUID()}`;
     if (typeof relationshipId !== 'string' || typeof id !== 'string') invalid();
@@ -345,13 +336,12 @@ export class DiagramJsCanvasPort implements CanvasPort {
   }
 
   private routeReconnect(connection: unknown, source: unknown, target: unknown, docking: unknown,
-    modeling: DiagramJsModeling, handler: (command: EditorCommand) => void): undefined {
+    handler: (command: EditorCommand) => void): undefined {
     const id = this.elementId(connection);
     const current = this.currentConnections.get(id);
     if (!current?.type || !current.relationshipId) invalid();
     const sourceId = this.nodeId(source);
     const targetId = this.nodeId(target);
-    this.allowed(source, target, diagramType(current.type, ''), modeling);
     let waypoints = this.waypoints(current.waypoints, source, target);
     if (Array.isArray(docking)) waypoints = this.waypoints(docking, source, target);
     else if (docking !== undefined) {
