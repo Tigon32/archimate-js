@@ -4,6 +4,11 @@ export { exportModelDtoToMeff } from './meff-export.js';
 export { validateModelDto, serializeModelDto, parseModelDto } from './validate.js';
 export { createAccessibleOutline, formatAccessibleOutline } from './accessible-outline.js';
 export { searchAccessibleOutline } from './outline-search.js';
+export { validateViewpoint } from './viewpoint-validation.js';
+export type {
+  ViewpointFinding, ViewpointRule, ViewpointRuleKind, ViewpointSeverity,
+  ViewpointValidationProfile, ViewpointValidationRequest, ViewpointValidationResult
+} from './viewpoint-validation.js';
 export { assessModelDtoDiffEligibility, diffModelDto } from './diff.js';
 export { renderModelDtoDiffOverlay } from './diff-overlay.js';
 export type {
