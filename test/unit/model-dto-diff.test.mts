@@ -105,6 +105,7 @@ it('reports a unique same-content element rename without changing ID-based chang
   const result = diffModelDto(before, after);
   expect(result.renameCandidates).toEqual([{
     beforeId: 'service', afterId: 'service-v2',
+    heuristic: true, confidence: 0.9,
     reason: 'unique-content-match-except-id-and-name'
   }]);
   expect(result.changes.filter(({ entity }) => entity === 'element').map(({ id, kind }) =>
@@ -164,20 +165,25 @@ it('rejects unsupported fields and projection diagnostics without leaking conten
 });
 
 it('provides deterministic content-free diagnostics for ineligible inputs', () => {
-  const before = { ...fixture(), privateLookingField: 'SYNTHETIC_SECRET',
+  const before = { ...fixture(), SYNTHETIC_SECRET_PAYLOAD_KEY: 'SYNTHETIC_SECRET',
     secondPrivateLookingField: 'SYNTHETIC_SECRET', diagnostics: [{
-      code: 'DTO_UNSUPPORTED_FIELDS', severity: 'warning', stage: 'projection',
+      code: 'SYNTHETIC_SECRET_PAYLOAD_CODE', severity: 'warning', stage: 'projection',
       message: 'SYNTHETIC_SECRET'
     }] };
   const after = { ...fixture(), diagnostics: [{ code: 'DTO_UNSUPPORTED_FIELDS',
     severity: 'warning', stage: 'projection', message: 'SYNTHETIC_SECRET' }] };
   const result = assessModelDtoDiffEligibility(before, after);
   expect(result).toEqual({ eligible: false, diagnostics: [
-    { input: 'before', code: 'MODEL_DTO_DIFF_LOSSY_PROJECTION', count: 1 },
-    { input: 'before', code: 'MODEL_DTO_DIFF_UNSUPPORTED_FIELDS', count: 2 },
-    { input: 'after', code: 'MODEL_DTO_DIFF_LOSSY_PROJECTION', count: 1 }
+    { input: 'before', code: 'MODEL_DTO_DIFF_LOSSY_PROJECTION', count: 1,
+      details: ['unknown-construct'] },
+    { input: 'before', code: 'MODEL_DTO_DIFF_UNSUPPORTED_FIELDS', count: 2,
+      details: ['/unknown-field'] },
+    { input: 'after', code: 'MODEL_DTO_DIFF_LOSSY_PROJECTION', count: 1,
+      details: ['DTO_UNSUPPORTED_FIELDS'] }
   ] });
   expect(JSON.stringify(result)).not.toContain('SYNTHETIC_SECRET');
+  expect(JSON.stringify(result)).not.toContain('SYNTHETIC_SECRET_PAYLOAD_KEY');
+  expect(JSON.stringify(result)).not.toContain('SYNTHETIC_SECRET_PAYLOAD_CODE');
   expect(result).toEqual(assessModelDtoDiffEligibility(before, after));
 });
 
@@ -187,8 +193,10 @@ it('rejects sparse DTO arrays and enumerable custom array fields without leaking
   Object.assign(custom.elements, { syntheticPrivateField: 'SYNTHETIC_SECRET' });
   const result = assessModelDtoDiffEligibility(sparse, custom);
   expect(result).toEqual({ eligible: false, diagnostics: [
-    { input: 'before', code: 'MODEL_DTO_DIFF_UNSUPPORTED_FIELDS', count: 1 },
-    { input: 'after', code: 'MODEL_DTO_DIFF_UNSUPPORTED_FIELDS', count: 1 }
+    { input: 'before', code: 'MODEL_DTO_DIFF_UNSUPPORTED_FIELDS', count: 1,
+      details: ['/diagnostics/unknown-field'] },
+    { input: 'after', code: 'MODEL_DTO_DIFF_UNSUPPORTED_FIELDS', count: 1,
+      details: ['/elements/unknown-field'] }
   ] });
   expect(JSON.stringify(result)).not.toContain('SYNTHETIC_SECRET');
   expect(() => diffModelDto(sparse, fixture())).toThrowError(
@@ -205,7 +213,8 @@ it('rejects enumerable symbol fields on DTO records without leaking values', () 
   });
   const result = assessModelDtoDiffEligibility(source, fixture());
   expect(result).toEqual({ eligible: false, diagnostics: [
-    { input: 'before', code: 'MODEL_DTO_DIFF_UNSUPPORTED_FIELDS', count: 1 }
+    { input: 'before', code: 'MODEL_DTO_DIFF_UNSUPPORTED_FIELDS', count: 1,
+      details: ['/elements/unknown-field'] }
   ] });
   expect(JSON.stringify(result)).not.toContain('SYNTHETIC_SECRET');
   expect(() => diffModelDto(source, fixture())).toThrowError(

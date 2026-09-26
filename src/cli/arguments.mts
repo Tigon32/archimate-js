@@ -1,7 +1,9 @@
+import { realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 import type {
   CliOptions,
+  DiffOverlayOptions,
   DiffOptions,
   ExportFormat,
   ExportOptions,
@@ -19,6 +21,25 @@ const PAGE_SIZES = new Set<PdfPageSize>(['A3', 'A4', 'A5', 'Legal', 'Letter']);
 const ORIENTATIONS = new Set<PdfOrientation>(['portrait', 'landscape']);
 const FITS = new Set<FitMode>(['none', 'contain', 'cover']);
 const BACKGROUND = /^(?:transparent|white|black|#[0-9a-fA-F]{6})$/;
+
+function canonicalPath(filePath: string): string {
+  const absolute = path.resolve(filePath);
+  try { return realpathSync(absolute); } catch {
+    return path.join(realpathSync(path.dirname(absolute)), path.basename(absolute));
+  }
+}
+
+function sameFile(left: string, right: string): boolean {
+  if (path.resolve(left) === path.resolve(right)) return true;
+  try {
+    const leftStat = statSync(left);
+    const rightStat = statSync(right);
+    if (leftStat.dev === rightStat.dev && leftStat.ino === rightStat.ino) return true;
+  } catch {
+    // Fall through to canonical path comparison for not-yet-created outputs.
+  }
+  try { return canonicalPath(left) === canonicalPath(right); } catch { return false; }
+}
 
 function requireValue(arguments_: string[], index: number): string {
   const value = arguments_[index + 1];
@@ -39,7 +60,7 @@ function parseRender(input: string, rest: string[]): RenderOptions {
     Object.assign(parsed, { [key]: value });
   }
   if (!parsed.output || Boolean(parsed.viewId) === Boolean(parsed.viewName)) throw new Error('CLI_USAGE');
-  if (path.resolve(input) === path.resolve(parsed.output)) throw new Error('CLI_USAGE');
+  if (sameFile(input, parsed.output)) throw new Error('CLI_USAGE');
   return parsed as RenderOptions;
 }
 
@@ -104,8 +125,8 @@ function validateExport(parsed: Partial<ExportOptions>, formats: Set<ExportForma
   if (formats.has('pdf') && parsed.background === 'transparent') {
     throw new Error('PDF_TRANSPARENT_BACKGROUND');
   }
-  if ([...formats].some((format) =>
-    path.resolve(parsed.input!) === path.resolve(parsed.outputDirectory!, `${parsed.basename}.${format}`))) {
+  if ([...formats].some((format) => sameFile(parsed.input!,
+    path.resolve(parsed.outputDirectory!, `${parsed.basename}.${format}`)))) {
     throw new Error('CLI_USAGE');
   }
   return { ...parsed, formats: CANONICAL_FORMATS.filter((format) => formats.has(format)) } as ExportOptions;
@@ -152,7 +173,7 @@ export function sanitizeBasename(value: string): string {
 
 function parseDiff(before: string, after: string | undefined, rest: string[]): DiffOptions {
   if (!before || before.startsWith('-') || !after || after.startsWith('-') ||
-      path.resolve(before) === path.resolve(after)) throw new Error('CLI_USAGE');
+      sameFile(before, after)) throw new Error('CLI_USAGE');
   let format: DiffOptions['format'] = 'human';
   if (rest.length) {
     if (rest.length !== 2 || rest[0] !== '--format' ||
@@ -160,6 +181,28 @@ function parseDiff(before: string, after: string | undefined, rest: string[]): D
     format = rest[1] as DiffOptions['format'];
   }
   return { command: 'diff', before, after, format };
+}
+
+function parseDiffOverlay(before: string, after: string | undefined,
+  rest: string[]): DiffOverlayOptions {
+  if (!before || before.startsWith('-') || !after || after.startsWith('-') ||
+      sameFile(before, after)) throw new Error('CLI_USAGE');
+  const parsed: Partial<DiffOverlayOptions> = { command: 'diff-overlay', before, after };
+  const allowed: Record<string, keyof DiffOverlayOptions> = {
+    '--view-id': 'viewId', '--view-name': 'viewName',
+    '--output': 'output', '--chrome': 'chrome'
+  };
+  for (let index = 0; index < rest.length; index += 2) {
+    const key = allowed[rest[index]];
+    const value = requireValue(rest, index);
+    if (!key || parsed[key] !== undefined) throw new Error('CLI_USAGE');
+    Object.assign(parsed, { [key]: value });
+  }
+  if (!parsed.output || Boolean(parsed.viewId) === Boolean(parsed.viewName)) throw new Error('CLI_USAGE');
+  if ([before, after].some((input) => sameFile(input, parsed.output!))) {
+    throw new Error('CLI_USAGE');
+  }
+  return parsed as DiffOverlayOptions;
 }
 
 function parseLint(input: string, rest: string[]): LintOptions {
@@ -177,6 +220,7 @@ export function parseArguments(argv: string[]): CliOptions {
   if (argv.length === 1 && ['--help', '-h'].includes(argv[0])) return { command: 'help' };
   const [command, input, ...rest] = argv;
   if (command === 'diff') return parseDiff(input, rest[0], rest.slice(1));
+  if (command === 'diff-overlay') return parseDiffOverlay(input, rest[0], rest.slice(1));
   if (command === 'lint') return parseLint(input, rest);
   if (!['validate', 'render', 'export'].includes(command) || !input || input.startsWith('-')) {
     throw new Error('CLI_USAGE');

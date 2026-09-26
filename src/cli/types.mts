@@ -20,6 +20,14 @@ export type DiffOptions = {
   format: 'json' | 'human';
 };
 
+export type DiffOverlayOptions = ViewSelection & {
+  command: 'diff-overlay';
+  before: string;
+  after: string;
+  output: string;
+  chrome?: string;
+};
+
 export type LintOptions = {
   command: 'lint';
   input: string;
@@ -52,7 +60,8 @@ export type ExportOptions = ViewSelection & {
   continueOnError?: boolean;
 };
 
-export type CliOptions = ValidateOptions | DiffOptions | LintOptions | RenderOptions | ExportOptions | { command: 'help' };
+export type CliOptions = ValidateOptions | DiffOptions | DiffOverlayOptions | LintOptions |
+  RenderOptions | ExportOptions | { command: 'help' };
 
 export type ModelDiffChange = {
   area: 'semantic' | 'presentation';

@@ -8,6 +8,7 @@ import { renderArtifacts, renderBatchArtifacts, renderBatchOutcomes } from './br
 import { failedBatchEntry, partialManifest, prepareBatch, preparePartialView } from './batch.mjs';
 import { diagnostic, safeErrorCode } from './diagnostics.mjs';
 import { executeDiff } from './diff.mjs';
+import { executeDiffOverlay } from './diff-overlay.mjs';
 import { executeLint } from './lint.mjs';
 import { readBoundedXml, writeArtifacts, writeAtomic, writeBatchArtifacts, writePartialBatchArtifacts } from './io.mjs';
 import { listBatchViews } from './views.mjs';
@@ -24,6 +25,7 @@ function usage(): void {
   archimate-js validate <model.xml>
   archimate-js lint <model.xml> [--format json|human]
   archimate-js diff <before.xml> <after.xml> [--format json|human]
+  archimate-js diff-overlay <before.xml> <after.xml> (--view-id <id> | --view-name <name>) --output <view.svg> [--chrome <path>]
   archimate-js render <model.xml> (--view-id <id> | --view-name <name>) --output <view.svg> [--chrome <path>]
   archimate-js export <model.xml> (--view-id <id> | --view-name <name> | --all-views) --format <svg,png,pdf> --output-dir <dir>
     [--basename <name>] [--scale <1..4>] [--background <transparent|white|black|#RRGGBB>]
@@ -79,7 +81,10 @@ async function exportCommand(xml: string, options: ExportOptions): Promise<boole
   return true;
 }
 
-async function execute(options: Exclude<CliOptions, { command: 'help' | 'diff' | 'lint' }>, xml: string): Promise<number> {
+async function execute(
+  options: Exclude<CliOptions, { command: 'help' | 'diff' | 'diff-overlay' | 'lint' }>,
+  xml: string
+): Promise<number> {
   type Validate = (xml: string) => {
     valid: boolean;
     diagnostics: CliResult['diagnostics'];
@@ -137,6 +142,7 @@ async function main(): Promise<number> {
     return 0;
   }
   if (options.command === 'diff') return executeDiff(options);
+  if (options.command === 'diff-overlay') return executeDiffOverlay(packageRoot, options);
   if (options.command === 'lint') return executeLint(options);
   try {
     return await execute(options, await readBoundedXml(options.input));

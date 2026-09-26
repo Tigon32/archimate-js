@@ -12,6 +12,7 @@ type ModelDtoDiff = {
   schemaVersion: 1;
   changes: ModelDiffChange[];
   renameCandidates?: Array<{ beforeId: string; afterId: string;
+    heuristic: true; confidence: number;
     reason: 'unique-content-match-except-id-and-name' }>;
   impactedViewIds: string[];
 };
@@ -62,7 +63,8 @@ function humanOutput(diff: ModelDtoDiff): string {
   if (diff.renameCandidates?.length) {
     lines.push(`Advisory element rename candidates (${diff.renameCandidates.length}):`);
     for (const candidate of diff.renameCandidates) {
-      lines.push(`  ${candidate.beforeId} -> ${candidate.afterId} (${candidate.reason})`);
+      lines.push(`  ${candidate.beforeId} -> ${candidate.afterId} ` +
+        `(heuristic, confidence ${candidate.confidence}, ${candidate.reason})`);
     }
   }
   lines.push(`Impacted views (${diff.impactedViewIds.length}): ${diff.impactedViewIds.join(', ') || 'none'}`);
