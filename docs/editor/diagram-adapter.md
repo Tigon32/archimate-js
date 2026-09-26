@@ -201,3 +201,52 @@ and legacy consumers, including imports outside the DTO subset. It does not
 represent edits made through the DTO session. Call `session.save()` to persist
 those edits, and retain the original model through the legacy path when the
 session is ineligible.
+
+## Deterministic operation log
+
+`DiagramAdapter.exportOperationLog(clientId)` returns a detached version-1
+`EditorOperationLog`; `serializeOperationLog(clientId)` emits its deterministic
+JSON representation. `parseOperationLog(json)`,
+`validateOperationLog(value)`, and `serializeOperationLog(value)` validate and
+canonicalize standalone log values. The public `Modeler` facade exposes the
+same export/serialize operations and `replayOperationLog(log)`.
+
+The log envelope has a fixed field order and schema:
+
+```json
+{"schemaVersion":1,"clientId":"stable-client","operations":[{"sequence":1,"operationId":"stable-client:1","action":"command","command":{"nodeId":"node-one","type":"move","viewId":"view-one","x":120,"y":80}}]}
+```
+
+The envelope fields serialize as `schemaVersion`, `clientId`, `operations`;
+operation fields serialize as `sequence`, `operationId`, `action`, and then
+`command` for command entries. Command objects and nested plain-object payloads
+use sorted key order. A caller supplies a stable identifier accepted by the
+DTO identifier syntax; no random, clock-based, or implicit IDs are generated.
+Sequences start at 1 and increase once per accepted state/history operation.
+IDs are exactly `<clientId>:<sequence>`. Rejected commands and no-op undo/redo
+calls do not consume a sequence or create an entry.
+
+`action: "command"` stores a validated deep copy of the `EditorCommand` payload.
+`action: "undo"` and `"redo"` are explicit history operations, so replay
+reproduces the source adapter's undo/redo result and current model state.
+Selection, selection events, viewport state, renderer objects, and complete
+model payloads are never recorded. Command creation payloads contain only the
+specific DTO entities required by that command.
+
+Replay is performed on a fresh adapter opened from the same base DTO:
+
+```ts
+const replay = new DiagramAdapter(baseDto);
+replay.replayOperationLog(source.serializeOperationLog('stable-client'));
+```
+
+The replay API validates the whole log and builds the complete replay candidate
+before changing the target adapter; a malformed version, sequence, duplicate
+operation ID, or rejected command leaves the target model and operation
+sequence unchanged. Logs do not embed or identify their base DTO, so callers
+must supply the matching base and retain it separately. Replay is single-client
+and local only; it provides no network transport, presence, cursor state,
+collaborative selection, synchronization, distributed conflict resolution, or
+CRDT behavior. Future versions may add transport-neutral extension metadata or
+separately version presence/selection and synchronization contracts without
+coupling this adapter to a collaboration framework.

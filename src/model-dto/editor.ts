@@ -12,6 +12,13 @@ import {
   applyLayoutPatch, changeBounds, deleteItem, deleteMany, EditorCommandError, findNode, moveMany, nodesOf
 } from './editor-view.js';
 import { createElement, createRelationship } from './editor-create.js';
+import {
+  buildOperationLog, EditorOperationLogError, parseOperationLog, serializeOperationLog,
+  validateEditorCommand, validateOperationLog
+} from './editor-operation-log.js';
+import type {
+  EditorOperation, EditorOperationAction, EditorOperationLog
+} from './editor-operation-log.js';
 
 /** The canvas receives values and identifiers, never mutable diagram-js objects. */
 export interface CanvasProjection {
@@ -311,11 +318,21 @@ function apply(model: ModelDto, command: EditorCommand): ModelDto {
   return validated;
 }
 
+function commandForExecution(input: unknown): EditorCommand {
+  try { return validateEditorCommand(input); }
+  catch (error) {
+    if (error instanceof EditorOperationLogError) invalid();
+    throw error;
+  }
+}
+
 /** Owns persistent editor state; callers can only exchange validated DTO values. */
 export class DiagramAdapter {
   private model: ModelDto;
   private past: Array<{ model: ModelDto; viewId: string }> = [];
   private future: Array<{ model: ModelDto; viewId: string }> = [];
+  private operations: Array<Pick<EditorOperation, 'action' | 'command'>> = [];
+  private operationSequence = 0;
   private selection = new Map<string, string[]>();
   private listeners = new Set<(event: EditorEvent) => void>();
   private canvases = new Map<CanvasPort, string>();
@@ -329,6 +346,39 @@ export class DiagramAdapter {
   getModel(): ModelDto { return structuredClone(this.model); }
   serialize(): string { return serializeModelDto(this.model); }
   exportMeff(): string { return exportModelDtoToMeff(this.model); }
+  exportOperationLog(clientId: string): EditorOperationLog {
+    return buildOperationLog(clientId, this.operations);
+  }
+  serializeOperationLog(clientId: string): string {
+    return serializeOperationLog(this.exportOperationLog(clientId));
+  }
+
+  replayOperationLog(input: unknown): void {
+    if (this.operations.length || this.past.length || this.future.length) {
+      throw new EditorOperationLogError('EDITOR_OPERATION_REPLAY_NOT_FRESH');
+    }
+    const log = typeof input === 'string' ? parseOperationLog(input) : validateOperationLog(input);
+    const candidate = new DiagramAdapter(this.model);
+    const changedViewIds = new Set<string>();
+    candidate.subscribe((event) => {
+      if (event.type === 'changed') changedViewIds.add(event.viewId);
+    });
+    for (const entry of log.operations) this.replayOperation(candidate, entry);
+    if (serializeOperationLog(candidate.exportOperationLog(log.clientId)) !==
+        serializeOperationLog(log)) {
+      throw new EditorOperationLogError('EDITOR_OPERATION_LOG_INVALID');
+    }
+    this.model = candidate.model;
+    this.past = candidate.past;
+    this.future = candidate.future;
+    this.operations = candidate.operations;
+    this.operationSequence = candidate.operationSequence;
+    for (const viewId of this.selection.keys()) this.pruneSelection(viewId);
+    for (const viewId of changedViewIds) {
+      this.pruneSelection(viewId);
+      this.emit('changed', viewId);
+    }
+  }
 
   project(viewId: string): CanvasProjection {
     const view = this.model.views.find((item) => item.id === viewId);
@@ -377,32 +427,70 @@ export class DiagramAdapter {
   }
 
   execute(command: EditorCommand): void {
-    const next = apply(this.model, command);
-    this.past.push({ model: this.model, viewId: command.viewId });
+    const safeCommand = commandForExecution(command);
+    const operation = this.prepareOperation('command', safeCommand);
+    const next = apply(this.model, safeCommand);
+    this.past.push({ model: this.model, viewId: safeCommand.viewId });
     this.model = next;
     this.future = [];
-    this.pruneSelection(command.viewId);
-    this.emit('changed', command.viewId);
+    this.commitOperation(operation);
+    this.pruneSelection(safeCommand.viewId);
+    this.emit('changed', safeCommand.viewId);
   }
 
   undo(): boolean {
-    const previous = this.past.pop();
+    const previous = this.past.at(-1);
     if (!previous) return false;
+    const operation = this.prepareOperation('undo');
+    this.past.pop();
     this.future.push({ model: this.model, viewId: previous.viewId });
     this.model = previous.model;
+    this.commitOperation(operation);
     this.pruneSelection(previous.viewId);
     this.emit('changed', previous.viewId);
     return true;
   }
 
   redo(): boolean {
-    const next = this.future.pop();
+    const next = this.future.at(-1);
     if (!next) return false;
+    const operation = this.prepareOperation('redo');
+    this.future.pop();
     this.past.push({ model: this.model, viewId: next.viewId });
     this.model = next.model;
+    this.commitOperation(operation);
     this.pruneSelection(next.viewId);
     this.emit('changed', next.viewId);
     return true;
+  }
+
+  private prepareOperation(action: EditorOperationAction,
+    command?: EditorCommand): Pick<EditorOperation, 'action' | 'command'> {
+    if (this.operationSequence >= Number.MAX_SAFE_INTEGER) {
+      throw new EditorOperationLogError('EDITOR_OPERATION_SEQUENCE_INVALID');
+    }
+    return action === 'command' ?
+      { action, command: validateEditorCommand(command) } : { action };
+  }
+
+  private commitOperation(operation: Pick<EditorOperation, 'action' | 'command'>): void {
+    this.operations.push(operation);
+    this.operationSequence += 1;
+  }
+
+  private replayOperation(candidate: DiagramAdapter, entry: EditorOperation): void {
+    if (entry.action === 'command') {
+      try { candidate.execute(entry.command!); }
+      catch (error) {
+        if (error instanceof TypeError) {
+          throw new EditorOperationLogError('EDITOR_OPERATION_COMMAND_REJECTED');
+        }
+        throw error;
+      }
+      return;
+    }
+    const changed = entry.action === 'undo' ? candidate.undo() : candidate.redo();
+    if (!changed) throw new EditorOperationLogError('EDITOR_OPERATION_COMMAND_REJECTED');
   }
 
   private pruneSelection(viewId: string): void {

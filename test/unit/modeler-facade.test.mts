@@ -176,6 +176,24 @@ it('delegates apply-layout-patch commands through the facade undo boundary', asy
   expect(state.commands).toEqual([{ type: 'apply-layout-patch', viewId: 'view-one', patch, side: 'after' }]);
 });
 
+it('exports and replays deterministic logs through the public facade', async () => {
+  const { default: Modeler } = await import('../../src/modeler/index.js');
+  const base = importMeffToModelDto(syntheticXml);
+  const source = new DiagramAdapter(base);
+  source.execute({ type: 'move', viewId: 'view-dto-export', nodeId: 'node-component', x: 50, y: 60 });
+  const operationJson = source.serializeOperationLog('stable-client');
+  const target = new DiagramAdapter(base);
+  state.editorOverride = target;
+  const modeler = new Modeler({ container: {} as Element });
+  await modeler.open(syntheticXml, { viewId: 'view-dto-export' });
+
+  expect(modeler.exportOperationLog('stable-client')).toEqual(target.exportOperationLog('stable-client'));
+  modeler.replayOperationLog(operationJson);
+  expect(modeler.serializeOperationLog('stable-client')).toBe(operationJson);
+  expect(target.getModel()).toEqual(source.getModel());
+  modeler.destroy();
+});
+
 it('opens, delegates editor operations, emits plain events, and saves', async () => {
   const { default: Modeler } = await import('../../src/modeler/index.js');
   const modeler = new Modeler({ container: {} as Element });

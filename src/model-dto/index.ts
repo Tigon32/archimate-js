@@ -15,6 +15,12 @@ export type { AccessibleOutlineSearchResult } from './outline-search.js';
 export type { AccessibleOutline, AccessibleOutlineNode, AccessibleOutlineRelationship,
   AccessibleOutlineOptions } from './accessible-outline.js';
 export { DiagramAdapter } from './editor.js';
+export {
+  EditorOperationLogError, parseOperationLog, serializeOperationLog, validateOperationLog
+} from './editor-operation-log.js';
+export type {
+  EditorOperation, EditorOperationAction, EditorOperationLog, EditorOperationLogErrorCode
+} from './editor-operation-log.js';
 export { EditorCommandError } from './editor-view.js';
 export { RelationshipEditError } from './editor-diagnostics.js';
 export type {

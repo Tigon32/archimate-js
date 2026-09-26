@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+* `FEAT`: add deterministic versioned editor operation logs with stable
+  caller-scoped operation IDs, deep-copied command payloads, atomic replay,
+  and explicit undo/redo entries; no network or distributed synchronization.
 * `FEAT`: add DTO-owned `create-element` and `create-relationship` commands
   with deterministic IDs, atomic validation, reviewed relationship semantics,
   one-step undo/redo, and MEFF/DTO round-trip preservation. Adapter gesture
