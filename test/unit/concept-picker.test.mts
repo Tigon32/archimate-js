@@ -3,7 +3,7 @@
 import { expect, it } from 'vitest';
 import {
   ConceptPicker, clampPickerPosition, conceptLabel, createConceptCommand, searchConcepts
-} from '../../lib/features/concept-picker/ConceptPicker.js';
+} from '../../src/modeler/concept-picker.js';
 import { CONCEPT_REGISTRY } from '../../src/language/concept-registry.mjs';
 
 const layers = [

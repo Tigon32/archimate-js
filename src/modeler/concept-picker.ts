@@ -1,4 +1,4 @@
-import type { ConceptRecord, ConceptRegistry } from '../../../src/language/concept-registry.mjs';
+import type { ConceptRecord, ConceptRegistry } from '../language/concept-registry.mjs';
 
 export interface ConceptPickerPosition {
   x: number;

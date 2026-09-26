@@ -2,7 +2,7 @@ import {
   ConceptPicker,
   type ConceptPickerEditor,
   type ConceptPickerPosition
-} from '../../lib/features/concept-picker/ConceptPicker.js';
+} from '../modeler/concept-picker.js';
 import { CONCEPT_REGISTRY } from '../language/concept-registry.mjs';
 import type { EditorCommand } from '../model-dto/editor.js';
 import type { ModelDto } from '../model-dto/types.js';
