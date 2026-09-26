@@ -14,7 +14,8 @@ const state = vi.hoisted(() => {
     eligible: true,
     deferOpen: false,
     reasons: [] as Array<{ code: string; message: string }>,
-    listeners: new Set<(event: unknown) => void>()
+    listeners: new Set<(event: unknown) => void>(),
+    viewportListeners: new Set<(viewport: { x: number; y: number; scale: number }) => void>()
   };
 });
 
@@ -61,6 +62,19 @@ vi.mock('../../src/diagram-js-adapter/index.js', () => {
     createDiagramJsCapabilities: (modeler: { get(serviceName: string): unknown }) => ({
       engine: 'diagram-js', stability: 'unstable', get: (name: string) => modeler.get(name)
     }),
+    createDiagramJsViewport: () => ({
+      fitView: vi.fn(() => ({ x: 0, y: 0, scale: 1 })),
+      fitSelection: vi.fn(() => ({ x: 1, y: 2, scale: 0.5 })),
+      zoom: vi.fn((level: number | 'fit') => level === 'fit' ?
+        ({ x: 0, y: 0, scale: 1 }) : ({ x: 0, y: 0, scale: level })),
+      getZoom: vi.fn(() => 1),
+      panBy: vi.fn(() => ({ x: 10, y: 20, scale: 1 })),
+      getViewport: vi.fn(() => ({ x: 0, y: 0, scale: 1 })),
+      onViewport: vi.fn((handler: (viewport: { x: number; y: number; scale: number }) => void) => {
+        state.viewportListeners.add(handler);
+        return () => state.viewportListeners.delete(handler);
+      })
+    }),
     fitDiagramJsView: vi.fn(),
     zoomDiagramJsCanvas: vi.fn((_modeler: unknown, level: number | 'fit') => level === 'fit' ? undefined : level)
   };
@@ -75,6 +89,7 @@ beforeEach(() => {
   state.deferOpen = false;
   state.reasons = [];
   state.listeners.clear();
+  state.viewportListeners.clear();
 });
 
 it('opens, delegates editor operations, emits plain events, and saves', async () => {
@@ -90,8 +105,20 @@ it('opens, delegates editor operations, emits plain events, and saves', async ()
   expect(modeler.undo()).toBe(true);
   expect(modeler.redo()).toBe(true);
   expect(modeler.getSelection()).toEqual(['node-one']);
+  expect(modeler.zoom(0.75)).toBe(0.75);
+  expect(modeler.zoom('fit')).toBeUndefined();
+  expect(modeler.getZoom()).toBe(1);
+  expect(() => modeler.fitSelection()).not.toThrow();
+  expect(() => modeler.panBy(10, 20)).not.toThrow();
   expect(modeler.save()).toEqual({ xml: '<model/>', dtoJson: '{"schemaVersion":1}' });
-  expect(events).toEqual(['opened:view-one', 'changed:node-one', 'selection:node-one']);
+  modeler.on('viewport', (event) => events.push(`${event.type}:${event.x}:${event.y}:${event.scale}`));
+  state.viewportListeners.forEach((listener) => listener({ x: 4, y: 5, scale: 0.75 }));
+  expect(events).toEqual([
+    'opened:view-one',
+    'changed:node-one',
+    'selection:node-one',
+    'viewport:4:5:0.75'
+  ]);
 });
 
 it('closes previous sessions on reopen and destroys idempotently', async () => {

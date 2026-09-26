@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Modeler` facade, TypeScript declarations, DTO-backed lifecycle/save/events,
   adapter-level `DiagramJsCanvasPort`/`DtoModelerSession` exports, and an
   explicitly unstable diagram-js escape hatch.
+* `FEAT`: add the EE-M8 viewport and selection interaction pack: diagram-js
+  wheel/trackpad pan and Ctrl+wheel pinch zoom, Space+drag temporary hand pan,
+  Shift-drag lasso selection, Shift-click multi-select, Escape/Cmd+A/fit
+  shortcuts, and engine-neutral `Modeler` viewport methods/events.
 * `DEPRECATION`: `DiagramJsCanvasPort`, `DtoModelerSession`, and related diagram-js adapter service/result types remain available from `archimate-js/model-dto` but are deprecated pending the EE-M4 `archimate-js/modeler` entry.
 
 ## 0.0.4

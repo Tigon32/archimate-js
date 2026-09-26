@@ -156,6 +156,14 @@ is introduced.
 
 ## Miro-like canvas interaction
 
+**EE-M8 status:** Implemented. The legacy diagram-js modeler now composes the
+viewport/selection interaction pack for wheel and trackpad pan/zoom,
+Ctrl+wheel browser pinch zoom, Space+drag temporary hand pan, Shift-drag
+lasso selection, Shift-click multi-select, delete/backspace, Escape, select-all,
+fit-view, and fit-selection shortcuts. The `archimate-js/modeler` facade exposes
+engine-neutral viewport operations and plain viewport events. Multi-select
+persistent editing, including batch move/delete, arrives through EE-M5 (#347).
+
 The interaction pack should reuse diagram-js services where they fit:
 lasso-tool, hand-tool, zoomscroll, keyboard, align/distribute, snapping, and
 related interaction modules. A minimap package may be evaluated only after a
