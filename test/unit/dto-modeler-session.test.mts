@@ -27,7 +27,8 @@ function modelerDouble() {
       createConnection: (input: Record<string, unknown>) => ({ ...input })
     },
     eventBus: {
-      on(name: string, listener: () => void) {
+      on(name: string, priorityOrListener: number | (() => void), callback?: () => void) {
+        const listener = typeof priorityOrListener === 'function' ? priorityOrListener : callback!;
         if (!listeners.has(name)) listeners.set(name, new Set());
         listeners.get(name)!.add(listener);
       },

@@ -17,10 +17,6 @@ type DirectEditing = {
   activate(element: unknown): boolean;
 };
 
-type ElementRegistry = {
-  get(id: string): unknown;
-};
-
 export interface DiagramJsConceptPickerServices {
   get(serviceName: string): unknown;
 }
@@ -42,7 +38,6 @@ export function attachConceptPicker(options: ConceptPickerAdapterOptions): () =>
   const svg = canvas.getContainer().querySelector('svg');
   if (!svg) throw new Error('MODELER_CANVAS_UNAVAILABLE');
   const directEditing = options.modeler.get('directEditing') as DirectEditing;
-  const elementRegistry = options.modeler.get('elementRegistry') as ElementRegistry;
   let picker: ConceptPicker | undefined;
 
   const onDoubleClick = (event: MouseEvent): void => {
@@ -63,12 +58,7 @@ export function attachConceptPicker(options: ConceptPickerAdapterOptions): () =>
       editor: {
         createId: options.editor.createId,
         execute: (command) => options.editor.execute(command),
-        startNameEditing: (nodeId) => {
-          const shape = elementRegistry.get(nodeId);
-          if (!shape) throw new Error('MODELER_CREATED_NODE_UNAVAILABLE');
-          if (!directEditing.activate(shape)) throw new Error('MODELER_NAME_EDIT_UNAVAILABLE');
-          options.editor.startNameEditing(nodeId);
-        }
+        startNameEditing: (nodeId) => options.editor.startNameEditing(nodeId)
       }
     });
   };

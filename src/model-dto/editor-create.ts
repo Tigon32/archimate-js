@@ -15,6 +15,7 @@ const RELATIONSHIP_TYPES = new Set([
 
 type CreateElementCommand = Extract<EditorCommand, { type: 'create-element' }>;
 type CreateRelationshipCommand = Extract<EditorCommand, { type: 'create-relationship' }>;
+type CreateRelatedElementCommand = Extract<EditorCommand, { type: 'create-related-element' }>;
 
 function localType(type: string): string {
   const name = type.lastIndexOf(':') === -1 ? type : type.slice(type.lastIndexOf(':') + 1);
@@ -142,4 +143,14 @@ export function createElement(model: ModelDto, command: CreateElementCommand): M
 
 export function createRelationship(model: ModelDto, command: CreateRelationshipCommand): ModelDto {
   return validateNewRelationship(model, command);
+}
+
+export function createRelatedElement(model: ModelDto, command: CreateRelatedElementCommand): ModelDto {
+  const withElement = validateNewElement(model, {
+    type: 'create-element', viewId: command.viewId, element: command.element, node: command.node
+  });
+  return validateNewRelationship(withElement, {
+    type: 'create-relationship', viewId: command.viewId,
+    relationship: command.relationship, connection: command.connection
+  });
 }

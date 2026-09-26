@@ -11,7 +11,7 @@ import type { RelationshipEditOperation } from './editor-diagnostics.js';
 import {
   applyLayoutPatch, changeBounds, deleteItem, deleteMany, EditorCommandError, findNode, moveMany, nodesOf
 } from './editor-view.js';
-import { createElement, createRelationship } from './editor-create.js';
+import { createElement, createRelatedElement, createRelationship } from './editor-create.js';
 import {
   buildOperationLog, EditorOperationLogError, MAX_EDITOR_OPERATIONS, parseOperationLog,
   serializeOperationLog,
@@ -36,6 +36,8 @@ export type EditorCommand =
   | { type: 'create-element'; viewId: string; element: ElementDto; node: ViewNodeDto }
   | { type: 'create-relationship'; viewId: string; relationship: RelationshipDto;
       connection: ViewConnectionDto }
+  | { type: 'create-related-element'; viewId: string; element: ElementDto; node: ViewNodeDto;
+      relationship: RelationshipDto; connection: ViewConnectionDto }
   | { type: 'move'; viewId: string; nodeId: string; x: number; y: number }
   | { type: 'move-many'; viewId: string; moves: Array<{ nodeId: string; x: number; y: number }> }
   | { type: 'resize'; viewId: string; nodeId: string; x: number; y: number; width: number; height: number }
@@ -261,18 +263,26 @@ function viewForCommand(model: ModelDto, command: EditorCommand): ModelDto['view
       targetId: command.type === 'connect' ? command.connection.targetId : command.targetId
     });
   }
-  if (command.type === 'create-element' || command.type === 'create-relationship') {
+  if (command.type === 'create-element' || command.type === 'create-relationship' ||
+      command.type === 'create-related-element') {
     throw new EditorCommandError('DTO_CREATE_VIEW_NOT_FOUND');
   }
   invalid();
+}
+
+function applyCreateCommand(model: ModelDto, command: EditorCommand): ModelDto | undefined {
+  if (command.type === 'create-element') return createElement(model, command);
+  if (command.type === 'create-relationship') return createRelationship(model, command);
+  if (command.type === 'create-related-element') return createRelatedElement(model, command);
+  return undefined;
 }
 
 function apply(model: ModelDto, command: EditorCommand): ModelDto {
   if (command.type === 'connect' || command.type === 'reconnect') checkRelationshipIds(command);
   const next = structuredClone(model);
   const view = viewForCommand(next, command);
-  if (command.type === 'create-element') return createElement(next, command);
-  if (command.type === 'create-relationship') return createRelationship(next, command);
+  const created = applyCreateCommand(next, command);
+  if (created) return created;
 
   switch (command.type) {
   case 'move':

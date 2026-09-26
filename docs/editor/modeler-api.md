@@ -75,7 +75,7 @@ modeler.panBy(20, -10);
 ```
 
 Supported persistent command discriminants are `create-element`,
-`create-relationship`, `move`, `move-many`, `resize`,
+`create-relationship`, `create-related-element`, `move`, `move-many`, `resize`,
 `connect`, `reconnect`, `delete`, `delete-many`, `apply-layout-patch`, `label`,
 `concept-name`, `concept-documentation`, and `property`. `move-many` uses
 absolute diagram-space target coordinates per node. `apply-layout-patch` accepts
@@ -83,11 +83,21 @@ a DTO `LayoutPatch` and `side: 'after' | 'before'`; it applies node bounds and
 connection waypoints only, validates current geometry to reject stale patches,
 and commits as one undo step. `create-element` and `create-relationship` require
 deterministic caller-provided IDs and commit semantic and presentation records
-atomically; see [the DTO command boundary](diagram-adapter.md) for payloads and
-validation. Relationship gesture validation is owned by the shared relationship
+atomically; `create-related-element` commits a compatible quick-create concept,
+node, relationship, and connection in one validated undo step. See
+[the DTO command boundary](diagram-adapter.md) for payloads and validation.
+Relationship gesture validation is owned by the shared relationship
 decision service. Double-clicking blank canvas opens the searchable concept
 picker; the static palette remains available as a secondary workflow. See
 [the concept picker contract](concept-picker.md).
+Element-to-element connection gestures use the domain relationship decision
+service. A single reviewed option is selected automatically, multiple allowed
+types open a chooser, and unsupported/disallowed tuples receive distinct
+feedback without a generic relationship fallback. Dropping a connector on
+empty canvas opens a compatible target picker and commits the target concept,
+view node, relationship, and connection as one reversible
+`create-related-element` command. See
+[relationship creation and quick-create](relationship-chooser.md).
 
 The facade can export, serialize, and replay a version-1 operation log:
 

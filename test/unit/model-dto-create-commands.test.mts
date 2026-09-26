@@ -99,6 +99,50 @@ it('creates a reviewed semantic relationship and view connection as one history 
   expect(editor.redo()).toBe(true);
 });
 
+it('creates a compatible target concept, node, relationship, and connection as one reversible command', () => {
+  const editor = makeEditor();
+  const before = editor.serialize();
+  editor.execute({
+    type: 'create-related-element',
+    viewId,
+    element: element('quick-process', 'archimate:ApplicationProcess'),
+    node: node('quick-process-node', 'quick-process'),
+    relationship: relationship('quick-assignment', 'component-one', 'quick-process'),
+    connection: connection('quick-assignment-connection', 'quick-assignment',
+      'node-component', 'quick-process-node')
+  });
+  const created = editor.serialize();
+  expect(editor.getModel().elements.some((item) => item.id === 'quick-process')).toBe(true);
+  expect(editor.getModel().relationships.some((item) => item.id === 'quick-assignment')).toBe(true);
+  expect(editor.getModel().views[0].nodes.some((item) => item.id === 'quick-process-node')).toBe(true);
+  expect(editor.getModel().views[0].connections.some((item) =>
+    item.id === 'quick-assignment-connection')).toBe(true);
+  const replay = makeEditor();
+  replay.replayOperationLog(editor.serializeOperationLog('synthetic-quick-create'));
+  expect(replay.serialize()).toBe(created);
+  expect(editor.undo()).toBe(true);
+  expect(editor.serialize()).toBe(before);
+  expect(editor.redo()).toBe(true);
+  expect(editor.serialize()).toBe(created);
+});
+
+it('rejects an invalid quick-create relationship without leaving its target concept behind', () => {
+  const editor = makeEditor();
+  const before = editor.serialize();
+  expect(() => editor.execute({
+    type: 'create-related-element',
+    viewId,
+    element: element('quick-invalid', 'archimate:ApplicationProcess'),
+    node: node('quick-invalid-node', 'quick-invalid'),
+    relationship: { id: 'quick-invalid-relationship', type: 'archimate:Serving',
+      sourceId: 'component-one', targetId: 'quick-invalid' },
+    connection: connection('quick-invalid-connection', 'quick-invalid-relationship',
+      'node-component', 'quick-invalid-node')
+  })).toThrow(expect.objectContaining({ code: 'DTO_RELATIONSHIP_UNSUPPORTED' }));
+  expect(editor.serialize()).toBe(before);
+  expect(editor.undo()).toBe(false);
+});
+
 it('rejects duplicate IDs and invalid element types without mutation or history changes', () => {
   const cases = [
     {

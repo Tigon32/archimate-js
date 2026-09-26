@@ -210,17 +210,15 @@ depends on #332 for DTO-owned creation commands.
 
 ## Smart relationship creation
 
-Relationship creation must ask the reviewed decision service for valid types.
-The service must preserve the distinction between allowed, disallowed, and
-unsupported decisions. If exactly one relationship type is valid, the editor may
-default it. If more than one is valid, show a chooser. Direction must be clear
-at preview, commit, and label-edit time.
-
-Drag-to-empty should support quick-create target plus relationship plus target
-name edit as one transaction. Relationship rules stay in the domain. The
-diagram-js `RuleProvider` should consult the domain service only; migrating
-`lib/features/rules/ArchimateRules.js` removes duplicated authority and aligns
-with #102 and #333.
+**EE-M10 status:** Implemented. The Modeler facade derives connection choices
+from the shared 23-row semantic profile, defaults only an unambiguous allowed
+relationship, presents a keyboard-operable chooser for multiple valid types,
+and displays separate counts for explicitly disallowed and unsupported types.
+An empty-canvas connector drop opens a filtered target-concept chooser. The
+target, view node, relationship, and connection are committed through one
+validated `create-related-element` command; cancellation mutates nothing, and
+the newly created semantic name can be edited immediately. See the
+[relationship chooser contract](../editor/relationship-chooser.md).
 
 ## View/model separation
 
@@ -508,7 +506,7 @@ flowchart TD
 | EE-M7 Domain-authoritative relationship rules in diagram-js RuleProvider (with #102/#333) | Make live gesture affordance use domain decision service. | Remove duplicate relationship authority. | Rules, language services, tests. | `lib/features/rules/ArchimateRules.js`, generated utility path, `src/language`. | EE-M2, #102, #333. | Relationship matrix/projection tests plus browser connect tests. | Allowed/disallowed/unsupported decisions are consistent in UI and DTO adapter. | Legacy generated util can remain only as projection of domain service. | M |
 | EE-M8 Viewport & selection interaction pack (pan/zoom/pinch/space-drag/marquee/fit) | Add core whiteboard navigation and selection. | Keep canvas behavior adapter-local. | Diagram-js integration, keyboard/focus tests. | Modeler adapter modules, browser tests. | EE-M5, #97, #107. | Playwright focus/interactions and performance smoke. | Pan, zoom, pinch, space-drag, marquee, fit-to-view/selection work without leaking engine objects. | Preserve existing keyboard shortcuts. | M |
 | EE-M9 Searchable concept picker & create-at-pointer | Add modern concept creation workflow. | Creation starts from domain registry. | Shell/editor UI, concept registry, commands. | `src/language/concept-registry.mts`, `src/modeler/concept-picker.ts`, `src/diagram-js-adapter/concept-picker.ts`, tests. | EE-M5, #332. | Unit search tests and browser create-at-pointer/semantic-name/MEFF round-trip test. | Double-click search creates semantic element and view node, then edits semantic name. | Palette remains supported as secondary workflow. | M |
-| EE-M10 Smart relationship chooser & quick-create | Add valid relationship chooser and drag-to-empty quick-create. | Relationship semantics stay domain-owned. | Relationship UI, rules, commands. | Rule adapter, UI modules, DTO commands. | EE-M5, EE-M7, #333, #102. | Browser connect/quick-create tests and unit decision tests. | Chooser appears for multiple valid types; unambiguous default works; unsupported/disallowed are distinct. | No silent relationship type fallback. | L |
+| EE-M10 Smart relationship chooser & quick-create — Implemented in #352 | Use the domain decision service for live connection choice and quick-create. | Keep relationship semantics authoritative in the domain and commit quick-create atomically. | Modeler UI, diagram-js event adapter, DTO command/log, tests and docs. | `src/modeler/relationship-chooser.ts`, `src/diagram-js-adapter/canvas-port.ts`, `src/model-dto/editor-create.ts`, `src/model-dto/editor-operation-log.ts`. | EE-M5, EE-M7, #333, #102. | Unit tri-state/command/replay tests and Chromium relationship/quick-create flows. | One allowed type defaults; multiple allowed types show an accessible chooser; unsupported and disallowed tuples receive distinct feedback; empty-canvas quick-create creates no orphan on cancel and is one undoable command. | Reviewed semantics remain a 23-row subset; no silent fallback or full-conformance claim. | L |
 | EE-M11 Context toolbar, connector handles, alt-drag duplicate, align/distribute UX, optional minimap | Add productivity interactions. | Advanced UI remains engine integration, shell uses editor API. | Diagram-js modules, UI, clipboard. | Feature modules, optional minimap integration. | EE-M8. | Browser tests for toolbar, handles, duplicate, align/distribute, copy/paste. | Operations commit DTO commands and undo cleanly. | Minimap requires license/provenance approval first. See [`docs/research/minimap-license-and-provenance.md`](../research/minimap-license-and-provenance.md) (#402) for the candidate-package evidence; adopt/defer/reject decision remains open. | L |
 | EE-M12 ELK.js layout strategy behind src/layout (implemented in #382) | Provide an explicit optional `elk-layered` strategy. | Layout engine is service-level, not editor-engine replacement. | Typed layout adapter, exact `elkjs@0.12.0`, EPL notice/provenance, tests. | `src/layout`, `docs/research/elkjs-license-and-provenance.md`, `THIRD_PARTY_NOTICES.md`, `licenses/elkjs-EPL-2.0.txt`. | EE-M6, #354, #374. | Synthetic layout, patch reversal, determinism, route and package-notice tests. | Nested graph and cross-hierarchy routing are mapped to DTO patches; explicit failures have no partial result; EPL-2.0 path is recorded and shipped. Labeled views receive a stable diagnostic until renderer-consumable label geometry is supported. | No worker/performance claim; see #385 and #386. See the license record for exact provenance and selected license path. | M |
 | EE-M13 Converge legacy moddle save path with DTO authority (compat plan for ineligible imports) | Reduce dual state and clarify save semantics. | Persistent edits should not diverge. | Importer, saver, modeling commands, renderer. | `BaseViewer.saveXML`, `lib/import`, `lib/features/modeling/cmd`, DTO MEFF bridge. | EE-M6, EE-M7. | XML/MEFF round trips, browser edit/save tests, legacy compatibility tests. | Eligible edits save through DTO authority; ineligible imports retain legacy path with explicit diagnostics. | Highest-risk migration; keep legacy compatibility until evidence is strong. | XL |

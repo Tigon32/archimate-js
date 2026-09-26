@@ -34,6 +34,9 @@ type CloneBudget = { used: number };
 const COMMAND_FIELDS: Record<string, { required: string[]; optional?: string[] }> = {
   'create-element': { required: ['type', 'viewId', 'element', 'node'] },
   'create-relationship': { required: ['type', 'viewId', 'relationship', 'connection'] },
+  'create-related-element': {
+    required: ['type', 'viewId', 'element', 'node', 'relationship', 'connection']
+  },
   move: { required: ['type', 'viewId', 'nodeId', 'x', 'y'] },
   'move-many': { required: ['type', 'viewId', 'moves'] },
   resize: { required: ['type', 'viewId', 'nodeId', 'x', 'y', 'width', 'height'] },
@@ -247,6 +250,11 @@ function validateCreateCommand(command: Record<string, unknown>): void {
   } else if (command.type === 'create-relationship') {
     elementPayload(command.relationship, true);
     connectionPayload(command.connection);
+  } else if (command.type === 'create-related-element') {
+    elementPayload(command.element);
+    nodePayload(command.node);
+    elementPayload(command.relationship, true);
+    connectionPayload(command.connection);
   } else reject();
 }
 
@@ -325,7 +333,8 @@ function validateSimpleCommand(command: Record<string, unknown>): void {
 }
 
 function validateCommandPayload(command: Record<string, unknown>): void {
-  if (command.type === 'create-element' || command.type === 'create-relationship') {
+  if (command.type === 'create-element' || command.type === 'create-relationship' ||
+      command.type === 'create-related-element') {
     validateCreateCommand(command);
   } else if (command.type === 'connect' || command.type === 'reconnect') {
     validateConnectionCommand(command);
