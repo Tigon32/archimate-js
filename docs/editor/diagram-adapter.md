@@ -142,8 +142,13 @@ endpoints must pass the strict editor check. Waypoint-only reconnects do not
 create a new semantic claim.
 MEFF/DTO relationship type names such as `archimate:Serving` resolve to the
 same reviewed row as `ServingRelationship`. The canvas port's immediate gesture
-affordance still comes from legacy rules; aligning that UI hint and custom
-profiles is separate work under #102.
+affordance and DTO edit validation now use the same relationship decision
+service. A RuleProvider rejection is limited to a known `disallowed` row;
+`unsupported` is deferred so the DTO command can report
+`DTO_RELATIONSHIP_UNSUPPORTED` without committing state. This strict editor
+check does not make unsupported tuples persistable. The service remains a
+conservative 23-row reviewed profile; broader registry/profile work remains
+under #102, and structured relationship diagnostics were introduced with #333.
 
 The adapter's move, move-many, resize, connect, reconnect, delete, delete-many,
 apply-layout-patch, and presentation label commands use a snapshot-backed

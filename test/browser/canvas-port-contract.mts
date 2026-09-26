@@ -79,12 +79,18 @@ try {
   await page.addScriptTag({ url: '/.ci-build/canvas-port-contract-test.js' });
   const passed = await page.evaluate(async () => {
     const api = (window as unknown as {
-      CanvasPortContractTest: { runCanvasPortContract(xml: string): Promise<string[]> };
+      CanvasPortContractTest: {
+        runCanvasPortContract(xml: string): Promise<string[]>;
+        runRelationshipDecisionContract(xml: string): unknown;
+      };
     }).CanvasPortContractTest;
     const xml = await (await fetch('/synthetic.xml')).text();
-    return api.runCanvasPortContract(xml);
+    return {
+      canvas: await api.runCanvasPortContract(xml),
+      relationships: api.runRelationshipDecisionContract(xml)
+    };
   });
-  assert.deepEqual(passed, [
+  assert.deepEqual(passed.canvas, [
     'attaches and renders the active view projection',
     'routes gesture commands through the adapter and rerenders geometry',
     'routes batch move gestures as one undoable command',
@@ -96,6 +102,18 @@ try {
     'detaches listeners, clears rendering, and ignores later gestures',
     'emits JSON round-trippable plain projections'
   ]);
+  assert.deepEqual(passed.relationships, {
+    allowedRule: { type: 'Assignment' },
+    disallowedRule: false,
+    unsupportedDeferred: true,
+    supportedCommitted: true,
+    supportedUndo: true,
+    unsupportedResult: {
+      code: 'DTO_RELATIONSHIP_UNSUPPORTED',
+      atomic: true,
+      noHistory: true
+    }
+  });
 } finally {
   await browser?.close();
   await new Promise<void>((resolve) => server.close(() => resolve()));
