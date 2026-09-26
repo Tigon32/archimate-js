@@ -104,6 +104,16 @@ export class ConceptPicker {
   private readonly resultsStatus: HTMLParagraphElement;
   private results: ConceptPickerResult[];
   private selectedIndex = 0;
+  private readonly containFocus = (event: FocusEvent): void => {
+    if (event.target instanceof Node && !this.dialog.contains(event.target)) this.input.focus();
+  };
+  private readonly preventBackgroundPointer = (event: Event): void => {
+    if (event.target instanceof Node && !this.dialog.contains(event.target)) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.input.focus();
+    }
+  };
 
   constructor(options: ConceptPickerOptions) {
     this.anchor = options.anchor;
@@ -121,6 +131,9 @@ export class ConceptPicker {
   }
 
   close(): void {
+    document.removeEventListener('focusin', this.containFocus, true);
+    document.removeEventListener('mousedown', this.preventBackgroundPointer, true);
+    document.removeEventListener('click', this.preventBackgroundPointer, true);
     this.dialog.remove();
     this.returnFocus?.focus();
   }
@@ -163,6 +176,9 @@ export class ConceptPicker {
     this.input.addEventListener('input', () => this.updateResults());
     this.input.addEventListener('keydown', (event) => this.handleKeydown(event));
     this.dialog.addEventListener('keydown', (event) => this.trapFocus(event));
+    document.addEventListener('focusin', this.containFocus, true);
+    document.addEventListener('mousedown', this.preventBackgroundPointer, true);
+    document.addEventListener('click', this.preventBackgroundPointer, true);
     this.renderResults();
     this.input.focus();
   }
