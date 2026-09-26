@@ -116,15 +116,18 @@ frugal and as governable as native subagents.
 
 ## Evidence log
 
-- **2026-09-26 — Baseline:** Historical prior session using a
+Usage figures come from the harness's per-session usage records (premium units, tokens, tool-call counts). Those records are local and not published; each entry cites the session ID so a maintainer with access can re-query them. Figures without such a source are marked *unverified*.
+
+- **2026-09-26 — Baseline:** Historical prior session (`1b38f0eb`) using a
   hive-queen/worker naming pattern with native harness subagents. It merged
-  nine PRs from hive worker branches: #265, #267, #269, #272, #274, #276,
-  #283, #284, and #285. Whole-session usage was about 917 premium units across
-  six models, with 26 subagent task calls and 648 shell calls. Caveat: session
-  totals also include non-hive work, so per-PR cost is an upper bound of about
-  102 premium units per merged PR. Verdict: queen/worker-bee pattern — keep
-  (provisional); ruflo `hive-mind` — pending measurement; ruflo `swarm` —
-  pending; `ruvnet-brain` — pending.
+  nine PRs from `hive-*` branches: eight from worker branches (#265, #267,
+  #269, #272, #274, #283, #284, #285) and one from a queen integration branch
+  (#276). Whole-session usage was about 917 premium units across six models,
+  with 26 subagent task calls and 648 shell calls. Caveat: session totals also
+  include non-hive work, so per-PR cost is an upper bound of about 102 premium
+  units per merged PR. Verdict: queen/worker-bee pattern — keep (provisional);
+  ruflo `hive-mind` — pending measurement; ruflo `swarm` — pending;
+  `ruvnet-brain` — pending.
 
 ## Consequences
 
