@@ -12,6 +12,19 @@ export interface LayoutOptions {
   rankConstraints?: readonly LayoutRankConstraint[];
 }
 
+export interface LayoutWorkerThresholds {
+  minNodes?: number;
+  minConnections?: number;
+  minComplexity?: number;
+}
+
+export interface LayoutExecutionOptions extends LayoutOptions {
+  execution?: 'auto' | 'main-thread' | 'worker';
+  workerThresholds?: LayoutWorkerThresholds;
+  timeoutMs?: number;
+  signal?: AbortSignal;
+}
+
 export interface LayoutPin {
   nodeId: string;
   strength: 'hard' | 'soft';
@@ -27,7 +40,7 @@ export interface LayoutDiagnostic {
     'UNSUPPORTED_MODE' | 'UNSUPPORTED_CONSTRAINT' | 'UNSUPPORTED_CONNECTION' |
     'INVALID_OPTIONS' | 'LAYOUT_FAILED' | 'PIN_NODE_NOT_FOUND' |
     'CHANGED_NODE_NOT_FOUND' | 'RANK_NODE_NOT_FOUND' | 'SOFT_PIN_DISPLACED' | 'INCREMENTAL_DISPLACEMENT' |
-    'UNSATISFIED_CONSTRAINT';
+    'UNSATISFIED_CONSTRAINT' | 'LAYOUT_CANCELLED' | 'LAYOUT_TIMEOUT' | 'WORKER_UNAVAILABLE';
   severity: 'error' | 'warning';
   message: string;
 }

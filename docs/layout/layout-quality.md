@@ -66,3 +66,10 @@ For fixed DTO input, selected strategy, strategy version, options, and seed, the
 geometry, raw metrics except `durationMs`, and generated SVG snapshots must be
 stable. The optional `elk-layered` strategy remains subject to ADR-0012: views
 with unsupported constraints return explicit diagnostics and no silent fallback.
+
+The browser worker adapter is held to the same boundary. For every #385
+SYNTHETIC corpus case, worker-computed layout is compared with the
+main-thread `layoutView` result, and successful worker/main-thread SVG
+snapshots from `renderLayoutQualitySvg` must be byte-identical. Cancellation
+and timeout checks assert explicit diagnostics (`LAYOUT_CANCELLED` and
+`LAYOUT_TIMEOUT`) rather than retaining stale or partial geometry.

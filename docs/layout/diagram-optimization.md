@@ -52,6 +52,12 @@ The public `archimate-js/modeler` facade offers
 `await modeler.optimizeDiagram({ strategy: 'builtin' })`. It runs the DTO
 layout abstraction against the active view, applies only the returned geometry
 patch as one `apply-layout-patch` DTO command, and returns `{ patch, metrics }`.
+In browsers, the facade uses the typed layout worker automatically when the
+selected view meets configurable `workerThresholds`; pass
+`execution: 'worker'` to require the worker, `execution: 'main-thread'` to keep
+the Node/headless path, and `timeoutMs` or `signal` to terminate in-flight
+work. Worker unavailability, cancellation, timeout, and strategy failures are
+reported explicitly and do not fall back to a different layout strategy.
 Routed points are normalized to integer MEFF attachment/bendpoint waypoints,
 and a layout that cannot round-trip through MEFF is rejected before commit.
 `modeler.undo()` and `modeler.redo()` reverse and restore the whole edit;
@@ -97,8 +103,12 @@ selected connection lacks an endpoint, or the DTO is invalid, it returns a
 diagnostic without a view or patch. Unavailable `elk-layered` options return
 explicit diagnostics, with no fallback to full built-in layout. Unknown
 options are rejected so future controls are not silently ignored. This call
-runs asynchronously at the API boundary, but the built-in optimizer itself
-currently runs on the calling thread.
+runs asynchronously at the API boundary. `layoutView` is the main-thread
+implementation used by Node and headless callers. Browser callers that need
+off-thread execution should use `layoutViewInBrowser(model, viewId, {
+strategy, execution: 'auto' | 'worker' | 'main-thread' })`, which sends the
+same DTO input and layout options through the worker protocol and returns the
+same deterministic result shape.
 
 ### Optional compound strategy (#382)
 

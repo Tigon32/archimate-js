@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { layoutView } from '../../src/layout/index.js';
+import { layoutView, layoutViewInBrowser } from '../../src/layout/index.js';
 import type { ModelDto } from '../../src/model-dto/index.js';
 import { applyLayoutPatch } from '../../src/model-dto/editor-view.js';
 
@@ -290,4 +290,19 @@ it('rejects missing endpoints and invalid DTOs without modifying the original', 
     const invalid = await layoutView(input, 'synthetic-view', { strategy: 'builtin' });
     expect(invalid.status).toBe('invalid');
     if (invalid.status !== 'ok') expect(invalid.diagnostics[0].code).toBe('INVALID_MODEL');
+});
+
+it('keeps Node and worker-unavailable paths explicit', async () => {
+  const input = model();
+  const main = await layoutView(input, 'synthetic-view', { strategy: 'builtin' });
+  const nodeAuto = await layoutViewInBrowser(input, 'synthetic-view', {
+    strategy: 'builtin', workerThresholds: { minNodes: 0 }
+  });
+  const forced = await layoutViewInBrowser(input, 'synthetic-view', {
+    strategy: 'builtin', execution: 'worker'
+  });
+  expect(nodeAuto).toEqual(main);
+  expect(forced).toMatchObject({ status: 'failed', diagnostics: [
+    { code: 'WORKER_UNAVAILABLE', severity: 'error' }
+  ] });
 });
