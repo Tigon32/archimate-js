@@ -122,16 +122,21 @@ describe('relationship rule utility', () => {
 });
 
 describe('live RuleProvider relationship authority', () => {
-  it('uses reviewed allowed and disallowed rows and defers unsupported tuples', () => {
+  it('allows a reviewed tuple through the reconnect RuleProvider', () => {
     const allowed = RELATIONSHIP_SEMANTIC_ROWS.find((row) => row.decision === 'allowed')!;
-    const disallowed = RELATIONSHIP_SEMANTIC_ROWS.find((row) => row.decision === 'disallowed')!;
-
     expect(connectDecision(ruleElement(allowed.sourceType), ruleElement(allowed.targetType),
       allowed.relationshipType.replace(/Relationship$/, ''))).toEqual({
       type: allowed.relationshipType.replace(/Relationship$/, '')
     });
+  });
+
+  it('rejects a reviewed disallowed tuple through the reconnect RuleProvider', () => {
+    const disallowed = RELATIONSHIP_SEMANTIC_ROWS.find((row) => row.decision === 'disallowed')!;
     expect(connectDecision(ruleElement(disallowed.sourceType), ruleElement(disallowed.targetType),
       disallowed.relationshipType.replace(/Relationship$/, ''))).toBe(false);
+  });
+
+  it('defers an unsupported tuple through the reconnect RuleProvider', () => {
     expect(connectDecision(ruleElement('ApplicationComponent'), ruleElement('ApplicationService'),
       'Serving')).toBeUndefined();
   });
