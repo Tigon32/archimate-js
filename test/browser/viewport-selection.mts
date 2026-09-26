@@ -175,7 +175,16 @@ window.__finishViewportSelectionTest = async () => {
     return keys === 'scale,type,x,y' && event.type === 'viewport';
   });
   modeler.fitView();
+  const facadeFitViewScale = modeler.getZoom();
   modeler.fitSelection();
+  const facadeFitSelectionScale = modeler.getZoom();
+  const facadeSelectionBox = canvas.viewbox();
+  const facadeSelectedElement = registry.get('node-component');
+  const facadeFitSelectionCentered =
+    Math.abs(facadeSelectionBox.x + facadeSelectionBox.width / 2 -
+      facadeSelectedElement.x - facadeSelectedElement.width / 2) < 1 &&
+    Math.abs(facadeSelectionBox.y + facadeSelectionBox.height / 2 -
+      facadeSelectedElement.y - facadeSelectedElement.height / 2) < 1;
   const facadeZoom = modeler.zoom(0.75);
   const facadeFit = modeler.zoom('fit');
   modeler.destroy();
@@ -183,7 +192,8 @@ window.__finishViewportSelectionTest = async () => {
   return { wheelZoomed, pinchZoomed, wheelPanned, spaceDragPanned, spaceReleasedOnBlur, lassoIds,
     shiftIds, escapeCleared, selectAllCount, fitShortcutScale, fitViewScale,
     fitSelectionChanged, editingIgnoredShortcuts, apiPanChanged, plainViewport,
-    fitSelectionCentered, facadeZoom, facadeFit };
+    fitSelectionCentered, facadeFitViewScale, facadeFitSelectionScale,
+    facadeFitSelectionCentered, facadeZoom, facadeFit };
 };
 `;
 const server = createServer((request: { url?: string }, response: {
@@ -231,6 +241,8 @@ try {
   assert.equal(result.editingIgnoredShortcuts, true);
   assert.equal(result.apiPanChanged, true);
   assert.equal(result.plainViewport, true);
+  assert.ok(result.facadeFitSelectionScale > result.facadeFitViewScale);
+  assert.equal(result.facadeFitSelectionCentered, true);
   assert.equal(result.facadeZoom, 0.75);
   assert.equal(result.facadeFit, undefined);
   console.log('viewport and selection browser checks passed');

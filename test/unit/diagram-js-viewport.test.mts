@@ -56,6 +56,6 @@ it('returns plain viewport values for fit, zoom, pan, and viewport events', () =
 
 it('fits the current selection bounds with padding', () => {
   const { services } = fakeServices();
-  expect(fitSelection(services)).toEqual({ x: -60, y: -40, scale: 1 });
-  expect(services.canvas.viewbox()).toMatchObject({ width: 220, height: 210 });
+  expect(fitSelection(services)).toEqual({ x: -160, y: -40, scale: 1 });
+  expect(services.canvas.viewbox()).toMatchObject({ width: 420, height: 210 });
 });

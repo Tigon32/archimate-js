@@ -10,6 +10,7 @@ export interface DiagramJsViewportState {
 interface CanvasViewbox extends DiagramJsViewportState {
   width: number;
   height: number;
+  outer?: { width: number; height: number };
 }
 
 interface CanvasService {
@@ -48,8 +49,7 @@ export function fitView(services: DiagramJsViewportServices): DiagramJsViewportS
 export function fitSelection(services: DiagramJsViewportServices): DiagramJsViewportState {
   const selected = (services.selection?.get() ?? []).filter(isDiagramElement);
   if (!selected.length) return fitView(services);
-  const bounds = paddedBounds(getBBox(selected), 100);
-  services.canvas.viewbox(bounds);
+  fitBounds(services.canvas, getBBox(selected), 100);
   return viewportState(services.canvas);
 }
 
@@ -75,13 +75,26 @@ export function onViewportChanged(
   return () => services.eventBus?.off('canvas.viewbox.changed', listener);
 }
 
-function paddedBounds(bounds: { x: number; y: number; width: number; height: number }, padding: number) {
-  return {
-    x: bounds.x - padding,
-    y: bounds.y - padding,
-    width: Math.max(1, bounds.width + padding * 2),
-    height: Math.max(1, bounds.height + padding * 2)
-  };
+function fitBounds(
+  canvas: CanvasService,
+  bounds: { x: number; y: number; width: number; height: number },
+  padding: number
+): void {
+  const viewbox = canvas.viewbox(false);
+  const aspect = viewbox.outer && viewbox.outer.width > 0 && viewbox.outer.height > 0 ?
+    viewbox.outer.width / viewbox.outer.height : viewbox.width / viewbox.height;
+  const paddedWidth = Math.max(1, bounds.width + padding * 2);
+  const paddedHeight = Math.max(1, bounds.height + padding * 2);
+  const width = Math.max(paddedWidth, paddedHeight * aspect);
+  const height = Math.max(paddedHeight, paddedWidth / aspect);
+  const centerX = bounds.x + bounds.width / 2;
+  const centerY = bounds.y + bounds.height / 2;
+  canvas.viewbox({
+    x: centerX - width / 2,
+    y: centerY - height / 2,
+    width,
+    height
+  });
 }
 
 function isDiagramElement(value: unknown): value is Element {
