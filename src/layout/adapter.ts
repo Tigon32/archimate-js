@@ -25,9 +25,9 @@ export interface OptimizerOutput {
     connections: { id: string; before: ViewConnectionDto['waypoints'];
       after: ViewConnectionDto['waypoints'] }[];
   };
-  metrics: Omit<LayoutMetrics, 'boundsBefore' | 'boundsAfter'> & {
-    boundsBefore: LayoutGeometry; boundsAfter: LayoutGeometry;
-  };
+  metrics: Pick<LayoutMetrics, 'movedNodeCount' | 'reroutedConnectionCount' |
+    'crossingsBefore' | 'crossingsAfter' | 'overlapCountBefore' | 'overlapCountAfter' |
+    'boundsBefore' | 'boundsAfter'>;
 }
 
 function nodeShape(node: ViewNodeDto): OptimizerNode {
