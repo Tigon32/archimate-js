@@ -72,6 +72,20 @@ is no theme-switch animation, and reduced-motion suppresses app transitions.
 The generated variables are scoped to UI only. Diagram notation, explicit
 model colors, and export styles continue to use their separate sources.
 
+### Token roles and legacy migration
+
+The stable theme roles are the `--am-ui-*` variables generated from
+`assets/design-tokens/app.tokens.json`: text, muted text, link, icon, action,
+hover, selected, invalid, disabled, overlay, status, border, focus, spacing,
+radii, and app font roles. Use those roles from `.am-app` descendants instead
+of hard-coded theme colors. Keep `data-theme` on the `.am-app` root; legacy
+hosts that already set `data-theme="dark"` remain supported, while new hosts
+should prefer the five selector choices documented above. Migrating from
+`assets/archimate-js.css` means wrapping controls and the canvas in `.am-app`
+and replacing legacy app-control selectors with `.am-ui-*` classes. Do not move
+these variables onto `.am-diagram`, exported SVG, or model-authored notation
+styles.
+
 These controls are currently present in the read-only embed: toolbar, theme
 select, navigation link, and status. Panel, dialog, inspector, and palette
 styles are reusable contracts, but full editor controls and their keyboard
