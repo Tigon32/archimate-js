@@ -22,6 +22,7 @@ import { RELATIONSHIP_SEMANTIC_ROWS } from '../../src/language/relationship-deci
 // @ts-expect-error Legacy JavaScript RuleProvider has no declaration.
 import ArchimateRules from '../../lib/features/rules/ArchimateRules.js';
 import { DiagramAdapter, importMeffToModelDto } from '../../src/model-dto/index.js';
+import type { EditorCommand } from '../../src/model-dto/index.js';
 
 function expectCreateOptionsToMatchReviewedRows(): void {
   const pairs = new Set(RELATIONSHIP_SEMANTIC_ROWS.map((row) => `${row.sourceType}|${row.targetType}`));
@@ -79,6 +80,40 @@ function connectDecision(source: RuleElement, target: RuleElement, relationshipT
     target,
     connection: relationshipType ? { type: relationshipType } : undefined
   });
+}
+
+function unsupportedConnectCommand(): EditorCommand {
+  return {
+    type: 'connect',
+    viewId: 'view-dto-export',
+    relationship: {
+      id: 'synthetic-unsupported-relationship',
+      type: 'archimate:Serving',
+      sourceId: 'component-one',
+      targetId: 'service-two'
+    },
+    connection: {
+      id: 'synthetic-unsupported-connection',
+      kind: 'relationship',
+      relationshipId: 'synthetic-unsupported-relationship',
+      sourceId: 'node-component',
+      targetId: 'node-service',
+      waypoints: [{ x: 100, y: 100 }, { x: 200, y: 100 }]
+    }
+  };
+}
+
+function attemptUnsupportedDtoConnect() {
+  const model = importMeffToModelDto(readFileSync('test/fixtures/synthetic/dto-export-view.xml', 'utf8'));
+  const editor = new DiagramAdapter(model);
+  const before = editor.serialize();
+  let diagnostic: unknown;
+  try {
+    editor.execute(unsupportedConnectCommand());
+  } catch (error) {
+    diagnostic = (error as { diagnostic?: unknown }).diagnostic;
+  }
+  return { editor, before, diagnostic };
 }
 
 describe('relationship rule utility', () => {
@@ -155,37 +190,9 @@ describe('live RuleProvider relationship authority', () => {
   });
 
   it('defers unsupported RuleProvider tuples to the DTO command diagnostic atomically', () => {
-    const source = ruleElement('ApplicationComponent');
-    const target = ruleElement('ApplicationService');
-    expect(connectDecision(source, target, 'Serving')).toBeUndefined();
-
-    const model = importMeffToModelDto(readFileSync('test/fixtures/synthetic/dto-export-view.xml', 'utf8'));
-    const editor = new DiagramAdapter(model);
-    const before = editor.serialize();
-    let diagnostic: unknown;
-    try {
-      editor.execute({
-        type: 'connect',
-        viewId: 'view-dto-export',
-        relationship: {
-          id: 'synthetic-unsupported-relationship',
-          type: 'archimate:Serving',
-          sourceId: 'component-one',
-          targetId: 'service-two'
-        },
-        connection: {
-          id: 'synthetic-unsupported-connection',
-          kind: 'relationship',
-          relationshipId: 'synthetic-unsupported-relationship',
-          sourceId: 'node-component',
-          targetId: 'node-service',
-          waypoints: [{ x: 100, y: 100 }, { x: 200, y: 100 }]
-        }
-      });
-    } catch (error) {
-      diagnostic = (error as { diagnostic?: unknown }).diagnostic;
-    }
-
+    expect(connectDecision(ruleElement('ApplicationComponent'), ruleElement('ApplicationService'),
+      'Serving')).toBeUndefined();
+    const { editor, before, diagnostic } = attemptUnsupportedDtoConnect();
     expect(diagnostic).toMatchObject({
       code: 'DTO_RELATIONSHIP_UNSUPPORTED',
       category: 'unsupported-profile',
