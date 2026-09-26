@@ -204,7 +204,6 @@ try {
   await page.addScriptTag({ content: scenarioScript });
   await page.evaluate(() => (window as any).__prepareViewportSelectionTest());
   const result = await page.evaluate(() => (window as any).__finishViewportSelectionTest());
-  console.log(JSON.stringify(result));
   assert.equal(result.wheelZoomed, true);
   assert.equal(result.pinchZoomed, true);
   assert.equal(result.wheelPanned, true);

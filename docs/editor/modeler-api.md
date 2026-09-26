@@ -163,7 +163,7 @@ keeps these engine details behind the adapter boundary.
 | Marquee selection | Shift-drag on the canvas. Plain empty-canvas drag remains reserved for diagram-js canvas panning, so EE-M8 uses the built-in lasso modifier path. |
 | Toggle multi-select | Shift-click a diagram element. |
 | Move selection | Arrow keys; Shift accelerates through the existing keyboard-move-selection module. |
-| Delete selection | Delete or Backspace. Multi-select delete persistence depends on the EE-M5 batch-delete command work. |
+| Delete selection | Delete or Backspace; persistent single/multi-select deletion uses the DTO `delete`/`delete-many` commands. |
 | Clear selection | Escape. |
 | Select all | Cmd/Ctrl+A. |
 | Fit view | Cmd/Ctrl+0 or Shift+1. |

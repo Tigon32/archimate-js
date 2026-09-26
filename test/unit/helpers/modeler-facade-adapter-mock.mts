@@ -5,8 +5,8 @@ interface FacadeMockState {
     diagnostics: unknown[]; views: Array<{ id: string; nodes: unknown[]; connections: unknown[] }> };
   destroyed: number;
   opened: string[];
-  sessions: FakeSession[];
-  pendingOpens: Array<{ session: FakeSession; resolve(): void }>;
+  sessions: Array<{ closed: number }>;
+  pendingOpens: Array<{ session: { closed: number }; resolve(): void }>;
   commands: unknown[];
   editorOverride?: unknown;
   engineGets: string[];
