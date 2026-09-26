@@ -126,7 +126,7 @@ frugal and as governable as native subagents.
 
 | Option | Status | Evidence |
 |---|---|---|
-| Native subagents (queen/worker-bee) | Adopted | 2026-09-26 round: one reusable reviewer caught 5 confirmed defects in 3 worker self-reports of "all gates pass" (see Evidence log). |
+| Native subagents (queen/worker-bee) | Adopted | 2026-09-26 round: one reused reviewer found 8 confirmed defects in 3 workers' "all gates pass" reports, plus 2 in this ADR (see Evidence log). |
 | ruflo `hive-mind` | Rejected for this harness | 2026-09-26 probe: not runnable here, defaults to skipping all permission checks, and hands the queen role to an external process. |
 | ruflo `swarm` | Rejected for this harness | 2026-09-26: uses the same external worker path as `hive-mind`, so it has the same blockers; not measurable. |
 | `ruvnet-brain` lessons | Conditional keep | 2026-09-26: its rules predicted this round's failure mode. Adopted as reviewer/queen rules (DEC-008), not as a runtime. |
@@ -152,14 +152,18 @@ Usage figures come from the harness's per-session usage records (premium units, 
   non-overlapping worktrees, with one reviewer reused for every review and
   re-review (DEC-003) instead of a new reviewer per pass.
   - **Independent review was essential.** All three workers first reported "all
-    local gates pass". The reviewer blocked all three, plus this ADR, with
-    confirmed defects: a content check that a blank diagram would pass
-    (#391); a test that set the dropdown value in script rather than through
-    real keyboard/mouse input, and a stub standing in for a real view change
-    (#390); a hover color compared against the wrong background, a selection
-    check that passed when nothing rendered, and an element mistaken for the
-    connection outline (#389); and an unsourced, mis-attributed baseline
-    (#388). Review cycles to MERGE: #388 3, #391 2, #390 4, #389 4.
+    local gates pass". The reviewer blocked all three, plus this ADR, finding 8
+    confirmed worker defects over several rounds:
+    - #391 (1): a content check that a blank diagram would pass.
+    - #390 (3): a script-set dropdown value instead of real keyboard input, the
+      same for mouse input, and a stub standing in for a real view change.
+    - #389 (4): a hover color compared against the wrong background, a
+      selection check that passed when nothing rendered, incomplete
+      forced-colors coverage, and an element mistaken for the connection
+      outline.
+
+    The ADR itself (#388) had 2 more: a mis-attributed PR and unsourced
+    figures. Review cycles to MERGE: #388 3, #391 2, #390 4, #389 4.
     Every worker was resumed with its context intact (`write_agent`) rather
     than re-spawned.
   - **Local runs miss some CI gates.** PR #392 failed CI once because
@@ -174,11 +178,14 @@ Usage figures come from the harness's per-session usage records (premium units, 
     added from this evidence.
   - Per-issue premium-unit and token totals for this round will be recorded in
     a closing entry after the round completes.
-- **2026-09-26 — ruflo `hive-mind` probe (contained, read-only audit task):**
+- **2026-09-26 — ruflo `hive-mind` probe (contained, read-only audit task;
+  observed and recorded by the queen, not independently reviewed; raw output
+  kept in the local session workspace):**
   `hive-mind init` / `spawn --claude` were run in a disposable worktree, with
   `--no-auto-permissions` and a tool allow-list excluding edits and GitHub
   mutations.
-  - **Result: not runnable here.** The external `claude -p` process reached a
+  - **Result, as the queen observed it: not runnable here.** The external
+    `claude -p` process reached a
     model 0 times (0 turns, 0 tokens) and exited after 246 s with
     `API Error: Unable to connect to API (ConnectionRefused)`. It is configured
     for a local API gateway that was not running. Starting or reconfiguring
