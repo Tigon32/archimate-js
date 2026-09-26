@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+* `FEAT`: add the experimental `archimate-js/extensions` API with a versioned
+  trusted-local manifest, deterministic atomic registry for property metadata
+  and lint rules, content-safe diagnostics, API-range validation, and explicit
+  reverse-order lifecycle disposal. No remote code loading or default viewer,
+  CLI, lint, export, or Modeler behavior changes.
 * `FIX`: align live diagram-js relationship rules with the shared domain
   decision service; reject reviewed disallowed tuples, defer unsupported
   gestures to strict DTO diagnostics, and retain structural relationship
