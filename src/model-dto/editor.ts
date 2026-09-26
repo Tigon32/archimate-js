@@ -1,5 +1,5 @@
 import type {
-  ElementDto, ModelDto, PointDto, PropertyValueDto, RelationshipDto, StyleDto, ViewConnectionDto, ViewNodeDto
+  ElementDto, ModelDto, PointDto, PropertyValueDto, RelationshipDto, ViewConnectionDto, ViewNodeDto
 } from './types.js';
 import type { LayoutPatch } from '../layout/types.js';
 import { exportModelDtoToMeff } from './meff-export.js';
@@ -21,17 +21,9 @@ import {
 import type {
   EditorOperation, EditorOperationAction, EditorOperationLog
 } from './editor-operation-log.js';
+import type { AttachedCanvas, CanvasPort, CanvasProjection } from './editor-canvas.js';
 
-/** The canvas receives values and identifiers, never mutable diagram-js objects. */
-export interface CanvasProjection {
-  viewId: string;
-  nodes: Array<{ id: string; parentId?: string; elementId?: string; kind: ViewNodeDto['kind'];
-    type?: string; name?: string; x: number; y: number; width: number; height: number;
-    label?: string; style?: StyleDto }>;
-  connections: Array<{ id: string; relationshipId?: string; sourceId?: string; targetId?: string;
-    type?: string; name?: string; waypoints: PointDto[]; label?: string; style?: StyleDto }>;
-  selectedIds: string[];
-}
+export type { CanvasPort, CanvasProjection } from './editor-canvas.js';
 
 export type EditorCommand =
   | { type: 'create-element'; viewId: string; element: ElementDto; node: ViewNodeDto }
@@ -57,16 +49,7 @@ export type EditorCommand =
 export type EditorEvent = { type: 'changed' | 'selection'; viewId: string; model: ModelDto;
   selectedIds: string[] };
 
-export interface DiagramAdapterOptions {
-  semanticProfile?: unknown;
-}
-
-export interface CanvasPort {
-  render(projection: CanvasProjection): void;
-  onCommand(handler: (command: EditorCommand) => void): () => void;
-  onSelection(handler: (ids: string[]) => void): () => void;
-  clear?(): void;
-}
+export interface DiagramAdapterOptions { semanticProfile?: unknown }
 
 function editConcept(model: ModelDto, command: Extract<EditorCommand,
   { type: 'concept-name' | 'concept-documentation' }>): void {
@@ -106,6 +89,18 @@ type RelationshipContext = {
   targetElementId?: string;
 };
 
+function contextOf(command: Extract<EditorCommand, { type: 'connect' | 'reconnect' }>): RelationshipContext {
+  return {
+    viewId: command.viewId,
+    connectionId: command.type === 'connect' ? command.connection.id : command.connectionId,
+    relationshipId: command.type === 'connect' ? command.connection.relationshipId : undefined,
+    sourceId: command.type === 'connect' ? command.connection.sourceId : command.sourceId,
+    targetId: command.type === 'connect' ? command.connection.targetId : command.targetId,
+    sourceElementId: command.type === 'connect' ? command.relationship?.sourceId : undefined,
+    targetElementId: command.type === 'connect' ? command.relationship?.targetId : undefined
+  };
+}
+
 function checkRelationshipIds(command: Extract<EditorCommand, { type: 'connect' | 'reconnect' }>): void {
   const identifiers = command.type === 'connect' ? [
     ['viewId', command.viewId], ['connectionId', command.connection.id],
@@ -120,15 +115,7 @@ function checkRelationshipIds(command: Extract<EditorCommand, { type: 'connect' 
   ] as const;
   const malformed = identifiers.find(([, id]) => id !== undefined && !isIdentifier(id));
   if (!malformed) return;
-  const context: RelationshipContext = {
-    viewId: command.viewId,
-    connectionId: command.type === 'connect' ? command.connection.id : command.connectionId,
-    relationshipId: command.type === 'connect' ? command.connection.relationshipId : undefined,
-    sourceId: command.type === 'connect' ? command.connection.sourceId : command.sourceId,
-    targetId: command.type === 'connect' ? command.connection.targetId : command.targetId,
-    sourceElementId: command.type === 'connect' ? command.relationship?.sourceId : undefined,
-    targetElementId: command.type === 'connect' ? command.relationship?.targetId : undefined
-  };
+  const context = contextOf(command);
   const [field, value] = malformed;
   if (field === 'connectionId' && typeof value === 'string') context.connectionId = value;
   if (field === 'relationshipId' && typeof value === 'string') context.relationshipId = value;
@@ -356,7 +343,7 @@ export class DiagramAdapter {
   private operationSequence = 0;
   private selection = new Map<string, string[]>();
   private listeners = new Set<(event: EditorEvent) => void>();
-  private canvases = new Map<CanvasPort, string>();
+  private canvases = new Map<CanvasPort, AttachedCanvas>();
   private readonly semanticProfile?: SemanticProfile;
 
   constructor(model: unknown, options: DiagramAdapterOptions = {}) {
@@ -432,15 +419,28 @@ export class DiagramAdapter {
   attach(viewId: string, port: CanvasPort): () => void {
     if (this.canvases.size || this.canvases.has(port)) invalid();
     port.render(this.project(viewId));
+    const binding: AttachedCanvas = { viewId, offCommand: () => {}, offSelection: () => {} };
     const offCommand = port.onCommand((command) => {
-      if (command.viewId !== viewId) invalid();
+      if (command.viewId !== binding.viewId) invalid();
       this.execute(command);
     });
-    let offSelection: () => void;
-    try { offSelection = port.onSelection((ids) => { this.select(viewId, ids); }); }
+    binding.offCommand = offCommand;
+    try { binding.offSelection = port.onSelection((ids) => { this.select(binding.viewId, ids); }); }
     catch (error) { offCommand(); port.clear?.(); throw error; }
-    this.canvases.set(port, viewId);
-    return () => { offCommand(); offSelection(); this.canvases.delete(port); port.clear?.(); };
+    this.canvases.set(port, binding);
+    return () => this.detach(port, binding);
+  }
+
+  switchAttachedView(port: CanvasPort, viewId: string): CanvasProjection {
+    const binding = this.canvases.get(port);
+    if (!binding) invalid();
+    const previousProjection = this.project(binding.viewId);
+    const projection = this.project(viewId);
+    const previousViewId = binding.viewId;
+    binding.viewId = viewId;
+    try { port.render(projection); }
+    catch (error) { binding.viewId = previousViewId; port.render(previousProjection); throw error; }
+    return projection;
   }
 
   select(viewId: string, ids: string[]): void {
@@ -525,10 +525,14 @@ export class DiagramAdapter {
   }
 
   private emit(type: EditorEvent['type'], viewId: string): void {
-    for (const [port, boundView] of this.canvases) if (boundView === viewId) {
+    for (const [port, binding] of this.canvases) if (binding.viewId === viewId) {
       port.render(this.project(viewId));
     }
     for (const listener of this.listeners) listener({ type, viewId,
       model: this.getModel(), selectedIds: [...(this.selection.get(viewId) || [])] });
+  }
+
+  private detach(port: CanvasPort, binding: AttachedCanvas): void {
+    binding.offCommand(); binding.offSelection(); this.canvases.delete(port); port.clear?.();
   }
 }

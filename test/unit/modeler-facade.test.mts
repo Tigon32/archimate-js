@@ -10,9 +10,13 @@ const syntheticXml = readFileSync('test/fixtures/synthetic/dto-export-view.xml',
 
 const state = vi.hoisted(() => {
   const model = { schemaVersion: 1, id: 'synthetic', elements: [], relationships: [],
-    diagnostics: [], views: [{ id: 'view-one', nodes: [], connections: [] }] };
+    diagnostics: [], views: [
+      { id: 'view-one', nodes: [], connections: [] },
+      { id: 'view-two', nodes: [], connections: [] }
+    ] };
   return {
     model,
+    activeViewId: 'view-one',
     destroyed: 0,
     opened: [] as string[],
     sessions: [] as Array<{ closed: number }>,
@@ -36,6 +40,7 @@ vi.mock('../../src/diagram-js-adapter/index.js', async () => {
 
 function resetState(): void {
   state.destroyed = 0;
+  state.activeViewId = 'view-one';
   state.opened = [];
   state.sessions = [];
   state.pendingOpens = [];
@@ -188,6 +193,41 @@ it('opens, delegates editor operations, emits plain events, and saves', async ()
     'selection:node-one',
     'viewport:4:5:0.75'
   ]);
+});
+
+it('navigates DTO views through the public facade without engine access', async () => {
+  const { default: Modeler } = await import('../../src/modeler/index.js');
+  const modeler = new Modeler({ container: {} as Element });
+  const events: string[] = [];
+  modeler.on('view-switched', (event) => events.push(`${event.type}:${event.viewId}`));
+  await modeler.open('<synthetic/>', { viewId: 'view-one' });
+  expect(modeler.getViews()).toEqual([{ id: 'view-one' }, { id: 'view-two' }]);
+  expect(modeler.getActiveViewId()).toBe('view-one');
+  expect(modeler.switchView('view-two')).toMatchObject({ viewId: 'view-two' });
+  expect(modeler.getActiveViewId()).toBe('view-two');
+  expect(state.activeViewId).toBe('view-two');
+  expect(events).toEqual(['view-switched:view-two']);
+  expect(state.engineGets).toEqual([]);
+  expect(() => modeler.switchView('deleted-view')).toThrow();
+  expect(modeler.getActiveViewId()).toBe('view-two');
+  modeler.destroy();
+});
+
+it('fails view navigation safely when the DTO session is unsupported or closed', async () => {
+  const { default: Modeler } = await import('../../src/modeler/index.js');
+  const modeler = new Modeler({ container: {} as Element });
+  expect(() => modeler.switchView('view-one')).toThrow(expect.objectContaining({
+    code: 'MODELER_SESSION_INELIGIBLE'
+  }));
+  state.eligible = false;
+  await modeler.open('<unsupported/>');
+  expect(() => modeler.switchView('view-one')).toThrow(expect.objectContaining({
+    code: 'MODELER_SESSION_INELIGIBLE'
+  }));
+  expect(() => modeler.getViews()).toThrow(expect.objectContaining({
+    code: 'MODELER_SESSION_INELIGIBLE'
+  }));
+  modeler.destroy();
 });
 
 it('closes previous sessions on reopen and destroys idempotently', async () => {

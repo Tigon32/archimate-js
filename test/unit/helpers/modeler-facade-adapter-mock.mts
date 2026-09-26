@@ -3,6 +3,7 @@ import { vi } from 'vitest';
 interface FacadeMockState {
   model: { schemaVersion: number; id: string; elements: unknown[]; relationships: unknown[];
     diagnostics: unknown[]; views: Array<{ id: string; nodes: unknown[]; connections: unknown[] }> };
+  activeViewId: string;
   destroyed: number;
   opened: string[];
   sessions: Array<{ closed: number }>;
@@ -38,21 +39,23 @@ class FakeSession {
       execute: (command: unknown) => {
         state.commands.push(command);
         state.listeners.forEach((listener) => listener({
-          type: 'changed', viewId: 'view-one', selectedIds: ['node-one'], model: state.model
+          type: 'changed', viewId: state.activeViewId, selectedIds: ['node-one'], model: state.model
         }));
       },
       undo: () => true,
       redo: () => true,
       select: (_viewId: string, ids: string[]) => state.listeners.forEach((listener) => listener({
-        type: 'selection', viewId: 'view-one', selectedIds: ids, model: state.model
+        type: 'selection', viewId: state.activeViewId, selectedIds: ids, model: state.model
       })),
-      project: () => ({ viewId: 'view-one', nodes: [], connections: [], selectedIds: ['node-one'] })
+      project: (viewId: string) => ({ viewId, nodes: [], connections: [], selectedIds: ['node-one'] }),
+      switchAttachedView: (_port: unknown, viewId: string) => this.switchView(viewId)
     };
   }
 
-  static async open(_modeler: unknown, xml: string): Promise<FakeSession> {
+  static async open(_modeler: unknown, xml: string, viewId?: string): Promise<FakeSession> {
     const state = FakeSession.state;
     state.opened.push(xml);
+    state.activeViewId = viewId || state.model.views[0]?.id || '';
     const session = new FakeSession();
     state.sessions.push(session);
     if (state.deferOpen) {
@@ -63,6 +66,14 @@ class FakeSession {
 
   save() { return { xml: '<model/>', dtoJson: '{"schemaVersion":1}' }; }
   close() { this.closed += 1; }
+  activeViewId() { return FakeSession.state.activeViewId; }
+  switchView(viewId: string) {
+    if (!this.editor || !FakeSession.state.model.views.some((view) => view.id === viewId)) {
+      throw new Error('The model DTO is invalid.');
+    }
+    FakeSession.state.activeViewId = viewId;
+    return { viewId, nodes: [], connections: [], selectedIds: [] };
+  }
 }
 
 export function createAdapterMock(state: FacadeMockState) {

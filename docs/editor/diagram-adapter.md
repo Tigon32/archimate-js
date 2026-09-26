@@ -21,6 +21,7 @@ if (result.eligible) {
   const editor = result.editor;
   const detach = editor.attach('view-one', canvasPort);
   editor.execute({ type: 'move', viewId: 'view-one', nodeId: 'node-one', x: 120, y: 80 });
+  editor.switchAttachedView(canvasPort, 'view-two');
   editor.undo();
   const dtoJson = editor.serialize();
   const xmlResult = editor.exportMeff();
@@ -96,7 +97,12 @@ const detach = editor.attach(activeViewId, port);
 
 It draws one active view from plain projection values, maps selection back to
 view IDs, and clears canvas elements and listeners and restores modeling methods
-on detach. Each supported move, resize, label, relationship, or removal gesture becomes one DTO
+on detach. `switchAttachedView(port, viewId)` validates the selected DTO view,
+reprojects it onto the same attached canvas, and reroutes the existing
+ID-only command and selection listeners to that view without exposing engine
+objects. An invalid, deleted, or unsupported target view is rejected before the
+binding changes, so the prior view stays active and no partial canvas state is
+advertised. Each supported move, resize, label, relationship, or removal gesture becomes one DTO
 command; undo and redo rerender the same active view from DTO history. `move`
 uses absolute diagram-space `x`/`y` coordinates for one node.
 `move-many` uses the same absolute coordinate shape for each entry:

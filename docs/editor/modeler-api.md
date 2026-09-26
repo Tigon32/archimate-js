@@ -16,6 +16,9 @@ if (opened.eligible) {
   modeler.execute({ type: 'move', viewId: opened.viewId!, nodeId: 'node-component', x: 40, y: 50 });
   modeler.execute({ type: 'move-many', viewId: opened.viewId!,
     moves: [{ nodeId: 'node-component', x: 60, y: 70 }, { nodeId: 'node-service', x: 260, y: 70 }] });
+  const views = modeler.getViews();
+  const secondView = views.find((view) => view.id !== opened.viewId);
+  if (secondView) modeler.switchView(secondView.id);
   const { patch, metrics } = await modeler.optimizeDiagram();
   // modeler.undo() reverses the entire optimization; modeler.redo() reapplies it.
   const { xml: meffXml, dtoJson } = modeler.save();
@@ -66,6 +69,9 @@ modeler.redo();
 modeler.select(['node-component']);
 const selectedIds = modeler.getSelection();
 const projection = modeler.project();
+const views = modeler.getViews();
+const activeViewId = modeler.getActiveViewId();
+const switchedProjection = modeler.switchView('view-two');
 modeler.fitView();
 modeler.fitSelection();
 modeler.zoom(0.8);
@@ -141,6 +147,20 @@ diagram, `fitSelection()` fits the current selection or falls back to the active
 diagram, `zoom(level)` accepts a numeric scale or `'fit'`, `getZoom()` returns
 the current scale, and `panBy(dx, dy)` scrolls the viewport by screen pixels.
 
+`getViews()` returns the eligible DTO view IDs and optional names.
+`getActiveViewId()` returns the currently attached DTO view. `switchView(viewId)`
+validates and projects the requested DTO view through the adapter onto the
+single attached canvas, returns that `CanvasProjection`, and preserves
+per-view geometry and ID-based selection. Invalid, deleted, or otherwise
+unprojectable view IDs throw `MODELER_SESSION_INELIGIBLE`/DTO validation errors
+before the facade changes its active view. Undo and redo remain model-level
+history operations across views: a cross-view undo may affect a non-visible
+view, and switching back projects that view's restored geometry and selection.
+The navigation API is headless and adds no `.am-app` or `.am-ui-*` DOM surface;
+therefore #136 theme, forced-colors, reduced-motion, and focus gates continue
+to be covered by the existing app-shell/modeler theme tests rather than a new
+browser control.
+
 Subscribe with `on(type, handler)`. The returned function unsubscribes the
 handler.
 
@@ -160,6 +180,7 @@ Events are plain data:
 | --- | --- |
 | `opened` | `{ eligible, reasons, viewId? }` |
 | `closed` | no model payload |
+| `view-switched` | `{ viewId, selectedIds, model }` DTO data |
 | `changed` | `{ viewId, selectedIds, model }` DTO data |
 | `selection` | `{ viewId, selectedIds, model }` DTO data |
 | `viewport` | `{ x, y, scale }` viewport data plus event `type` |
