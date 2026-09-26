@@ -102,6 +102,7 @@ export class DiagramJsCanvasPort implements CanvasPort {
   private listening = false;
   private readonly restoreModeling: Array<() => void> = [];
   private viewId = '';
+  private semanticNameNodeId?: string;
   private readonly onSelectionChanged = (event: unknown): void => {
     if (this.rendering) return;
     const selected = event && typeof event === 'object' &&
@@ -113,6 +114,19 @@ export class DiagramJsCanvasPort implements CanvasPort {
   };
 
   constructor(private readonly services: DiagramJsCanvasServices) {}
+
+  beginSemanticNameEdit(nodeId: string): void {
+    if (!this.currentNodes.get(nodeId)?.elementId) invalid();
+    this.semanticNameNodeId = nodeId;
+    this.services.eventBus.on('directEditing.complete', this.clearSemanticNameEdit);
+    this.services.eventBus.on('directEditing.cancel', this.clearSemanticNameEdit);
+  }
+
+  private readonly clearSemanticNameEdit = (): void => {
+    this.semanticNameNodeId = undefined;
+    this.services.eventBus.off('directEditing.complete', this.clearSemanticNameEdit);
+    this.services.eventBus.off('directEditing.cancel', this.clearSemanticNameEdit);
+  };
 
   render(projection: CanvasProjection): void {
     this.rendering = true;
@@ -163,6 +177,7 @@ export class DiagramJsCanvasPort implements CanvasPort {
     this.installTopology(modeling, handler, install);
     this.restoreModeling.push(...restore);
     return () => {
+      this.clearSemanticNameEdit();
       for (const restoreMethod of restore.reverse()) restoreMethod();
       this.restoreModeling.splice(0, this.restoreModeling.length,
         ...this.restoreModeling.filter((restoreMethod) => !restore.includes(restoreMethod)));
@@ -278,6 +293,14 @@ export class DiagramJsCanvasPort implements CanvasPort {
     handler: (command: EditorCommand) => void): undefined {
     const id = this.elementId(element);
     if (!this.currentNodes.has(id) && !this.currentConnections.has(id) || typeof label !== 'string') invalid();
+    const semanticNameNodeId = this.semanticNameNodeId;
+    if (semanticNameNodeId === id) {
+      const elementId = this.currentNodes.get(id)?.elementId;
+      this.clearSemanticNameEdit();
+      if (!elementId) invalid();
+      handler({ type: 'concept-name', viewId: this.viewId, conceptId: elementId, name: label });
+      return undefined;
+    }
     handler({ type: 'label', viewId: this.viewId, itemId: id, label });
     return undefined;
   }
@@ -385,6 +408,7 @@ export class DiagramJsCanvasPort implements CanvasPort {
       style: rendererStyle(node.style),
       businessObject: {
         $type: 'archimate:Node',
+        $instanceOf: (type: string) => type === 'archimate:Node',
         id: node.id,
         type: meffType === 'Label' ? 'Note' : meffType,
         meffType,
@@ -412,6 +436,7 @@ export class DiagramJsCanvasPort implements CanvasPort {
       style: rendererStyle(connection.style),
       businessObject: {
         $type: 'archimate:Connection',
+        $instanceOf: (type: string) => type === 'archimate:Connection',
         id: connection.id,
         meffType,
         style: modelStyle(connection.style),

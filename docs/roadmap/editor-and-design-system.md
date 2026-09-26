@@ -17,6 +17,11 @@ guidance by default, with opt-in strictness for teams that enforce a viewpoint.
 Do not publish the extracted `spec/` or `catalog/` content or a copied viewpoint
 catalog in this repository.
 
+The searchable concept picker is the primary semantic creation workflow;
+the static diagram-js palette remains available as a secondary drag/create
+affordance. Picker options come from the project-owned concept registry rather
+than renderer shape names.
+
 ## Design system
 
 The public application is a Webpack-built browser package with an SVG renderer
@@ -115,9 +120,11 @@ criteria:
 2. **Core editing:** select and navigate; create, move, resize, delete, connect,
    and reconnect; enforce ArchiMate relationship rules; edit labels and
    properties; support undo/redo for every persistent action.
-3. **Modeling workflow:** provide palette/search, model tree, properties
-   inspector, multiple views, keyboard access, and viewpoint feedback. Viewpoint
-   checks default to warnings; team policies may opt into stricter validation.
+3. **Modeling workflow:** provide search-first concept creation with the
+   existing palette retained as a secondary drag/create workflow, model tree,
+   properties inspector, multiple views, keyboard access, and viewpoint
+   feedback. Viewpoint checks default to warnings; team policies may opt into
+   stricter validation.
 4. **Diagram productivity:** clipboard, replacement, alignment, snapping, route
    editing, reversible optimize/layout, and large-view performance work.
 5. **Quality gate:** browser interaction tests for keyboard and pointer flows,
