@@ -75,6 +75,8 @@
     "test:performance:determinism": "vitest run test/unit/performance-benchmark.test.mts --coverage.enabled=false",
     "test:performance:node": "run-s compile:validator test:performance:node:run",
     "test:performance:node:run": "node test/performance/benchmark.mts --smoke --assert --output=test-results/performance-node.json",
+    "test:performance:dto-diff": "run-s compile:model-dto test:performance:dto-diff:run",
+    "test:performance:dto-diff:run": "node test/performance/dto-diff-benchmark.mts --assert --output=test-results/performance-dto-diff.json",
     "test:performance:browser": "run-s compile:browser compile:model-dto compile:model-dto:browser compile:read-only-example test:performance:browser:run",
     "test:performance:browser:run": "node test/performance/browser-benchmark.mts --assert --output=test-results/performance-browser.json",
     "test:performance:smoke": "run-s test:performance:node test:performance:browser",
