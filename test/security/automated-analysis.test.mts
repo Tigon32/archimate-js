@@ -75,6 +75,7 @@ assert.deepEqual(record(dependencySteps[1].with, 'dependency-review.with'), {
   'fail-on-severity': 'high',
   'fail-on-scopes': 'runtime, development',
   'allow-licenses': 'MIT, MIT-0, ISC, Apache-2.0, BSD-2-Clause, BSD-3-Clause, MPL-2.0, CC0-1.0, OFL-1.1, CC-BY-3.0, CC-BY-4.0, BlueOak-1.0.0',
+  'allow-dependencies-licenses': 'pkg:npm/elkjs@0.12.0',
   'license-check': true,
   'vulnerability-check': true,
   'warn-only': false,
@@ -82,6 +83,18 @@ assert.deepEqual(record(dependencySteps[1].with, 'dependency-review.with'), {
 });
 assert.equal(record(dependencySteps[1].with, 'dependency-review.with')['allow-licenses'],
   APPROVED_LICENSES.join(', '));
+const exceptions = JSON.parse(readFileSync(new URL('../../docs/security/dependency-exceptions.json', import.meta.url), 'utf8'));
+assert.deepEqual(exceptions, {
+  schemaVersion: 1,
+  exceptions: [{
+    path: 'node_modules/elkjs',
+    version: '0.12.0',
+    license: 'EPL-2.0 OR GPL-3.0-or-later',
+    owner: 'Tigon32',
+    reason: 'ELK Layered is required for compound layout and uses the EPL-2.0 license option; the GPL-3.0-or-later option is declined. Scope this exception to this exact package version.',
+    expiresOn: '2026-12-25'
+  }]
+});
 assert.deepEqual(record(dependencySteps[0].with, 'dependency checkout.with'), { 'fetch-depth': 0 });
 assert.deepEqual(dependencySteps[2], {
   name: 'Reject unreviewed dependency license metadata',

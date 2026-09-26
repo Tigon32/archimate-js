@@ -48,6 +48,9 @@ an exact package purl to `allow-dependencies-licenses`; adding a license to
 the global set would approve unrelated packages. The two exception records
 must be removed or renewed after expiry. High/critical advisory exceptions
 need a separately reviewed, expiring policy change; none are configured.
+The current detected-license exception is limited to `pkg:npm/elkjs@0.12.0`
+under its EPL-2.0 option and expires on 2026-12-25; the global approved-license
+set remains unchanged.
 This check is an accidental-introduction gate, not proof of license legality.
 
 ## Workflow boundary
