@@ -159,7 +159,7 @@ Usage figures come from the harness's per-session usage records (premium units, 
     (#390); a hover color compared against the wrong background, a selection
     check that passed when nothing rendered, and an element mistaken for the
     connection outline (#389); and an unsourced, mis-attributed baseline
-    (#388). Review cycles to MERGE: #388 3, #391 2, #390 4, #389 at least 3.
+    (#388). Review cycles to MERGE: #388 3, #391 2, #390 4, #389 4.
     Every worker was resumed with its context intact (`write_agent`) rather
     than re-spawned.
   - **Local runs miss some CI gates.** PR #392 failed CI once because
