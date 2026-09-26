@@ -49,6 +49,7 @@ review_after:
 - [diagram-js 15 core migration](diagram-js-15-core-2026-09-25.md)
 - [ELK.js licensing and provenance review](elkjs-license-and-provenance.md)
 - [Design Tokens 2025.10 implementation](dtcg-2025-10-implementation.md)
+- [Modeler chrome and canvas interaction contrast](modeler-theme-contrast-2026-09-26.md)
 - [Read-only shell resize and reflow check](read-only-reflow-browser-2026-09-24.md)
 - [Rendered read-only app contrast check](theme-contrast-browser-2026-09-24.md)
 - [Theme accessibility results matrix for #136](theme-accessibility-matrix-2026-09-26.md)
