@@ -37,6 +37,9 @@ const COMMAND_FIELDS: Record<string, { required: string[]; optional?: string[] }
   'create-related-element': {
     required: ['type', 'viewId', 'element', 'node', 'relationship', 'connection']
   },
+  'duplicate-selection': {
+    required: ['type', 'viewId', 'elements', 'nodes', 'relationships', 'connections']
+  },
   move: { required: ['type', 'viewId', 'nodeId', 'x', 'y'] },
   'move-many': { required: ['type', 'viewId', 'moves'] },
   resize: { required: ['type', 'viewId', 'nodeId', 'x', 'y', 'width', 'height'] },
@@ -255,6 +258,18 @@ function validateCreateCommand(command: Record<string, unknown>): void {
     nodePayload(command.node);
     elementPayload(command.relationship, true);
     connectionPayload(command.connection);
+  } else if (command.type === 'duplicate-selection') {
+    if (!Array.isArray(command.elements) || !Array.isArray(command.nodes) ||
+        !Array.isArray(command.relationships) || !Array.isArray(command.connections)) reject();
+    command.elements.forEach((item) => elementPayload(item));
+    command.nodes.forEach((value) => {
+      const item = object(value);
+      exactKeys(item, ['node', 'parentId'], ['node']);
+      nodePayload(item.node);
+      if (item.parentId !== undefined) stringValue(item.parentId);
+    });
+    command.relationships.forEach((item) => elementPayload(item, true));
+    command.connections.forEach(connectionPayload);
   } else reject();
 }
 
@@ -334,7 +349,7 @@ function validateSimpleCommand(command: Record<string, unknown>): void {
 
 function validateCommandPayload(command: Record<string, unknown>): void {
   if (command.type === 'create-element' || command.type === 'create-relationship' ||
-      command.type === 'create-related-element') {
+      command.type === 'create-related-element' || command.type === 'duplicate-selection') {
     validateCreateCommand(command);
   } else if (command.type === 'connect' || command.type === 'reconnect') {
     validateConnectionCommand(command);

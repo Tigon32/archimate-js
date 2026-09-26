@@ -8,6 +8,7 @@ import { layoutView, type LayoutDiagnostic, type LayoutOptions,
   type LayoutPatch, type LayoutResult } from '../layout/index.js';
 import {
   attachConceptPicker,
+  attachProductivityToolbar,
   createDiagramJsCapabilities,
   createDiagramJsViewport,
   createDiagramJsModeler,
@@ -35,6 +36,12 @@ import {
   RelationshipChooser
 } from './relationship-chooser.js';
 import type { QuickCreateCandidate, RelationshipChoice } from './relationship-chooser.js';
+import {
+  alignSelectionCommand,
+  distributeSelectionCommand,
+  duplicateSelectionCommand
+} from './productivity.js';
+import type { Alignment, DistributionAxis } from './productivity.js';
 
 export { DiagramJsCanvasPort, DtoModelerSession };
 export { EditorOperationLogError } from '../model-dto/editor-operation-log.js';
@@ -45,6 +52,7 @@ export type {
   EditorOperation, EditorOperationAction, EditorOperationLog, EditorOperationLogErrorCode
 } from '../model-dto/editor-operation-log.js';
 export type { LayoutOptions, LayoutPatch, LayoutMetrics } from '../layout/index.js';
+export type { Alignment, DistributionAxis } from './productivity.js';
 
 export interface ModelerOptions {
   container: Element;
@@ -117,6 +125,7 @@ export default class Modeler {
   private viewId?: string;
   private offEditor?: () => void;
   private offConceptPicker?: () => void;
+  private offProductivityToolbar?: () => void;
   private activeRelationshipChooser?: RelationshipChooser;
   private activeQuickCreateChooser?: QuickCreateChooser;
   private destroyed = false;
@@ -141,7 +150,8 @@ export default class Modeler {
     const session = await DtoModelerSession.open(this.modeler, xml, options.viewId,
       (request) => this.handleRelationshipTypeRequest(request),
       (request) => this.handleQuickCreateRequest(request),
-      this.semanticProfile);
+      this.semanticProfile,
+      (ids, offset) => this.duplicateIds(ids, offset));
     if (this.destroyed || generation !== this.generation) {
       session.close();
       throw new ModelerError(this.destroyed ? 'MODELER_DESTROYED' : 'MODELER_OPEN_SUPERSEDED');
@@ -151,7 +161,15 @@ export default class Modeler {
     if (session.editor) {
       const editor = session.editor;
       this.offEditor = editor.subscribe((event) => this.emitEditor(event));
-      if (this.viewId) this.attachConceptPicker(session, editor, this.viewId);
+      if (this.viewId) {
+        this.attachConceptPicker(session, editor, this.viewId);
+        this.offProductivityToolbar = attachProductivityToolbar(this.modeler, {
+          duplicate: (offset) => this.duplicateSelection(offset),
+          align: (alignment) => this.alignSelection(alignment),
+          distribute: (axis) => this.distributeSelection(axis),
+          deleteSelection: () => this.deleteSelection()
+        });
+      }
     }
     const result = { eligible: session.eligible, reasons: session.reasons, viewId: this.viewId };
     this.emit({ type: 'opened', ...result });
@@ -284,6 +302,31 @@ export default class Modeler {
     return this.project().selectedIds;
   }
 
+  duplicateSelection(offset = { x: 20, y: 20 }): string[] {
+    return this.duplicateIds(this.getSelection(), offset);
+  }
+
+  alignSelection(alignment: Alignment): boolean {
+    const command = alignSelectionCommand(this.project(), alignment);
+    if (!command) return false;
+    this.editor().execute(command);
+    return true;
+  }
+
+  distributeSelection(axis: DistributionAxis): boolean {
+    const command = distributeSelectionCommand(this.project(), axis);
+    if (!command) return false;
+    this.editor().execute(command);
+    return true;
+  }
+
+  deleteSelection(): boolean {
+    const itemIds = this.getSelection();
+    if (!itemIds.length) return false;
+    this.editor().execute({ type: 'delete-many', viewId: this.activeViewId(), itemIds });
+    return true;
+  }
+
   project(): CanvasProjection {
     return this.editor().project(this.activeViewId());
   }
@@ -371,6 +414,8 @@ export default class Modeler {
     this.offEditor = undefined;
     this.offConceptPicker?.();
     this.offConceptPicker = undefined;
+    this.offProductivityToolbar?.();
+    this.offProductivityToolbar = undefined;
     this.activeRelationshipChooser?.close(false);
     this.activeRelationshipChooser = undefined;
     this.activeQuickCreateChooser?.close(false);
@@ -391,6 +436,17 @@ export default class Modeler {
     this.assertUsable();
     if (!this.session?.editor) throw new ModelerError('MODELER_SESSION_INELIGIBLE');
     return this.session;
+  }
+
+  private duplicateIds(ids: string[], offset: { x: number; y: number }): string[] {
+    const editor = this.editor();
+    const command = duplicateSelectionCommand(editor.getModel(),
+      { ...this.project(), selectedIds: ids }, createConceptIdFactory(editor), offset);
+    if (!command) return [];
+    editor.execute(command);
+    const createdIds = command.nodes.map((entry) => entry.node.id);
+    editor.select(this.activeViewId(), createdIds);
+    return createdIds;
   }
 
   private activeViewId(): string {

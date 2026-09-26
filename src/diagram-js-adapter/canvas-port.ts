@@ -70,6 +70,8 @@ export interface QuickCreateRequest {
 }
 
 export type QuickCreateRequester = (request: QuickCreateRequest) => void;
+export type DuplicateGestureRequester =
+  (ids: string[], offset: { x: number; y: number }) => void;
 
 /** Minimal service surface accepted from a live Viewer or Modeler instance. */
 export interface DiagramJsCanvasServices {
@@ -122,6 +124,7 @@ export class DiagramJsCanvasPort implements CanvasPort {
   private readonly restoreModeling: Array<() => void> = [];
   private viewId = '';
   private semanticNameNodeId?: string;
+  private altPressed = false;
   private readonly onSelectionChanged = (event: unknown): void => {
     if (this.rendering) return;
     const selected = event && typeof event === 'object' &&
@@ -134,7 +137,8 @@ export class DiagramJsCanvasPort implements CanvasPort {
 
   constructor(private readonly services: DiagramJsCanvasServices,
     private readonly requestRelationshipType?: RelationshipTypeRequester,
-    private readonly requestQuickCreate?: QuickCreateRequester) {}
+    private readonly requestQuickCreate?: QuickCreateRequester,
+    private readonly requestDuplicate?: DuplicateGestureRequester) {}
 
   beginSemanticNameEdit(nodeId: string): void {
     if (!this.currentNodes.get(nodeId)?.elementId) invalid();
@@ -197,6 +201,7 @@ export class DiagramJsCanvasPort implements CanvasPort {
       }) as (...args: never[]) => unknown);
     this.installTopology(modeling, handler, install);
     this.installQuickCreateListener(handler, restore);
+    this.installAltDuplicate(restore);
     this.restoreModeling.push(...restore);
     return () => {
       this.clearSemanticNameEdit();
@@ -250,6 +255,38 @@ export class DiagramJsCanvasPort implements CanvasPort {
     };
     this.services.eventBus.on('connect.ended', 2000, onConnectEnd);
     restore.push(() => this.services.eventBus.off('connect.ended', onConnectEnd));
+  }
+
+  private installAltDuplicate(restore: Array<() => void>): void {
+    const requestDuplicate = this.requestDuplicate;
+    if (!requestDuplicate) return;
+    const onEnd = (event: unknown): false | undefined => {
+      if (!event || typeof event !== 'object') return undefined;
+      const data = event as {
+        context?: { shapes?: unknown[]; delta?: { x?: unknown; y?: unknown } };
+        originalEvent?: { altKey?: boolean }
+      };
+      const delta = data.context?.delta;
+      if (!(data.originalEvent?.altKey || this.altPressed) ||
+          !Array.isArray(data.context?.shapes) ||
+          !Number.isFinite(delta?.x) || !Number.isFinite(delta?.y)) return undefined;
+      const ids = data.context.shapes.filter(isElement).map((shape) => shape.id!)
+        .filter((id) => this.currentNodes.has(id));
+      if (!ids.length) return undefined;
+      requestDuplicate(ids, { x: delta!.x as number, y: delta!.y as number });
+      return false;
+    };
+    const onKeyDown = (event: KeyboardEvent): void => { if (event.key === 'Alt') this.altPressed = true; };
+    const clearAlt = (): void => { this.altPressed = false; };
+    this.services.eventBus.on('shape.move.end', 2000, onEnd);
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', clearAlt);
+    window.addEventListener('blur', clearAlt);
+    restore.push(() => this.services.eventBus.off('shape.move.end', onEnd));
+    restore.push(() => document.removeEventListener('keydown', onKeyDown));
+    restore.push(() => document.removeEventListener('keyup', clearAlt));
+    restore.push(() => window.removeEventListener('blur', clearAlt));
+    restore.push(clearAlt);
   }
 
   onSelection(handler: (ids: string[]) => void): () => void {

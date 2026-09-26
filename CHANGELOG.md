@@ -40,6 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unsupported and disallowed combinations are reported distinctly, and
   quick-create is one reversible DTO command with no mutation on cancel. The
   reviewed relationship profile remains limited to 23 rows.
+* `FEAT`: add a DTO-backed selection toolbar with semantic duplication,
+  Alt/Option-drag duplicate, alignment, distribution, and delete actions while
+  retaining diagram-js connector handles. Minimap adoption remains deferred
+  pending application-shell integration.
 * `DEPRECATION`: `DiagramJsCanvasPort`, `DtoModelerSession`, and related diagram-js adapter service/result types remain available from `archimate-js/model-dto` but are deprecated pending the EE-M4 `archimate-js/modeler` entry.
 
 ## 0.0.4
