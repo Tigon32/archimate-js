@@ -48,6 +48,13 @@ if an earlier `open()` finishes after a newer `open()`, `close()`, or
 `destroy()`, the just-created session is closed and the earlier promise rejects
 with `MODELER_OPEN_SUPERSEDED` or `MODELER_DESTROYED`.
 
+Live relationship gestures use the same reviewed domain decision service as
+DTO commands. Known disallowed tuples are blocked at the RuleProvider; an
+unsupported tuple is deferred so the DTO command can return its structured
+`DTO_RELATIONSHIP_UNSUPPORTED` diagnostic. Unsupported does not mean allowed:
+the DTO command remains strict, and the currently reviewed profile is a
+conservative subset with broader registry work tracked by #102.
+
 ## Operations and events
 
 Persistent edits use serializable `EditorCommand` values:

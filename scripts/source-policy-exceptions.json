@@ -1,9 +1,19 @@
 {
   "exceptions": [
     {
+      "path": "lib/features/rules/ArchimateRules.js",
+      "reason": "Issue #349 changes the existing legacy diagram-js RuleProvider entry to route semantic checks to the shared domain service; migrating the unrelated legacy gesture helpers is out of scope.",
+      "removalCondition": "Migrate the RuleProvider and its engine-specific helpers to TypeScript when the legacy diagram-js modules are decomposed under EE-M13."
+    },
+    {
       "path": "lib/util/RelationshipUtil.js",
       "reason": "Issue #305 keeps a generated JavaScript artifact at the legacy import path so existing browser modules use the typed MTS implementation without a broad caller migration.",
       "removalCondition": "Remove after the remaining legacy canvas callers migrate to typed modules and the browser bundle can import the typed utility directly."
+    },
+    {
+      "path": "lib/util/RelationshipSemanticsAdapter.js",
+      "reason": "Issue #349 emits this narrow legacy JavaScript bridge from typed MTS so RuleProvider can use the compiled domain service without importing TypeScript at runtime.",
+      "removalCondition": "Remove when the legacy RuleProvider can import the typed adapter directly after its TypeScript migration under EE-M13."
     },
     {
       "path": "lib/draw/ArchimateRenderer.js",

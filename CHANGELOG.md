@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+* `FIX`: align live diagram-js relationship rules with the shared domain
+  decision service; reject reviewed disallowed tuples, defer unsupported
+  gestures to strict DTO diagnostics, and retain structural relationship
+  connections. The reviewed profile remains bounded under #102; no full
+  ArchiMate matrix conformance is claimed.
 * `FEAT`: add deterministic versioned editor operation logs with stable
   caller-scoped operation IDs, deep-copied command payloads, atomic replay,
   and explicit undo/redo entries; no network or distributed synchronization.

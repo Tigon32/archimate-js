@@ -154,6 +154,15 @@ ship TypeScript declarations and a packed-consumer test.
 the engine-neutral `archimate-js/model-dto` entry until the EE-M4 modeler entry
 is introduced.
 
+**EE-M7 status:** Implemented. Element-to-element RuleProvider decisions use
+the shared domain relationship service: reviewed `allowed` tuples pass,
+reviewed `disallowed` tuples are rejected, and `unsupported` tuples defer to
+the strict DTO command for a structured diagnostic. Relationship/junction
+endpoint and note/line behavior remains diagram-js structural compatibility,
+not an expanded semantic profile. The reviewed service is a conservative
+23-row subset; broader registry/profile work remains under #102, with
+diagnostic feedback from #333.
+
 ## Miro-like canvas interaction
 
 **EE-M8 status:** Implemented. The legacy diagram-js modeler now composes the
@@ -326,7 +335,7 @@ Dependency reversals or legacy couplings today:
 | `BaseViewer.saveXML()` | Serializes moddle mutated by legacy command handlers. | EE-M13 |
 | `lib/features/modeling/cmd/*` | Mutates moddle/businessObject state through diagram-js commands. | EE-M13 |
 | `lib/Modeler.ts` | Direct legacy `optimizeDiagram` reads `canvas`, `elementRegistry`, and executes `commandStack`; the public facade uses DTO layout intents. | EE-M6 (legacy compatibility retained) |
-| `lib/features/rules/ArchimateRules.js` | Gesture authority lives in diagram-js `RuleProvider`. | EE-M7 |
+| `lib/features/rules/ArchimateRules.js` | Engine gesture compatibility checks remain in the RuleProvider; semantic tuple decisions use the domain service. | EE-M7 (implemented) |
 | Renderer and feature modules reading `businessObject` | Rendering depends on moddle objects attached to shapes. | EE-M13 |
 
 ## Application shell
@@ -397,7 +406,7 @@ a longer feature list.
 | `lib/BaseViewer.js` | Extends diagram-js `Diagram` and owns legacy viewer lifecycle. | EE-M13 |
 | `lib/import/Importer.js` | Imports XML into moddle/diagram-js projection. | EE-M13 |
 | `lib/features/modeling/cmd/*` | Legacy command handlers mutate `businessObject` state. | EE-M13 |
-| `lib/features/rules/ArchimateRules.js` | RuleProvider is still live gesture authority. | EE-M7 |
+| `lib/features/rules/ArchimateRules.js` | Retains structural gesture checks while delegating semantic tuple decisions. | EE-M7 (implemented) |
 | `lib/draw/*` and renderer features | Renderer reads `businessObject` on shapes. | EE-M13 |
 | `lib/layout/optimize-diagram.mjs` | Legacy layout patch applies through diagram-js command context. | EE-M6 |
 
@@ -409,7 +418,7 @@ a longer feature list.
 | Dual moddle/DTO state causes save divergence. | High | High | Keep DTO sessions explicit; converge save path in EE-M13; fail closed on ineligible imports. |
 | Moving exports breaks early adopters. | Medium | Medium | Use re-export deprecation in EE-M3 and document migration. |
 | Multi-select/batch commands introduce nondeterminism. | Medium | High | Make commands serializable, ordered, validated, and covered by headless contract tests. |
-| Gesture affordances disagree with domain validation. | Medium | High | Route RuleProvider decisions to domain service in EE-M7. |
+| Gesture affordances disagree with domain validation. | Medium | High | RuleProvider delegates to the domain service in EE-M7; unsupported edits remain strict at the DTO boundary. |
 | ELK.js licensing blocks distribution. | Medium | Medium | Review license path before implementation; keep strategy optional. |
 | Miro-like interactions leak engine objects into shell. | Medium | High | Enforce import boundaries and contract tests before UI work scales. |
 | Engine escape hatch becomes de facto public API. | Medium | Medium | Mark unstable, test public APIs without it, and avoid docs examples that require it. |

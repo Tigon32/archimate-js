@@ -2,6 +2,8 @@
 // SYNTHETIC: Browser contract uses checked-in synthetic MEFF and generated canvas service doubles only.
 // @ts-ignore The compiled DTO entry exists after compile:model-dto.
 import { DiagramAdapter, DiagramJsCanvasPort, importMeffToModelDto } from '../../dist/model-dto/index.js';
+// @ts-ignore Legacy RuleProvider is loaded through the browser compatibility bundle.
+import ArchimateRules from '../../lib/features/rules/ArchimateRules.js';
 import {
   createCanvasPortContractCases, summarizeProjection
 } from '../contract/canvas-port-contract.mjs';
@@ -98,6 +100,8 @@ function createHarness() {
 function harnessFromServices(port, shapes, connections, selection, modeling) {
   return {
     port,
+    emitConnect: (sourceId, targetId, attributes) =>
+      modeling.createConnection(shapes.get(sourceId), shapes.get(targetId), attributes),
     emitCommand: (command) => emitModelingCommand(command, shapes, modeling),
     emitBatchMove: (ids, delta) =>
       modeling.moveElements(ids.map((id) => shapes.get(id)).filter(Boolean), delta),
@@ -174,4 +178,84 @@ async function runCanvasPortContract(fixtureXml) {
   return names;
 }
 
-Object.assign(window, { CanvasPortContractTest: { runCanvasPortContract } });
+function ruleNode(type) {
+  return {
+    type,
+    businessObject: {
+      type: 'Element',
+      $instanceOf: (expected) => expected === 'archimate:Node'
+    }
+  };
+}
+
+function reconnectRuleDecision(sourceType, targetType, relationshipType) {
+  const callbacks = new Map();
+  const rules = Object.create(ArchimateRules.prototype);
+  rules.addRule = (action, callback) => callbacks.set(action, callback);
+  rules.init();
+  return callbacks.get('connection.reconnect')({
+    source: ruleNode(sourceType),
+    target: ruleNode(targetType),
+    connection: { type: relationshipType }
+  });
+}
+
+function semanticDtoHarness(fixtureXml) {
+  const model = importMeffToModelDto(fixtureXml);
+  model.elements.find((item) => item.id === 'component-one').type = 'archimate:ApplicationComponent';
+  model.elements.find((item) => item.id === 'service-two').type = 'archimate:ApplicationFunction';
+  model.relationships = [];
+  model.views[0].connections = [];
+  const editor = new DiagramAdapter(model);
+  const harness = createHarness();
+  const detach = editor.attach('view-dto-export', harness.port);
+  return { editor, harness, detach };
+}
+
+function rejectedConnectionResult(editor, harness) {
+  const before = editor.serialize();
+  let code;
+  try {
+    harness.emitConnect('node-component', 'node-service', {
+      id: 'browser-unsupported-connection',
+      type: 'Serving'
+    });
+  } catch (error) {
+    code = error?.diagnostic?.code;
+  }
+  return {
+    code,
+    atomic: editor.serialize() === before,
+    noHistory: editor.undo() === false
+  };
+}
+
+function runRelationshipDecisionContract(fixtureXml) {
+  const allowedRule = reconnectRuleDecision('ApplicationComponent', 'ApplicationFunction', 'Assignment');
+  const disallowedRule = reconnectRuleDecision('DataObject', 'ApplicationFunction', 'Access');
+  const unsupportedRule = reconnectRuleDecision('ApplicationComponent', 'ApplicationFunction', 'Serving');
+  const { editor, harness, detach } = semanticDtoHarness(fixtureXml);
+  const before = editor.serialize();
+  harness.emitConnect('node-component', 'node-service', {
+    id: 'browser-supported-connection',
+    type: 'Assignment'
+  });
+  const supportedCommitted = editor.getModel().relationships.some((item) =>
+    item.type === 'archimate:Assignment' &&
+    item.sourceId === 'component-one' &&
+    item.targetId === 'service-two'
+  );
+  const supportedUndo = editor.undo() && editor.serialize() === before;
+  const unsupportedResult = rejectedConnectionResult(editor, harness);
+  detach();
+  return {
+    allowedRule,
+    disallowedRule,
+    unsupportedDeferred: unsupportedRule === undefined,
+    supportedCommitted,
+    supportedUndo,
+    unsupportedResult
+  };
+}
+
+Object.assign(window, { CanvasPortContractTest: { runCanvasPortContract, runRelationshipDecisionContract } });
