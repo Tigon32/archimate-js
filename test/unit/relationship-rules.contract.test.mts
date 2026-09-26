@@ -116,6 +116,17 @@ function attemptUnsupportedDtoConnect() {
   return { editor, before, diagnostic };
 }
 
+function expectUnsupportedDtoConnect() {
+  const { editor, before, diagnostic } = attemptUnsupportedDtoConnect();
+  expect(diagnostic).toMatchObject({
+    code: 'DTO_RELATIONSHIP_UNSUPPORTED',
+    category: 'unsupported-profile',
+    operation: 'connect'
+  });
+  expect(editor.serialize()).toBe(before);
+  expect(editor.undo()).toBe(false);
+}
+
 describe('relationship rule utility', () => {
   it('returns allowed relationship kinds for an application component and service', () => {
     expect(getRelationshipsAllowed('ApplicationComponent', 'ApplicationService')).toEqual([
@@ -192,14 +203,7 @@ describe('live RuleProvider relationship authority', () => {
   it('defers unsupported RuleProvider tuples to the DTO command diagnostic atomically', () => {
     expect(connectDecision(ruleElement('ApplicationComponent'), ruleElement('ApplicationService'),
       'Serving')).toBeUndefined();
-    const { editor, before, diagnostic } = attemptUnsupportedDtoConnect();
-    expect(diagnostic).toMatchObject({
-      code: 'DTO_RELATIONSHIP_UNSUPPORTED',
-      category: 'unsupported-profile',
-      operation: 'connect'
-    });
-    expect(editor.serialize()).toBe(before);
-    expect(editor.undo()).toBe(false);
+    expectUnsupportedDtoConnect();
   });
 
   it('does not consult the generated legacy relationship utility in RuleProvider', () => {
