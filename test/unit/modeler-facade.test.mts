@@ -29,71 +29,12 @@ const state = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../src/diagram-js-adapter/index.js', () => {
-  class FakeSession {
-    eligible = state.eligible;
-    reasons = state.reasons;
-    closed = 0;
-    editor = !state.eligible ? undefined : state.editorOverride || {
-      getModel: () => structuredClone(state.model),
-      subscribe: (listener: (event: unknown) => void) => {
-        state.listeners.add(listener);
-        return () => state.listeners.delete(listener);
-      },
-      execute: (command: unknown) => {
-        state.commands.push(command);
-        state.listeners.forEach((listener) => listener({
-        type: 'changed', viewId: 'view-one', selectedIds: ['node-one'], model: state.model
-        }));
-      },
-      undo: () => true,
-      redo: () => true,
-      select: (_viewId: string, ids: string[]) => state.listeners.forEach((listener) => listener({
-        type: 'selection', viewId: 'view-one', selectedIds: ids, model: state.model
-      })),
-      project: () => ({ viewId: 'view-one', nodes: [], connections: [], selectedIds: ['node-one'] })
-    };
-    static async open(_modeler: unknown, xml: string) {
-      state.opened.push(xml);
-      const session = new FakeSession();
-      state.sessions.push(session);
-      if (state.deferOpen) {
-        await new Promise<void>((resolve) => state.pendingOpens.push({ session, resolve }));
-      }
-      return session;
-    }
-    save() { return { xml: '<model/>', dtoJson: '{"schemaVersion":1}' }; }
-    close() { this.closed += 1; }
-  }
-  return {
-    DiagramJsCanvasPort: class {}, DtoModelerSession: FakeSession,
-    createDiagramJsModeler: () => {
-      state.createdModeler = { destroy: () => { state.destroyed += 1; },
-        get: (name: string) => { state.engineGets.push(name); return { name }; } };
-      return state.createdModeler;
-    },
-    createDiagramJsCapabilities: (modeler: { get(serviceName: string): unknown }) => ({
-      engine: 'diagram-js', stability: 'unstable', get: (name: string) => modeler.get(name)
-    }),
-    createDiagramJsViewport: () => ({
-      fitView: vi.fn(() => ({ x: 0, y: 0, scale: 1 })),
-      fitSelection: vi.fn(() => ({ x: 1, y: 2, scale: 0.5 })),
-      zoom: vi.fn((level: number | 'fit') => level === 'fit' ?
-        ({ x: 0, y: 0, scale: 1 }) : ({ x: 0, y: 0, scale: level })),
-      getZoom: vi.fn(() => 1),
-      panBy: vi.fn(() => ({ x: 10, y: 20, scale: 1 })),
-      getViewport: vi.fn(() => ({ x: 0, y: 0, scale: 1 })),
-      onViewport: vi.fn((handler: (viewport: { x: number; y: number; scale: number }) => void) => {
-        state.viewportListeners.add(handler);
-        return () => state.viewportListeners.delete(handler);
-      })
-    }),
-    fitDiagramJsView: vi.fn(),
-    zoomDiagramJsCanvas: vi.fn((_modeler: unknown, level: number | 'fit') => level === 'fit' ? undefined : level)
-  };
+vi.mock('../../src/diagram-js-adapter/index.js', async () => {
+  const { createAdapterMock } = await import('./helpers/modeler-facade-adapter-mock.mts');
+  return createAdapterMock(state);
 });
 
-beforeEach(() => {
+function resetState(): void {
   state.destroyed = 0;
   state.opened = [];
   state.sessions = [];
@@ -106,6 +47,10 @@ beforeEach(() => {
   state.reasons = [];
   state.listeners.clear();
   state.viewportListeners.clear();
+}
+
+beforeEach(() => {
+  resetState();
 });
 
 it('optimizes authoritative DTO geometry in one edit without engine services, and reverses it', async () => {
