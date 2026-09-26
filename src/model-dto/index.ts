@@ -5,6 +5,9 @@ export { validateModelDto, serializeModelDto, parseModelDto } from './validate.j
 export { createAccessibleOutline, formatAccessibleOutline } from './accessible-outline.js';
 export { searchAccessibleOutline } from './outline-search.js';
 export { createModelTree, createModelTreeService } from './model-tree.js';
+export {
+  createEditorPropertiesInspector, EditorPropertiesInspector, EditorPropertiesInspectorError
+} from './editor-properties-inspector.js';
 export { validateViewpoint } from './viewpoint-validation.js';
 export type {
   ViewpointFinding, ViewpointRule, ViewpointRuleKind, ViewpointSeverity,
@@ -24,6 +27,11 @@ export type {
   ModelTree, ModelTreeAdapter, ModelTreeAdapterEvent, ModelTreeEvent, ModelTreeItem,
   ModelTreeItemKind, ModelTreeService
 } from './model-tree.js';
+export type {
+  EditorInspectorField, EditorInspectorFieldAvailability, EditorInspectorFieldKind,
+  EditorInspectorStatus, EditorInspectorTarget, EditorInspectorTargetKind,
+  EditorPropertiesInspection, EditorPropertiesInspectorListener
+} from './editor-properties-inspector.js';
 export { DiagramAdapter } from './editor.js';
 export {
   EditorOperationLogError, MAX_EDITOR_OPERATIONS, parseOperationLog, serializeOperationLog,
