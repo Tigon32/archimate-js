@@ -224,7 +224,10 @@ use sorted key order. A caller supplies a stable identifier accepted by the
 DTO identifier syntax; no random, clock-based, or implicit IDs are generated.
 Sequences start at 1 and increase once per accepted state/history operation.
 IDs are exactly `<clientId>:<sequence>`. Rejected commands and no-op undo/redo
-calls do not consume a sequence or create an entry.
+calls do not consume a sequence or create an entry. A log holds at most
+`MAX_EDITOR_OPERATIONS` (100,000) entries; an adapter at that limit rejects
+further commands, undo, and redo with `EDITOR_OPERATION_SEQUENCE_INVALID`
+before changing model or history.
 
 `action: "command"` stores a validated deep copy of the `EditorCommand` payload.
 `action: "undo"` and `"redo"` are explicit history operations, so replay

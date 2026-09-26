@@ -16,7 +16,8 @@ export type { AccessibleOutline, AccessibleOutlineNode, AccessibleOutlineRelatio
   AccessibleOutlineOptions } from './accessible-outline.js';
 export { DiagramAdapter } from './editor.js';
 export {
-  EditorOperationLogError, parseOperationLog, serializeOperationLog, validateOperationLog
+  EditorOperationLogError, MAX_EDITOR_OPERATIONS, parseOperationLog, serializeOperationLog,
+  validateOperationLog
 } from './editor-operation-log.js';
 export type {
   EditorOperation, EditorOperationAction, EditorOperationLog, EditorOperationLogErrorCode

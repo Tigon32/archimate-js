@@ -27,7 +27,8 @@ export type EditorOperationLogErrorCode =
   | 'EDITOR_OPERATION_REPLAY_NOT_FRESH';
 
 const MAX_LOG_LENGTH = 10_000_000;
-const MAX_OPERATIONS = 100_000;
+export const MAX_EDITOR_OPERATIONS = 100_000;
+const MAX_OPERATIONS = MAX_EDITOR_OPERATIONS;
 type CloneBudget = { used: number };
 
 const COMMAND_FIELDS: Record<string, { required: string[]; optional?: string[] }> = {
@@ -337,7 +338,9 @@ function validateCommandPayload(command: Record<string, unknown>): void {
 
 export function validateEditorCommand(input: unknown): EditorCommand {
   const command = object(cloneJson(input));
-  const fields = typeof command.type === 'string' ? COMMAND_FIELDS[command.type] : undefined;
+  const type = command.type;
+  const fields = typeof type === 'string' && Object.hasOwn(COMMAND_FIELDS, type) ?
+    COMMAND_FIELDS[type] : undefined;
   if (!fields || typeof command.viewId !== 'string') reject();
   exactKeys(command, [...fields.required, ...(fields.optional || [])], fields.required);
   validateCommandPayload(command);

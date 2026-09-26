@@ -3,8 +3,8 @@ import { expect, it } from 'vitest';
 // @ts-expect-error Node types are not part of the browser package dependencies.
 import { readFileSync } from 'node:fs';
 import {
-  DiagramAdapter, importMeffToModelDto, parseOperationLog, serializeOperationLog,
-  validateOperationLog
+  DiagramAdapter, importMeffToModelDto, MAX_EDITOR_OPERATIONS, parseOperationLog,
+  serializeOperationLog, validateOperationLog
 } from '../../src/model-dto/index.js';
 import type { EditorOperationLog, ModelDto } from '../../src/model-dto/index.js';
 
@@ -192,4 +192,35 @@ it('validates operation identity, schema, command shape, and stable client ident
       ] } }] }), 'EDITOR_OPERATION_LOG_INVALID');
   expectCode(() => new DiagramAdapter(fixture()).exportOperationLog('not stable'),
     'EDITOR_OPERATION_CLIENT_ID_INVALID');
+});
+
+it('rejects inherited object member names as command types with a stable code', () => {
+  for (const type of ['constructor', '__proto__', 'toString', 'hasOwnProperty']) {
+    const log = JSON.parse(JSON.stringify({ schemaVersion: 1, clientId: 'stable-client',
+      operations: [{ sequence: 1, operationId: 'stable-client:1', action: 'command',
+        command: { type, viewId } }] }));
+    expectCode(() => validateOperationLog(log), 'EDITOR_OPERATION_LOG_INVALID');
+    expectCode(() => parseOperationLog(JSON.stringify(log)), 'EDITOR_OPERATION_LOG_INVALID');
+  }
+  const editor = new DiagramAdapter(fixture());
+  expect(() => editor.execute({ type: 'constructor', viewId } as never))
+    .toThrow(expect.objectContaining({ code: 'MODEL_DTO_INVALID' }));
+});
+
+it('rejects operations beyond the exportable limit without mutating state or history', () => {
+  const editor = new DiagramAdapter(fixture());
+  editor.execute({ type: 'move', viewId, nodeId: 'node-component', x: 30, y: 40 });
+  const before = editor.serialize();
+  // Simulate a full log without executing 100,000 snapshot-backed commands.
+  Reflect.set(editor, 'operationSequence', MAX_EDITOR_OPERATIONS);
+  expectCode(() => editor.execute({ type: 'move', viewId, nodeId: 'node-component', x: 50, y: 60 }),
+    'EDITOR_OPERATION_SEQUENCE_INVALID');
+  expect(editor.serialize()).toBe(before);
+  expectCode(() => editor.undo(), 'EDITOR_OPERATION_SEQUENCE_INVALID');
+  expect(editor.serialize()).toBe(before);
+  Reflect.set(editor, 'operationSequence', 1);
+  expect(editor.exportOperationLog('stable-client').operations).toHaveLength(1);
+  expect(editor.undo()).toBe(true);
+  expect(editor.redo()).toBe(true);
+  expect(editor.serialize()).toBe(before);
 });

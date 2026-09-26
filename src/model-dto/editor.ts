@@ -13,7 +13,8 @@ import {
 } from './editor-view.js';
 import { createElement, createRelationship } from './editor-create.js';
 import {
-  buildOperationLog, EditorOperationLogError, parseOperationLog, serializeOperationLog,
+  buildOperationLog, EditorOperationLogError, MAX_EDITOR_OPERATIONS, parseOperationLog,
+  serializeOperationLog,
   validateEditorCommand, validateOperationLog
 } from './editor-operation-log.js';
 import type {
@@ -466,7 +467,7 @@ export class DiagramAdapter {
 
   private prepareOperation(action: EditorOperationAction,
     command?: EditorCommand): Pick<EditorOperation, 'action' | 'command'> {
-    if (this.operationSequence >= Number.MAX_SAFE_INTEGER) {
+    if (this.operationSequence >= MAX_EDITOR_OPERATIONS) {
       throw new EditorOperationLogError('EDITOR_OPERATION_SEQUENCE_INVALID');
     }
     return action === 'command' ?
