@@ -51,4 +51,5 @@ review_after:
 - [Design Tokens 2025.10 implementation](dtcg-2025-10-implementation.md)
 - [Read-only shell resize and reflow check](read-only-reflow-browser-2026-09-24.md)
 - [Rendered read-only app contrast check](theme-contrast-browser-2026-09-24.md)
+- [Theme accessibility results matrix for #136](theme-accessibility-matrix-2026-09-26.md)
 - [Utility alignment after diagram-js 15](utility-alignment-2026-09-25.md)
