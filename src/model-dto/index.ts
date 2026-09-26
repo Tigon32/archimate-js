@@ -9,10 +9,16 @@ export {
   createEditorPropertiesInspector, EditorPropertiesInspector, EditorPropertiesInspectorError
 } from './editor-properties-inspector.js';
 export { validateViewpoint } from './viewpoint-validation.js';
+export { createViewpointAdvisoryService } from './viewpoint-advisory.js';
 export type {
   ViewpointFinding, ViewpointRule, ViewpointRuleKind, ViewpointSeverity,
   ViewpointValidationProfile, ViewpointValidationRequest, ViewpointValidationResult
 } from './viewpoint-validation.js';
+export type {
+  ViewpointAdvisoryCommandResult, ViewpointAdvisoryFinding, ViewpointAdvisoryMode,
+  ViewpointAdvisoryOptions, ViewpointAdvisoryService, ViewpointAdvisorySnapshot,
+  ViewpointAdvisoryStatus
+} from './viewpoint-advisory.js';
 export { assessModelDtoDiffEligibility, diffModelDto } from './diff.js';
 export { renderModelDtoDiffOverlay } from './diff-overlay.js';
 export type {
