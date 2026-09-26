@@ -3,7 +3,9 @@ import type {
   EditorCommand,
   EditorEvent
 } from '../model-dto/editor.js';
-import type { DtoEditingReason } from '../model-dto/eligibility.js';
+import { assessModelDtoEditingEligibility, type DtoEditingReason } from '../model-dto/eligibility.js';
+import { layoutView, type LayoutDiagnostic, type LayoutOptions,
+  type LayoutPatch, type LayoutResult } from '../layout/index.js';
 import {
   createDiagramJsCapabilities,
   createDiagramJsModeler,
@@ -17,11 +19,17 @@ import type {
   DiagramJsModelerInstance,
   DtoSaveResult
 } from '../diagram-js-adapter/index.js';
+import type { EditorOperationLog } from '../model-dto/editor-operation-log.js';
 
 export { DiagramJsCanvasPort, DtoModelerSession };
+export { EditorOperationLogError } from '../model-dto/editor-operation-log.js';
 export type { DiagramJsCanvasServices } from '../diagram-js-adapter/index.js';
 export type { DtoModelerServices, DtoSaveResult } from '../diagram-js-adapter/index.js';
 export type { CanvasProjection, EditorCommand } from '../model-dto/editor.js';
+export type {
+  EditorOperation, EditorOperationAction, EditorOperationLog, EditorOperationLogErrorCode
+} from '../model-dto/editor-operation-log.js';
+export type { LayoutOptions, LayoutPatch, LayoutMetrics } from '../layout/index.js';
 
 export interface ModelerOptions {
   container: Element;
@@ -43,7 +51,7 @@ export type ModelerEvent =
 
 export class ModelerError extends Error {
   constructor(readonly code: 'MODELER_DESTROYED' | 'MODELER_OPEN_SUPERSEDED' |
-    'MODELER_SESSION_INELIGIBLE') {
+    'MODELER_SESSION_INELIGIBLE' | LayoutDiagnostic['code']) {
     super(code);
     this.name = 'ModelerError';
   }
@@ -89,6 +97,40 @@ export default class Modeler {
 
   execute(command: EditorCommand): void {
     this.editor().execute(command);
+  }
+
+  exportOperationLog(clientId: string): EditorOperationLog {
+    return this.editor().exportOperationLog(clientId);
+  }
+
+  serializeOperationLog(clientId: string): string {
+    return this.editor().serializeOperationLog(clientId);
+  }
+
+  replayOperationLog(input: unknown): void {
+    this.editor().replayOperationLog(input);
+  }
+
+  async optimizeDiagram(options: Partial<LayoutOptions> = {}): Promise<
+    Pick<Extract<LayoutResult, { status: 'ok' }>, 'patch' | 'metrics'>> {
+    const editor = this.editor();
+    const viewId = this.activeViewId();
+    const generation = this.generation;
+    const model = editor.getModel();
+    const result = await layoutView(model, viewId, { strategy: 'builtin', ...options });
+    if (this.destroyed || generation !== this.generation || editor !== this.session?.editor) {
+      throw new ModelerError(this.destroyed ? 'MODELER_DESTROYED' : 'MODELER_OPEN_SUPERSEDED');
+    }
+    if (result.status !== 'ok') throw new ModelerError(result.diagnostics[0].code);
+    const candidate = { ...model, views: model.views.map((view) =>
+      view.id === viewId ? result.view : view) };
+    if (!assessModelDtoEditingEligibility(candidate).eligible) throw new ModelerError('LAYOUT_FAILED');
+    editor.execute({ type: 'apply-layout-patch', viewId, patch: result.patch, side: 'after' });
+    return { patch: result.patch, metrics: result.metrics };
+  }
+
+  applyLayoutPatch(patch: LayoutPatch, side: 'before' | 'after'): void {
+    this.editor().execute({ type: 'apply-layout-patch', viewId: this.activeViewId(), patch, side });
   }
 
   undo(): boolean {

@@ -99,9 +99,14 @@ function harnessFromServices(port, shapes, connections, selection, modeling) {
   return {
     port,
     emitCommand: (command) => emitModelingCommand(command, shapes, modeling),
+    emitBatchMove: (ids, delta) =>
+      modeling.moveElements(ids.map((id) => shapes.get(id)).filter(Boolean), delta),
+    emitDeleteMany: (ids) =>
+      modeling.removeElements(ids.map((id) => shapes.get(id) || connections.get(id)).filter(Boolean)),
     emitSelection: (ids) => selection.select(ids.map((id) => shapes.get(id) || connections.get(id)).filter(Boolean)),
-    emitUnsupportedMultiMove: (ids) =>
-      modeling.moveElements(ids.map((id) => shapes.get(id)).filter(Boolean), { x: 1, y: 1 }),
+    emitRejectedGesture: (ids) =>
+      modeling.moveElements(ids.map((id) => shapes.get(id)).filter(Boolean), { x: 1, y: 1 },
+        shapes.get('node-service')),
     readRendered: () => renderedFromMaps(shapes, connections, selection)
   };
 }

@@ -1,5 +1,12 @@
 // SYNTHETIC: Facade tests use service/editor doubles and no model payloads.
 import { beforeEach, expect, it, vi } from 'vitest';
+// @ts-expect-error Node types are excluded from the browser source project.
+import { readFileSync } from 'node:fs';
+import { DiagramAdapter } from '../../src/model-dto/editor.js';
+import { importMeffToModelDto } from '../../src/model-dto/index.js';
+
+// SYNTHETIC: The checked-in MEFF fixture contains only hand-authored test data.
+const syntheticXml = readFileSync('test/fixtures/synthetic/dto-export-view.xml', 'utf8');
 
 const state = vi.hoisted(() => {
   const model = { schemaVersion: 1, id: 'synthetic', elements: [], relationships: [],
@@ -10,6 +17,9 @@ const state = vi.hoisted(() => {
     opened: [] as string[],
     sessions: [] as Array<{ closed: number }>,
     pendingOpens: [] as Array<{ session: { closed: number }; resolve(): void }>,
+    commands: [] as unknown[],
+    editorOverride: undefined as DiagramAdapter | undefined,
+    engineGets: [] as string[],
     createdModeler: undefined as undefined | { destroy(): void; get(serviceName: string): unknown },
     eligible: true,
     deferOpen: false,
@@ -23,22 +33,25 @@ vi.mock('../../src/diagram-js-adapter/index.js', () => {
     eligible = state.eligible;
     reasons = state.reasons;
     closed = 0;
-    editor = state.eligible ? {
+    editor = !state.eligible ? undefined : state.editorOverride || {
       getModel: () => structuredClone(state.model),
       subscribe: (listener: (event: unknown) => void) => {
         state.listeners.add(listener);
         return () => state.listeners.delete(listener);
       },
-      execute: () => state.listeners.forEach((listener) => listener({
+      execute: (command: unknown) => {
+        state.commands.push(command);
+        state.listeners.forEach((listener) => listener({
         type: 'changed', viewId: 'view-one', selectedIds: ['node-one'], model: state.model
-      })),
+        }));
+      },
       undo: () => true,
       redo: () => true,
       select: (_viewId: string, ids: string[]) => state.listeners.forEach((listener) => listener({
         type: 'selection', viewId: 'view-one', selectedIds: ids, model: state.model
       })),
       project: () => ({ viewId: 'view-one', nodes: [], connections: [], selectedIds: ['node-one'] })
-    } : undefined;
+    };
     static async open(_modeler: unknown, xml: string) {
       state.opened.push(xml);
       const session = new FakeSession();
@@ -52,10 +65,10 @@ vi.mock('../../src/diagram-js-adapter/index.js', () => {
     close() { this.closed += 1; }
   }
   return {
-    DiagramJsCanvasPort: class {},
-    DtoModelerSession: FakeSession,
+    DiagramJsCanvasPort: class {}, DtoModelerSession: FakeSession,
     createDiagramJsModeler: () => {
-      state.createdModeler = { destroy: () => { state.destroyed += 1; }, get: (name: string) => ({ name }) };
+      state.createdModeler = { destroy: () => { state.destroyed += 1; },
+        get: (name: string) => { state.engineGets.push(name); return { name }; } };
       return state.createdModeler;
     },
     createDiagramJsCapabilities: (modeler: { get(serviceName: string): unknown }) => ({
@@ -71,10 +84,114 @@ beforeEach(() => {
   state.opened = [];
   state.sessions = [];
   state.pendingOpens = [];
+  state.commands = [];
+  state.editorOverride = undefined;
+  state.engineGets = [];
   state.eligible = true;
   state.deferOpen = false;
   state.reasons = [];
   state.listeners.clear();
+});
+
+it('optimizes authoritative DTO geometry in one edit without engine services, and reverses it', async () => {
+  const { default: Modeler } = await import('../../src/modeler/index.js');
+  const editor = new DiagramAdapter(importMeffToModelDto(syntheticXml));
+  state.editorOverride = editor;
+  const modeler = new Modeler({ container: {} as Element });
+  await modeler.open(syntheticXml, { viewId: 'view-dto-export' });
+  const before = editor.getModel();
+  const result = await modeler.optimizeDiagram();
+  const after = editor.getModel();
+  expect(result.metrics.movedNodeCount).toBe(result.patch.nodes.length);
+  expect(result.patch.nodes.length).toBeGreaterThan(0);
+  expect(after).not.toEqual(before);
+  expect(after.elements).toEqual(before.elements);
+  expect(after.relationships).toEqual(before.relationships);
+  expect(after.views[0].nodes[0].style).toEqual(before.views[0].nodes[0].style);
+  expect(importMeffToModelDto(editor.exportMeff())).toEqual(after);
+  expect(state.engineGets).toEqual([]);
+  expect(modeler.undo()).toBe(true);
+  expect(editor.getModel()).toEqual(before);
+  expect(modeler.redo()).toBe(true);
+  expect(editor.getModel()).toEqual(after);
+  expect(() => modeler.applyLayoutPatch(result.patch, 'after')).toThrow(
+    expect.objectContaining({ code: 'DTO_LAYOUT_PATCH_STALE' }));
+  expect(editor.getModel()).toEqual(after);
+  modeler.applyLayoutPatch(result.patch, 'before');
+  expect(editor.getModel()).toEqual(before);
+  expect(modeler.undo()).toBe(true);
+  expect(editor.getModel()).toEqual(after);
+  modeler.destroy();
+});
+
+it('discards pending optimization when its session closes', async () => {
+  const { default: Modeler } = await import('../../src/modeler/index.js');
+  const editor = new DiagramAdapter(importMeffToModelDto(syntheticXml));
+  state.editorOverride = editor;
+  const modeler = new Modeler({ container: {} as Element });
+  await modeler.open(syntheticXml, { viewId: 'view-dto-export' });
+  const original = editor.getModel();
+  const pending = modeler.optimizeDiagram();
+  modeler.close();
+  await expect(pending).rejects.toMatchObject({ code: 'MODELER_OPEN_SUPERSEDED' });
+  expect(editor.getModel()).toEqual(original);
+  modeler.destroy();
+});
+
+it('rejects unsupported layout and ineligible or missing sessions without an edit', async () => {
+  const { default: Modeler } = await import('../../src/modeler/index.js');
+  const modeler = new Modeler({ container: {} as Element });
+  await expect(modeler.optimizeDiagram()).rejects.toMatchObject({
+    code: 'MODELER_SESSION_INELIGIBLE'
+  });
+  state.editorOverride = new DiagramAdapter(importMeffToModelDto(syntheticXml));
+  await modeler.open(syntheticXml, { viewId: 'view-dto-export' });
+  const before = state.editorOverride.getModel();
+  await expect(modeler.optimizeDiagram({ strategy: 'elk-layered' })).rejects.toMatchObject({
+    code: 'UNSUPPORTED_STRATEGY', message: 'UNSUPPORTED_STRATEGY'
+  });
+  expect(state.editorOverride.getModel()).toEqual(before);
+  expect(state.editorOverride.undo()).toBe(false);
+  modeler.close();
+  await expect(modeler.optimizeDiagram()).rejects.toMatchObject({
+    code: 'MODELER_SESSION_INELIGIBLE'
+  });
+  state.eligible = false;
+  await modeler.open('<unsupported/>');
+  await expect(modeler.optimizeDiagram()).rejects.toMatchObject({
+    code: 'MODELER_SESSION_INELIGIBLE'
+  });
+  modeler.destroy();
+});
+
+it('delegates apply-layout-patch commands through the facade undo boundary', async () => {
+  const { default: Modeler } = await import('../../src/modeler/index.js');
+  const modeler = new Modeler({ container: {} as Element });
+  await modeler.open('<synthetic/>', { viewId: 'view-one' });
+  const patch = { viewId: 'view-one', nodes: [{ id: 'node-one',
+    before: { x: 0, y: 0, width: 100, height: 60 },
+    after: { x: 40, y: 20, width: 100, height: 60 } }], connections: [] };
+  modeler.execute({ type: 'apply-layout-patch', viewId: 'view-one', patch, side: 'after' });
+  expect(modeler.undo()).toBe(true);
+  expect(state.commands).toEqual([{ type: 'apply-layout-patch', viewId: 'view-one', patch, side: 'after' }]);
+});
+
+it('exports and replays deterministic logs through the public facade', async () => {
+  const { default: Modeler } = await import('../../src/modeler/index.js');
+  const base = importMeffToModelDto(syntheticXml);
+  const source = new DiagramAdapter(base);
+  source.execute({ type: 'move', viewId: 'view-dto-export', nodeId: 'node-component', x: 50, y: 60 });
+  const operationJson = source.serializeOperationLog('stable-client');
+  const target = new DiagramAdapter(base);
+  state.editorOverride = target;
+  const modeler = new Modeler({ container: {} as Element });
+  await modeler.open(syntheticXml, { viewId: 'view-dto-export' });
+
+  expect(modeler.exportOperationLog('stable-client')).toEqual(target.exportOperationLog('stable-client'));
+  modeler.replayOperationLog(operationJson);
+  expect(modeler.serializeOperationLog('stable-client')).toBe(operationJson);
+  expect(target.getModel()).toEqual(source.getModel());
+  modeler.destroy();
 });
 
 it('opens, delegates editor operations, emits plain events, and saves', async () => {
