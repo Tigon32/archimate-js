@@ -77,6 +77,24 @@ atomically; see [the DTO command boundary](diagram-adapter.md) for payloads and
 validation. Adapter gesture routing remains pending #372, and creation UI
 remains EE-M9/#351.
 
+The facade can export, serialize, and replay a version-1 operation log:
+
+```ts
+const operationJson = modeler.serializeOperationLog('stable-client-session');
+// Use a separate facade opened from the exact same base DTO:
+const replayModeler = new Modeler({ container: replayContainer });
+await replayModeler.open(xml, { viewId: opened.viewId });
+replayModeler.replayOperationLog(operationJson);
+```
+
+Pass a caller-owned stable client/session identifier to `exportOperationLog`
+or `serializeOperationLog`; operation IDs are deterministically
+`<clientId>:<sequence>`. The schema and replay rules are defined in the
+[adapter operation-log contract](diagram-adapter.md#deterministic-operation-log).
+Replay requires a fresh DTO editor for the same base model and commits only
+after the entire candidate succeeds. No network or shared-session behavior is
+provided.
+
 `await modeler.optimizeDiagram(options?)` computes layout from the active view
 of the detached DTO model and commits only its geometry patch via one
 `apply-layout-patch` command. The default is the built-in full strategy; it
@@ -123,7 +141,7 @@ included in these payloads.
 
 | Surface | Classification | Compatibility |
 | --- | --- | --- |
-| `Modeler`, `ModelerOptions`, `OpenResult`, `ModelerEvent`, lifecycle, save, events, operations, `EditorCommand`, `CanvasProjection` | Stable-experimental public API | Documented public boundary while `0.y.z`; breaking changes may occur before `1.0.0` with changelog notes. |
+| `Modeler`, `ModelerOptions`, `OpenResult`, `ModelerEvent`, lifecycle, save, events, operations, `EditorCommand`, `CanvasProjection`, versioned operation-log types | Stable-experimental public API | Documented public boundary while `0.y.z`; breaking changes may occur before `1.0.0` with changelog notes. |
 | `DiagramJsCanvasPort`, `DtoModelerSession`, and their service/result types from `archimate-js/modeler` | Adapter-level advanced API | Public home for advanced integrations, but still tied to the current diagram-js adapter. Prefer the facade for application code. |
 | `getEngineCapabilities('diagram-js')` | Engine-specific escape hatch | Explicitly **UNSTABLE** and not covered by compatibility policy. It returns `{ get(serviceName) }` for opt-in diagram-js service access. Normal editing must not require it. |
 

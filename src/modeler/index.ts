@@ -19,11 +19,16 @@ import type {
   DiagramJsModelerInstance,
   DtoSaveResult
 } from '../diagram-js-adapter/index.js';
+import type { EditorOperationLog } from '../model-dto/editor-operation-log.js';
 
 export { DiagramJsCanvasPort, DtoModelerSession };
+export { EditorOperationLogError } from '../model-dto/editor-operation-log.js';
 export type { DiagramJsCanvasServices } from '../diagram-js-adapter/index.js';
 export type { DtoModelerServices, DtoSaveResult } from '../diagram-js-adapter/index.js';
 export type { CanvasProjection, EditorCommand } from '../model-dto/editor.js';
+export type {
+  EditorOperation, EditorOperationAction, EditorOperationLog, EditorOperationLogErrorCode
+} from '../model-dto/editor-operation-log.js';
 export type { LayoutOptions, LayoutPatch, LayoutMetrics } from '../layout/index.js';
 
 export interface ModelerOptions {
@@ -92,6 +97,18 @@ export default class Modeler {
 
   execute(command: EditorCommand): void {
     this.editor().execute(command);
+  }
+
+  exportOperationLog(clientId: string): EditorOperationLog {
+    return this.editor().exportOperationLog(clientId);
+  }
+
+  serializeOperationLog(clientId: string): string {
+    return this.editor().serializeOperationLog(clientId);
+  }
+
+  replayOperationLog(input: unknown): void {
+    this.editor().replayOperationLog(input);
   }
 
   async optimizeDiagram(options: Partial<LayoutOptions> = {}): Promise<
