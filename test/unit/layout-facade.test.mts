@@ -150,6 +150,29 @@ it('incremental layout preserves unchanged nodes and reports their displacement'
   expect(first.metrics.movedNodeCount).toBe(1);
 });
 
+it('reports overlaps retained by incremental layout as unsatisfied constraints', async () => {
+  const input = model();
+  input.views[0].nodes[1].x = 40;
+  input.views[0].nodes[1].y = 40;
+  input.views[0].connections[0].sourceId = 'node-b';
+  input.views[0].connections[0].targetId = 'node-a';
+  input.relationships[0].sourceId = 'concept-b';
+  input.relationships[0].targetId = 'concept-a';
+  const options = { strategy: 'builtin' as const, mode: 'incremental' as const,
+    changedNodeIds: ['node-b'] };
+  const first = await layoutView(input, 'synthetic-view', options);
+  const second = await layoutView(input, 'synthetic-view', options);
+  expect(first.status).toBe('ok');
+  expect(second).toEqual(first);
+  if (first.status !== 'ok') return;
+  expect(first.metrics.overlapCountAfter).toBeGreaterThan(0);
+  expect(first.metrics.violatedConstraintCount).toBeGreaterThanOrEqual(
+    first.metrics.overlapCountAfter);
+  expect(first.diagnostics).toContainEqual(expect.objectContaining({
+    code: 'UNSATISFIED_CONSTRAINT', severity: 'warning'
+  }));
+});
+
 it('rejects missing pin targets and malformed incremental requests explicitly', async () => {
   const input = model();
   const missingPin = await layoutView(input, 'synthetic-view', {

@@ -72,13 +72,15 @@ function displacement(left: ViewNodeDto, right: ViewNodeDto): number {
 }
 
 function diagnostics(pinDisplacements: ConstrainedLayout['metrics']['pinDisplacements'],
-  unaffectedNodeDisplacement: number): LayoutDiagnostic[] {
+  unaffectedNodeDisplacement: number, overlapCount: number): LayoutDiagnostic[] {
   const result: LayoutDiagnostic[] = pinDisplacements
     .filter((pin) => pin.strength === 'soft' && pin.distance > 0)
     .map((pin) => ({ code: 'SOFT_PIN_DISPLACED', severity: 'warning',
       message: `Soft-pinned node ${pin.nodeId} moved ${pin.distance}.` }));
   if (unaffectedNodeDisplacement > 0) result.push({ code: 'INCREMENTAL_DISPLACEMENT',
     severity: 'warning', message: `Unaffected nodes moved by ${unaffectedNodeDisplacement}.` });
+  if (overlapCount > 0) result.push({ code: 'UNSATISFIED_CONSTRAINT', severity: 'warning',
+    message: `Layout retains ${overlapCount} overlapping node pair(s).` });
   return result;
 }
 
@@ -131,16 +133,18 @@ export function constrainLayout(view: ViewDto, patch: LayoutPatch, base: BaseMet
     return node.x !== next.x || node.y !== next.y || node.width !== next.width ||
       node.height !== next.height;
   }).length;
+  const overlapCountAfter = siblingOverlapCount(result.nodes);
   const metrics: LayoutMetrics = { ...base, movedNodeCount,
     crossingsAfter: routed.crossingsAfter ?? base.crossingsAfter,
     reroutedConnectionCount: routed.patch.connections.length,
-    overlapCountAfter: siblingOverlapCount(result.nodes),
+    overlapCountAfter,
     boundsAfter: bounds(nodesAfter), softPinDisplacement,
     unaffectedNodeDisplacement: distances.unaffectedNodeDisplacement,
     violatedConstraintCount: distances.pinDisplacements.filter((pin) =>
       pin.strength === 'soft' && pin.distance > 0).length +
-      (distances.unaffectedNodeDisplacement > 0 ? 1 : 0),
+      (distances.unaffectedNodeDisplacement > 0 ? 1 : 0) + overlapCountAfter,
     pinDisplacements: distances.pinDisplacements };
   return { view: result, patch: routed.patch, metrics,
-    diagnostics: diagnostics(metrics.pinDisplacements, metrics.unaffectedNodeDisplacement) };
+    diagnostics: diagnostics(metrics.pinDisplacements, metrics.unaffectedNodeDisplacement,
+      metrics.overlapCountAfter) };
 }
