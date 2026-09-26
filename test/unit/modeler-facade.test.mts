@@ -98,20 +98,27 @@ it('discards pending optimization when its session closes', async () => {
   modeler.destroy();
 });
 
-it('rejects unsupported layout and ineligible or missing sessions without an edit', async () => {
+it('commits layered layout and rejects ineligible or missing sessions', async () => {
   const { default: Modeler } = await import('../../src/modeler/index.js');
   const modeler = new Modeler({ container: {} as Element });
   await expect(modeler.optimizeDiagram()).rejects.toMatchObject({
     code: 'MODELER_SESSION_INELIGIBLE'
   });
-  state.editorOverride = new DiagramAdapter(importMeffToModelDto(syntheticXml));
+  const model = importMeffToModelDto(syntheticXml);
+  for (const connection of model.views[0].connections) delete connection.label;
+  for (const relationship of model.relationships) delete relationship.name;
+  state.editorOverride = new DiagramAdapter(model);
   await modeler.open(syntheticXml, { viewId: 'view-dto-export' });
   const before = state.editorOverride.getModel();
-  await expect(modeler.optimizeDiagram({ strategy: 'elk-layered' })).rejects.toMatchObject({
-    code: 'UNSUPPORTED_STRATEGY', message: 'UNSUPPORTED_STRATEGY'
-  });
+  const result = await modeler.optimizeDiagram({ strategy: 'elk-layered' });
+  const after = state.editorOverride.getModel();
+  expect(result.patch.nodes.length).toBeGreaterThan(0);
+  expect(after).not.toEqual(before);
+  expect(after.relationships).toEqual(before.relationships);
+  expect(modeler.undo()).toBe(true);
   expect(state.editorOverride.getModel()).toEqual(before);
-  expect(state.editorOverride.undo()).toBe(false);
+  expect(modeler.redo()).toBe(true);
+  expect(state.editorOverride.getModel()).toEqual(after);
   modeler.close();
   await expect(modeler.optimizeDiagram()).rejects.toMatchObject({
     code: 'MODELER_SESSION_INELIGIBLE'

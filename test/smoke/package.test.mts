@@ -28,9 +28,11 @@ assert.equal(
   'object-refs remains owned by diagram-js instead of being upgraded independently'
 );
 assert.ok(packageJson.dependencies['moddle-xml'], 'moddle-xml dependency is declared');
+assert.equal(packageJson.dependencies.elkjs, '0.12.0', 'ELK version is pinned exactly');
 assert.ok(packageJson.dependencies.saxes, 'bounded XML parser dependency is declared');
 assert.ok(packageJson.files.includes('index.js'), 'package publishes index.js');
 assert.ok(packageJson.files.includes('THIRD_PARTY_NOTICES.md'), 'package publishes third-party notices');
+assert.ok(packageJson.files.includes('licenses'), 'package publishes selected EPL license text');
 assert.ok(packageJson.files.includes('assets'), 'package publishes licensed assets');
 assert.ok(packageJson.files.includes('lib'), 'package publishes lib/');
 assert.ok(packageJson.files.includes('archimate-font/package.json'), 'package publishes its local font package metadata');
