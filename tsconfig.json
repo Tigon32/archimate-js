@@ -54,6 +54,8 @@
     "test/release/consumer-verification.test.mts",
     "test/release/packed-assets.test.mts",
     "test/security/codeowners.test.mts",
+    "test/security/check-adr-registry.test.mts",
+    "test/security/check-adr-collisions.test.mts",
     "test/security/check-secrets.test.mts",
     "test/security/check-engine-boundary.test.mts",
     "test/security/check-tracked-paths.test.mts",
