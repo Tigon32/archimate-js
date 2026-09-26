@@ -26,6 +26,7 @@ const run = (
 try {
   run(process.execPath, ['test/smoke/compile-validator.mjs'], { cwd: root });
   run('npm', ['run', 'compile:model-dto'], { cwd: root });
+  run('npm', ['run', 'compile:modeler'], { cwd: root });
   run('npm', ['run', 'compile:lint'], { cwd: root });
   run('npm', ['run', 'compile:layout'], { cwd: root });
   run('npm', ['run', 'compile:export'], { cwd: root });
@@ -60,6 +61,7 @@ try {
     import Viewer, { mountViewer, renderViewToSvg } from 'archimate-js';
     import { importMeffToModelDto, exportModelDtoToMeff,
       createAccessibleOutline, formatAccessibleOutline } from 'archimate-js/model-dto';
+    import Modeler, { DiagramJsCanvasPort, DtoModelerSession } from 'archimate-js/modeler';
     import { layoutView } from 'archimate-js/layout';
     import { lintModel } from 'archimate-js/lint';
     export default {
@@ -70,6 +72,9 @@ try {
       dtoExport: typeof exportModelDtoToMeff,
       outline: typeof createAccessibleOutline,
       outlineText: typeof formatAccessibleOutline,
+      modeler: typeof Modeler,
+      canvasPort: typeof DiagramJsCanvasPort,
+      dtoSession: typeof DtoModelerSession,
       layoutView: typeof layoutView,
       lintModel: typeof lintModel
     };
@@ -82,6 +87,7 @@ try {
     target: 'node',
     entry: consumerEntry,
     output: { path: consumer, filename: path.basename(bundlePath), library: { type: 'commonjs2' } },
+    resolve: { extensions: ['.ts', '.js', '.json'] }
   }, (error: WebpackError | null, stats?: Stats) => {
     if (error || !stats || stats.hasErrors()) {
       reject(new Error('Bundler could not resolve the packed root API.'));
@@ -97,6 +103,7 @@ try {
   assert.deepEqual(rootApi, { viewer: 'function', mountViewer: 'function',
     renderViewToSvg: 'function', dtoImport: 'function', dtoExport: 'function',
     outline: 'function', outlineText: 'function',
+    modeler: 'function', canvasPort: 'function', dtoSession: 'function',
     layoutView: 'function', lintModel: 'function' });
   const exportSubpath = [ 'archimate-js', 'export' ].join('/');
   const exportApi = await import(exportSubpath) as {
@@ -215,12 +222,14 @@ try {
   const consumerRequire = createRequire(path.join(consumer, 'package.json'));
   assert.equal(exportEntry('./validator').import, './dist/validator/index.js');
   assert.equal(exportEntry('./model-dto').import, './dist/model-dto/index.js');
+  assert.equal(exportEntry('./modeler').import, './dist/modeler/index.js');
   assert.equal(exportEntry('./layout').import, './dist/layout/index.js');
   assert.equal(exportEntry('./lint').import, './dist/lint/index.mjs');
   assert.equal(exportEntry('./export').import, './dist/export/index.mjs');
   assert.equal(packageJson.exports['./app-shell.css'], './assets/design-tokens/app-shell.css');
   assert.deepEqual(Object.keys(packageJson.exports).sort(),
-    ['.', './app-shell.css', './export', './layout', './lint', './model-dto', './validator']);
+    ['.', './app-shell.css', './export', './layout', './lint', './model-dto', './modeler', './validator']);
+  await readFile(path.join(packageRoot, 'dist/modeler/index.d.ts'), 'utf8');
   const stylePath = consumerRequire.resolve('archimate-js/app-shell.css');
   assert.match(await readFile(stylePath, 'utf8'), /\.am-app \.am-ui-status/);
   await readFile(path.join(packageRoot, 'assets/design-tokens/app.generated.css'), 'utf8');

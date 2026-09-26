@@ -4,6 +4,10 @@ The performance gate uses deterministic, generated `SYNTHETIC` models. It does
 not load customer, organization, or imported architecture data. The same
 generator supplies the Node benchmark and the browser MEFF fixture.
 
+Headless ModelDto diff has a separate generator, tier configuration, and
+numeric gate. See [Synthetic ModelDto diff performance](dto-diff.md); these
+budgets do not measure or change the import, layout, or rendering budgets below.
+
 ## Tiers
 
 | Tier | Elements/nodes | Relationships/connections | Purpose |

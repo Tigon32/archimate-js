@@ -46,6 +46,10 @@ it('returns detached DTO geometry and an invertible patch with optimizer metrics
     }
     expect(result.patch.connections[0].before).toEqual(input.views[0].connections[0].waypoints);
     expect(result.patch.connections[0].after).toEqual(result.view.connections[0].waypoints);
+    expect(result.patch.connections[0].after[0].kind).toBe('sourceAttachment');
+    expect(result.patch.connections[0].after.at(-1)?.kind).toBe('targetAttachment');
+    expect(result.patch.connections[0].after.every((point) =>
+      Number.isInteger(point.x) && Number.isInteger(point.y))).toBe(true);
 });
 
 it('preserves authored waypoint kinds and styles when routing is disabled', async () => {

@@ -15,6 +15,14 @@ export type { AccessibleOutlineSearchResult } from './outline-search.js';
 export type { AccessibleOutline, AccessibleOutlineNode, AccessibleOutlineRelationship,
   AccessibleOutlineOptions } from './accessible-outline.js';
 export { DiagramAdapter } from './editor.js';
+export {
+  EditorOperationLogError, MAX_EDITOR_OPERATIONS, parseOperationLog, serializeOperationLog,
+  validateOperationLog
+} from './editor-operation-log.js';
+export type {
+  EditorOperation, EditorOperationAction, EditorOperationLog, EditorOperationLogErrorCode
+} from './editor-operation-log.js';
+export { EditorCommandError } from './editor-view.js';
 export { RelationshipEditError } from './editor-diagnostics.js';
 export type {
   RelationshipEditDiagnostic, RelationshipEditDiagnosticCategory,
@@ -27,20 +35,21 @@ import type {
   DtoModelerServices as AdapterDtoModelerServices,
   DtoSaveResult as AdapterDtoSaveResult
 } from '../diagram-js-adapter/modeler-session.js';
-/** @deprecated Use the upcoming `archimate-js/modeler` entry planned for EE-M4 (#346). */
+/** @deprecated Use `DiagramJsCanvasPort` from `archimate-js/modeler`. */
 export const DiagramJsCanvasPort = AdapterDiagramJsCanvasPort;
-/** @deprecated Use the upcoming `archimate-js/modeler` entry planned for EE-M4 (#346). */
+/** @deprecated Use `DtoModelerSession` from `archimate-js/modeler`. */
 export const DtoModelerSession = AdapterDtoModelerSession;
-/** @deprecated Use the upcoming `archimate-js/modeler` entry planned for EE-M4 (#346). */
+/** @deprecated Use `DiagramJsCanvasServices` from `archimate-js/modeler`. */
 export type DiagramJsCanvasServices = AdapterDiagramJsCanvasServices;
-/** @deprecated Use the upcoming `archimate-js/modeler` entry planned for EE-M4 (#346). */
+/** @deprecated Use `DtoModelerServices` from `archimate-js/modeler`. */
 export type DtoModelerServices = AdapterDtoModelerServices;
-/** @deprecated Use the upcoming `archimate-js/modeler` entry planned for EE-M4 (#346). */
+/** @deprecated Use `DtoSaveResult` from `archimate-js/modeler`. */
 export type DtoSaveResult = AdapterDtoSaveResult;
 export {
   assessModelDtoEditingEligibility, checkMeffEditingEligibility, createDtoEditorFromMeff
 } from './eligibility.js';
 export type { CanvasPort, CanvasProjection, EditorCommand, EditorEvent } from './editor.js';
+export type { EditorCommandErrorCode } from './editor-view.js';
 export type { DtoEditingEligibility, DtoEditingReason, DtoMeffEditorEntry } from './eligibility.js';
 export type {
   ConceptPropertyDto, DtoDiagnostic, ElementDto, ModelDto, PointDto, PropertyDefinitionDto,

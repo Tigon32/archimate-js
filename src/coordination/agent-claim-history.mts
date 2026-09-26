@@ -20,6 +20,7 @@ interface LeaseState {
   latestAt: number;
   expiry: number | null;
   terminal: boolean;
+  malformedTransition?: { id: string; at: number; transitionAt: number };
 }
 
 interface ParsedEvent {
@@ -205,8 +206,18 @@ function applyTransition(event: ParsedEvent, context: HistoryContext): string | 
   const state = context.byClaimId.get(record.claim_comment_id);
   if (!state) return `transition ${id} references an unknown claim`;
   if (state.terminal) return `transition ${id} follows a terminal lease record`;
-  if (!sameLease(state.root, record)) return `transition ${id} changes lease identity or epoch`;
   if (at < state.latestAt) return `transition ${id} is out of order`;
+  if (record.record_type === 'supersede') return applySupersede(event, state, context);
+  if (state.malformedTransition) {
+    if (!isSelfReleaseResolution(event, state)) return `transition ${id} does not resolve the malformed transition`;
+    state.malformedTransition = undefined;
+  } else if (!sameLease(state.root, record)) {
+    if (record.record_type === 'release' && isBranchMismatchRelease(event, state)) {
+      state.malformedTransition = { id, at, transitionAt: Date.parse(record.released_at) };
+      return undefined;
+    }
+    return `transition ${id} changes lease identity or epoch`;
+  }
   if (record.record_type === 'heartbeat') {
     if (state.expiry !== null && at >= state.expiry) return `heartbeat ${id} was posted after lease expiry`;
     if (Date.parse(record.heartbeat_at) > at) return `heartbeat ${id} claims a time after its comment was posted`;
@@ -222,11 +233,75 @@ function applyTransition(event: ParsedEvent, context: HistoryContext): string | 
   return undefined;
 }
 
+function applySupersede(
+  event: ParsedEvent,
+  state: LeaseState,
+  context: HistoryContext
+): string | undefined {
+  const { id, at, record } = event;
+  if (record.record_type !== 'supersede' || !sameSupersedeTarget(state, record)) {
+    return `transition ${id} changes supersede target identity`;
+  }
+  if (state.malformedTransition && at <= state.malformedTransition.at) {
+    return `supersede ${id} does not follow the malformed transition`;
+  }
+  const supersededAt = Date.parse(record.superseded_at);
+  const earliestResolutionAt = Math.max(
+    latestActivityAt(state.latest),
+    state.malformedTransition?.transitionAt ?? Number.NEGATIVE_INFINITY
+  );
+  if (supersededAt > at || supersededAt < earliestResolutionAt) {
+    return `supersede ${id} has an out-of-order resolution timestamp`;
+  }
+  state.malformedTransition = undefined;
+  state.terminal = true;
+  state.latest = record;
+  state.latestAt = at;
+  context.previousLease = state;
+  return undefined;
+}
+
+function isSelfReleaseResolution(event: ParsedEvent, state: LeaseState): boolean {
+  const { record, at } = event;
+  return record.record_type === 'release' && typeof record.reason === 'string' && Boolean(record.reason.trim()) &&
+    sameLease(state.root, record) && state.malformedTransition !== undefined &&
+    at > state.malformedTransition.at && Date.parse(record.released_at) <= at &&
+    Date.parse(record.released_at) >= Math.max(
+      latestActivityAt(state.latest), state.malformedTransition.transitionAt
+    );
+}
+
+function isBranchMismatchRelease(event: ParsedEvent, state: LeaseState): boolean {
+  const { record, at } = event;
+  if (record.record_type !== 'release' || record.branch === state.root.branch || state.malformedTransition) return false;
+  return sameLeaseExceptBranch(state.root, record) && at >= state.latestAt &&
+    Date.parse(record.released_at) <= at && Date.parse(record.released_at) >= latestActivityAt(state.latest);
+}
+
+function sameLeaseExceptBranch(root: AgentClaimRecord, transition: AgentClaimRecord): boolean {
+  return root.lease_id === transition.lease_id && root.actor_id === transition.actor_id &&
+    root.github_login === transition.github_login && root.epoch === transition.epoch;
+}
+
+function sameSupersedeTarget(state: LeaseState, record: AgentClaimRecord): boolean {
+  return record.record_type === 'supersede' && record.claim_comment_id === state.claimId &&
+    record.supersedes_claim_comment_id === state.claimId && record.epoch === state.root.epoch &&
+    record.branch === state.root.branch;
+}
+
+function latestActivityAt(record: AgentClaimRecord): number {
+  if ('heartbeat_at' in record && typeof record.heartbeat_at === 'string') return Date.parse(record.heartbeat_at);
+  if ('claimed_at' in record && typeof record.claimed_at === 'string') return Date.parse(record.claimed_at);
+  return Number.NEGATIVE_INFINITY;
+}
+
 function makeLeaseState(id: string, at: number, record: AgentClaimRecord): LeaseState {
   return { claimId: id, root: record, latest: record, latestAt: at, expiry: expiryOf(record), terminal: false };
 }
 
 function summarizeHistory(context: HistoryContext, nowMs: number): AgentClaimHistoryResult {
+  const unresolved = [...context.leases.values()].find((lease) => lease.malformedTransition);
+  if (unresolved) return ambiguous(`malformed transition ${unresolved.malformedTransition!.id} is unresolved`);
   const live = [...context.leases.values()].filter((lease) => !lease.terminal && lease.expiry !== null && lease.expiry > nowMs);
   if (live.length > 1) return ambiguous('multiple active leases remain live');
   if (live.length === 1) return { status: 'active', claim_comment_id: live[0].claimId, record: live[0].latest };

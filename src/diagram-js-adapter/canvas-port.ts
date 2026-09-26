@@ -4,6 +4,7 @@ import { invalid } from '../model-dto/validate.js';
 
 interface CanvasElement {
   id?: string;
+  parent?: unknown;
   x?: number;
   y?: number;
   width?: number;
@@ -240,12 +241,25 @@ export class DiagramJsCanvasPort implements CanvasPort {
 
   private routeMove(shapes: unknown[], delta: { x: number; y: number }, target: unknown,
     hints: { attach?: boolean } | undefined, handler: (command: EditorCommand) => void): undefined {
-    if (!Array.isArray(shapes) || shapes.length !== 1 || hints?.attach === true ||
+    if (!Array.isArray(shapes) || !shapes.length || hints?.attach === true ||
         !Number.isFinite(delta?.x) || !Number.isFinite(delta?.y)) invalid();
-    const node = this.nodeFor(shapes[0]);
-    const expectedParent = node.parentId ? this.shapes.get(node.parentId) : undefined;
-    if (node.parentId ? target !== expectedParent : target != null && target !== this.services.canvas.getRootElement()) invalid();
-    handler({ type: 'move', viewId: this.viewId, nodeId: node.id, x: node.x + delta.x, y: node.y + delta.y });
+    const items = shapes.map((shape) => ({ shape, node: this.nodeFor(shape) }));
+    const root = this.services.canvas.getRootElement();
+    if (items.length === 1) {
+      const { node } = items[0];
+      const expectedParent = node.parentId ? this.shapes.get(node.parentId) : undefined;
+      if (node.parentId ? target !== expectedParent : target != null && target !== root) invalid();
+      handler({ type: 'move', viewId: this.viewId, nodeId: node.id, x: node.x + delta.x, y: node.y + delta.y });
+      return undefined;
+    }
+    for (const { shape, node } of items) {
+      const expectedParent = node.parentId ? this.shapes.get(node.parentId) : root;
+      if (target != null && target !== expectedParent || isElement(shape) && shape.parent !== expectedParent) {
+        invalid();
+      }
+    }
+    handler({ type: 'move-many', viewId: this.viewId,
+      moves: items.map(({ node }) => ({ nodeId: node.id, x: node.x + delta.x, y: node.y + delta.y })) });
     return undefined;
   }
 
@@ -346,8 +360,10 @@ export class DiagramJsCanvasPort implements CanvasPort {
   }
 
   private routeRemove(elements: unknown[], handler: (command: EditorCommand) => void): undefined {
-    if (!Array.isArray(elements) || elements.length !== 1) invalid();
-    handler({ type: 'delete', viewId: this.viewId, itemId: this.elementId(elements[0]) });
+    if (!Array.isArray(elements) || !elements.length) invalid();
+    const itemIds = elements.map((element) => this.elementId(element));
+    if (itemIds.length === 1) handler({ type: 'delete', viewId: this.viewId, itemId: itemIds[0] });
+    else handler({ type: 'delete-many', viewId: this.viewId, itemIds });
     return undefined;
   }
 
