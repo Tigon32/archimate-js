@@ -17,9 +17,12 @@ import CopyPasteModule from './features/copy-paste';
 import CreateModule from 'diagram-js/lib/features/create';
 // @ts-expect-error Legacy module has no declaration during incremental migration.
 import EditorActionsModule from './features/editor-actions';
+import CanvasInteractionsModule from './features/canvas-interactions';
+import HandToolModule from 'diagram-js/lib/features/hand-tool';
 // @ts-expect-error Legacy module has no declaration during incremental migration.
 import KeyboardModule from './features/keyboard';
 import KeyboardMoveSelectionModule from 'diagram-js/lib/features/keyboard-move-selection';
+import LassoToolModule from 'diagram-js/lib/features/lasso-tool';
 // @ts-expect-error Legacy module has no declaration during incremental migration.
 import LabelEditingModule from './features/label-editing';
 import MoveModule from 'diagram-js/lib/features/move';
@@ -140,8 +143,11 @@ Modeler.prototype._modelingModules = [
   CopyPasteModule,
   CreateModule,
   EditorActionsModule,
+  CanvasInteractionsModule,
+  HandToolModule,
   KeyboardModule,
   KeyboardMoveSelectionModule,
+  LassoToolModule,
   LabelEditingModule,
   MoveModule,
   PaletteModule,

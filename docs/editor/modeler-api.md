@@ -60,8 +60,11 @@ modeler.select(['node-component']);
 const selectedIds = modeler.getSelection();
 const projection = modeler.project();
 modeler.fitView();
+modeler.fitSelection();
 modeler.zoom(0.8);
 modeler.zoom('fit');
+const scale = modeler.getZoom();
+modeler.panBy(20, -10);
 ```
 
 Supported persistent command discriminants are `create-element`,
@@ -114,7 +117,10 @@ diagram-js command-stack compatibility path, not the DTO facade.
 
 `project()` returns an engine-neutral `CanvasProjection` with DTO identifiers,
 geometry, labels, style, and selected IDs. Viewport methods route through the
-adapter layer; they do not expose a canvas object.
+adapter layer; they do not expose a canvas object. `fitView()` fits the active
+diagram, `fitSelection()` fits the current selection or falls back to the active
+diagram, `zoom(level)` accepts a numeric scale or `'fit'`, `getZoom()` returns
+the current scale, and `panBy(dx, dy)` scrolls the viewport by screen pixels.
 
 Subscribe with `on(type, handler)`. The returned function unsubscribes the
 handler.
@@ -122,6 +128,10 @@ handler.
 ```ts
 const off = modeler.on('selection', (event) => {
   console.log(event.viewId, event.selectedIds);
+});
+
+const offViewport = modeler.on('viewport', (event) => {
+  console.log(event.x, event.y, event.scale);
 });
 ```
 
@@ -133,9 +143,34 @@ Events are plain data:
 | `closed` | no model payload |
 | `changed` | `{ viewId, selectedIds, model }` DTO data |
 | `selection` | `{ viewId, selectedIds, model }` DTO data |
+| `viewport` | `{ x, y, scale }` viewport data plus event `type` |
 
 No diagram-js event object, element, canvas, moddle object, or command stack is
 included in these payloads.
+
+## Canvas interactions and shortcuts
+
+The legacy diagram-js modeler composition includes the diagram-js 15.26.0
+`zoomscroll`, `movecanvas`, `hand-tool`, `lasso-tool`, `keyboard`,
+`keyboard-move-selection`, and selection modules. The public modeler facade
+keeps these engine details behind the adapter boundary.
+
+| Interaction | Shortcut or gesture |
+| --- | --- |
+| Trackpad or mouse-wheel pan | Wheel/trackpad scroll over the canvas. |
+| Wheel/pinch zoom | Ctrl+wheel, or the browser-reported pinch gesture that arrives as Ctrl+wheel. |
+| Temporary pan hand | Hold Space while the canvas has focus, then drag; release Space to restore the previous tool. |
+| Marquee selection | Shift-drag on the canvas. Plain empty-canvas drag remains reserved for diagram-js canvas panning, so EE-M8 uses the built-in lasso modifier path. |
+| Toggle multi-select | Shift-click a diagram element. |
+| Move selection | Arrow keys; Shift accelerates through the existing keyboard-move-selection module. |
+| Delete selection | Delete or Backspace; persistent single/multi-select deletion uses the DTO `delete`/`delete-many` commands. |
+| Clear selection | Escape. |
+| Select all | Cmd/Ctrl+A. |
+| Fit view | Cmd/Ctrl+0 or Shift+1. |
+| Fit selection | Shift+2. |
+
+Keyboard shortcuts are bound to the diagram canvas, so they do not fire while a
+label/direct-editing text field has focus.
 
 ## API classification
 

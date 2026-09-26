@@ -8,14 +8,15 @@ import { layoutView, type LayoutDiagnostic, type LayoutOptions,
   type LayoutPatch, type LayoutResult } from '../layout/index.js';
 import {
   createDiagramJsCapabilities,
+  createDiagramJsViewport,
   createDiagramJsModeler,
   DtoModelerSession,
-  fitDiagramJsView,
-  zoomDiagramJsCanvas,
   DiagramJsCanvasPort
 } from '../diagram-js-adapter/index.js';
 import type {
   DiagramJsCapabilities,
+  DiagramJsViewport,
+  DiagramJsViewportState,
   DiagramJsModelerInstance,
   DtoSaveResult
 } from '../diagram-js-adapter/index.js';
@@ -47,7 +48,8 @@ export type ModelerEvent =
   | { type: 'opened'; eligible: boolean; reasons: readonly DtoEditingReason[]; viewId?: string }
   | { type: 'closed' }
   | { type: 'changed'; viewId: string; selectedIds: string[]; model: EditorEvent['model'] }
-  | { type: 'selection'; viewId: string; selectedIds: string[]; model: EditorEvent['model'] };
+  | { type: 'selection'; viewId: string; selectedIds: string[]; model: EditorEvent['model'] }
+  | ({ type: 'viewport' } & DiagramJsViewportState);
 
 export class ModelerError extends Error {
   constructor(readonly code: 'MODELER_DESTROYED' | 'MODELER_OPEN_SUPERSEDED' |
@@ -66,10 +68,14 @@ export default class Modeler {
   private offEditor?: () => void;
   private destroyed = false;
   private generation = 0;
+  private readonly viewport: DiagramJsViewport;
+  private readonly offViewport: () => void;
   private readonly listeners = new Map<ModelerEvent['type'], Set<(event: ModelerEvent) => void>>();
 
   constructor(options: ModelerOptions) {
     this.modeler = createDiagramJsModeler(options);
+    this.viewport = createDiagramJsViewport(this.modeler);
+    this.offViewport = this.viewport.onViewport((viewport) => this.emit({ type: 'viewport', ...viewport }));
   }
 
   async open(xml: string, options: { viewId?: string } = {}): Promise<OpenResult> {
@@ -155,12 +161,28 @@ export default class Modeler {
 
   fitView(): void {
     this.assertUsable();
-    fitDiagramJsView(this.modeler);
+    this.viewport.fitView();
+  }
+
+  fitSelection(): void {
+    this.assertUsable();
+    this.viewport.fitSelection();
   }
 
   zoom(level: number | 'fit'): number | undefined {
     this.assertUsable();
-    return zoomDiagramJsCanvas(this.modeler, level);
+    const viewport = this.viewport.zoom(level);
+    return level === 'fit' ? undefined : viewport.scale;
+  }
+
+  getZoom(): number {
+    this.assertUsable();
+    return this.viewport.getZoom();
+  }
+
+  panBy(dx: number, dy: number): void {
+    this.assertUsable();
+    this.viewport.panBy(dx, dy);
   }
 
   on<T extends ModelerEvent['type']>(type: T, handler: EventHandler<T>): () => void {
@@ -186,6 +208,7 @@ export default class Modeler {
     this.generation += 1;
     this.closeCurrent();
     this.destroyed = true;
+    this.offViewport();
     this.listeners.clear();
     this.modeler.destroy?.();
   }

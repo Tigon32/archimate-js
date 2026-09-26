@@ -1,4 +1,13 @@
 import LegacyModeler from '../../lib/Modeler';
+import {
+  fitSelection,
+  fitView,
+  onViewportChanged,
+  panBy,
+  viewportState,
+  zoom
+} from './viewport.js';
+import type { DiagramJsViewportServices, DiagramJsViewportState } from './viewport.js';
 
 export interface DiagramJsModelerInstance {
   importXML(xml: string, viewId?: string): Promise<unknown>;
@@ -8,8 +17,13 @@ export interface DiagramJsModelerInstance {
 }
 
 export interface DiagramJsViewport {
-  fitView(): void;
-  zoom(level: number | 'fit'): number | undefined;
+  fitView(): DiagramJsViewportState;
+  fitSelection(): DiagramJsViewportState;
+  zoom(level: number | 'fit'): DiagramJsViewportState;
+  getZoom(): number;
+  panBy(dx: number, dy: number): DiagramJsViewportState;
+  getViewport(): DiagramJsViewportState;
+  onViewport(handler: (viewport: DiagramJsViewportState) => void): () => void;
 }
 
 export interface DiagramJsCapabilities {
@@ -23,12 +37,16 @@ type CanvasService = {
   resized?(): void;
 };
 
-function canvasOf(modeler: DiagramJsModelerInstance): CanvasService {
+function servicesOf(modeler: DiagramJsModelerInstance): DiagramJsViewportServices {
   const canvas = modeler.get('canvas');
   if (!canvas || typeof canvas !== 'object' || typeof (canvas as CanvasService).zoom !== 'function') {
     throw new Error('MODELER_ENGINE_CAPABILITY_UNAVAILABLE');
   }
-  return canvas as CanvasService;
+  return {
+    canvas: canvas as DiagramJsViewportServices['canvas'],
+    eventBus: modeler.get('eventBus') as DiagramJsViewportServices['eventBus'],
+    selection: modeler.get('selection') as DiagramJsViewportServices['selection']
+  };
 }
 
 export function createDiagramJsModeler(options: unknown): DiagramJsModelerInstance {
@@ -36,9 +54,7 @@ export function createDiagramJsModeler(options: unknown): DiagramJsModelerInstan
 }
 
 export function fitDiagramJsView(modeler: DiagramJsModelerInstance): void {
-  const canvas = canvasOf(modeler);
-  canvas.resized?.();
-  canvas.zoom('fit-viewport');
+  fitView(servicesOf(modeler));
 }
 
 export function zoomDiagramJsCanvas(modeler: DiagramJsModelerInstance, level: number | 'fit'): number | undefined {
@@ -46,7 +62,20 @@ export function zoomDiagramJsCanvas(modeler: DiagramJsModelerInstance, level: nu
     fitDiagramJsView(modeler);
     return undefined;
   }
-  return canvasOf(modeler).zoom(level);
+  return zoom(servicesOf(modeler), level).scale;
+}
+
+export function createDiagramJsViewport(modeler: DiagramJsModelerInstance): DiagramJsViewport {
+  const services = servicesOf(modeler);
+  return {
+    fitView: () => fitView(services),
+    fitSelection: () => fitSelection(services),
+    zoom: (level) => zoom(services, level),
+    getZoom: () => viewportState(services.canvas).scale,
+    panBy: (dx, dy) => panBy(services, dx, dy),
+    getViewport: () => viewportState(services.canvas),
+    onViewport: (handler) => onViewportChanged(services, handler)
+  };
 }
 
 export function createDiagramJsCapabilities(modeler: DiagramJsModelerInstance): DiagramJsCapabilities {
