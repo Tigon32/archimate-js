@@ -25,6 +25,7 @@
     "test/unit/lint-cli.test.mts",
     "test/browser/export-api.mts",
     "test/browser/theme-contrast.mts",
+    "test/browser/theme-chooser.mts",
     "test/browser/theme-export-invariance.mts",
     "test/browser/theme-zoom.mts",
     "test/performance/browser-benchmark.mts",
