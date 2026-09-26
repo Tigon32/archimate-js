@@ -122,8 +122,10 @@ Usage figures come from the harness's per-session usage records (premium units, 
   hive-queen/worker naming pattern with native harness subagents. It merged
   nine PRs from `hive-*` branches: eight from worker branches (#265, #267,
   #269, #272, #274, #283, #284, #285) and one from a queen integration branch
-  (#276). Whole-session usage was about 917 premium units across six models,
-  with 26 subagent task calls and 648 shell calls. Caveat: session totals also
+  (#276). Whole-session usage was 917 premium units across six models
+  (679 model API calls; 109.1 M input, 0.29 M output, 106.0 M cache-read
+  tokens), with 26 subagent task calls and 648 shell calls, re-verified by the
+  queen from the session usage records on 2026-09-26. Caveat: session totals also
   include non-hive work, so per-PR cost is an upper bound of about 102 premium
   units per merged PR. Verdict: queen/worker-bee pattern — keep (provisional);
   ruflo `hive-mind` — pending measurement; ruflo `swarm` — pending;
