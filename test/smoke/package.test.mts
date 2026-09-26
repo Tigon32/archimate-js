@@ -50,6 +50,11 @@ assert.equal(exportEntry('./layout').types, './dist/layout/index.d.ts');
 assert.equal(exportEntry('./lint').import, './dist/lint/index.mjs');
 assert.equal(exportEntry('./lint').types, './dist/lint/index.d.mts');
 assert.equal(packageJson.exports['./app-shell.css'], './assets/design-tokens/app-shell.css');
-assert.ok(packageJson.scripts['test:unit'].includes('--coverage.enabled'), 'unit tests publish informational coverage');
+assert.ok(packageJson.scripts['compile:browser'].includes('compile:model-dto'),
+  'browser bundle builds the shared relationship service');
+assert.ok(packageJson.scripts['compile:browser'].includes('generate:relationship-semantics-adapter'),
+  'browser bundle generates the typed legacy service bridge');
+assert.ok(packageJson.scripts['test:unit:run'].includes('--coverage.enabled'),
+  'unit tests publish informational coverage');
 
 console.log('package smoke test passed');
