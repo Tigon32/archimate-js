@@ -47,7 +47,7 @@ export function attachConceptPicker(options: ConceptPickerAdapterOptions): () =>
 
   const onDoubleClick = (event: MouseEvent): void => {
     const target = event.target;
-    if (!(target instanceof Element) || target.closest('.djs-element') ||
+    if (!(target instanceof Element) || target.closest('.djs-element, .djs-connection') ||
         target.closest('input, textarea, select, [contenteditable="true"]') ||
         directEditing.isActive()) return;
     event.preventDefault();

@@ -79,6 +79,11 @@ try {
     canvas.viewbox({ x: 0, y: 0, width: 800, height: 500 });
     const svg = host.querySelector('svg')!;
     Object.assign(window, { conceptPickerModeler: modeler, conceptPickerHost: host });
+    const registry = modeler.getEngineCapabilities('diagram-js').get('elementRegistry');
+    canvas.getGraphics(registry.get('serving-connection')).dispatchEvent(new MouseEvent('dblclick', {
+      bubbles: true, cancelable: true, clientX: 300, clientY: 200
+    }));
+    const relationshipIgnored = !document.querySelector('[role="dialog"]');
     const bounds = svg.getBoundingClientRect();
     const pointer = { x: bounds.left + 650, y: bounds.top + 420 };
     const viewbox = canvas.viewbox(false);
@@ -86,8 +91,10 @@ try {
       x: viewbox.x + (pointer.x - bounds.left) / viewbox.scale,
       y: viewbox.y + (pointer.y - bounds.top) / viewbox.scale
     } });
-    return pointer;
+    return { ...pointer, relationshipIgnored };
   });
+  assert.equal(pointer.relationshipIgnored, true,
+    'double-clicking a relationship must not open the blank-canvas concept picker');
   await page.mouse.dblclick(pointer.x, pointer.y);
   const dialog = page.getByRole('dialog', { name: 'Create ArchiMate concept' });
   await dialog.waitFor();
