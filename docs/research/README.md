@@ -48,6 +48,7 @@ review_after:
 
 - [diagram-js 15 core migration](diagram-js-15-core-2026-09-25.md)
 - [ELK.js licensing and provenance review](elkjs-license-and-provenance.md)
+- [ELK.js Layered feasibility spike](elkjs-layout-spike-2026-09-26.md)
 - [Minimap package licensing and provenance review](minimap-license-and-provenance.md)
 - [Design Tokens 2025.10 implementation](dtcg-2025-10-implementation.md)
 - [Modeler chrome and canvas interaction contrast](modeler-theme-contrast-2026-09-26.md)
