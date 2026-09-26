@@ -90,6 +90,7 @@ it('keeps background focus and pointer interaction inside the modal', () => {
   const background = document.createElement('button');
   const clicked: string[] = [];
   background.addEventListener('click', () => clicked.push('background'));
+  background.addEventListener('pointerdown', () => clicked.push('pointerdown'));
   document.body.append(background);
   const picker = new ConceptPicker({
     viewId: 'view-synthetic', position: { x: 0, y: 0 },
@@ -98,6 +99,7 @@ it('keeps background focus and pointer interaction inside the modal', () => {
   const input = document.querySelector<HTMLInputElement>('[role="dialog"] input')!;
   background.focus();
   expect(document.activeElement).toBe(input);
+  background.dispatchEvent(new Event('pointerdown', { bubbles: true, cancelable: true }));
   background.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
   background.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
   expect(clicked).toEqual([]);

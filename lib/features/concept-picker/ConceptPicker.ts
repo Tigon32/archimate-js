@@ -132,6 +132,7 @@ export class ConceptPicker {
 
   close(): void {
     document.removeEventListener('focusin', this.containFocus, true);
+    document.removeEventListener('pointerdown', this.preventBackgroundPointer, true);
     document.removeEventListener('mousedown', this.preventBackgroundPointer, true);
     document.removeEventListener('click', this.preventBackgroundPointer, true);
     this.dialog.remove();
@@ -177,6 +178,7 @@ export class ConceptPicker {
     this.input.addEventListener('keydown', (event) => this.handleKeydown(event));
     this.dialog.addEventListener('keydown', (event) => this.trapFocus(event));
     document.addEventListener('focusin', this.containFocus, true);
+    document.addEventListener('pointerdown', this.preventBackgroundPointer, true);
     document.addEventListener('mousedown', this.preventBackgroundPointer, true);
     document.addEventListener('click', this.preventBackgroundPointer, true);
     this.renderResults();
