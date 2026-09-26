@@ -8,58 +8,134 @@ See [third-party notices](THIRD_PARTY_NOTICES.md) for bundled font licenses, pro
 
 ## What is implemented today
 
-The package entry point exports the default `Viewer` class, the named `mountViewer` and `renderViewToSvg` helpers, and the headless `routeViewConnections`, `optimizeDiagram`, and `applyLayoutPatch` geometry APIs from [`index.js`](index.js). See [diagram routing and reversible optimization](docs/layout/diagram-optimization.md) for usage and limits.
+The package is usable today as a browser viewer, an experimental browser modeler,
+a bounded MEFF/XML validator, and a CI-oriented export CLI. The public package
+surface is intentionally small and is listed in [`package.json`](package.json)
+and [`index.js`](index.js).
 
 | Capability | Current implementation | Important boundary |
 | --- | --- | --- |
-| Import and render | Use `Viewer.importXML(xml, view?)` or mount selected views with `mountViewer({ xml, viewId/viewName, container })`. | XML/MEFF support is still being characterized; see the exchange-format status below. |
-| Save model | Serialize the currently loaded model with `saveXML()`. | Do not assume complete cross-tool round-trip fidelity yet. |
-| Export diagram | Export the current view with `saveSVG()`, render an accessible SVG string with `renderViewToSvg({ xml, viewId/viewName })`, or use the CLI for single-view SVG/PNG/PDF files. | Rendering requires a browser DOM; it is not a Node/server renderer or whole-model export. |
-| Viewer navigation | Selection, canvas movement, zoom, touch, and keyboard navigation are included in the Viewer modules. | This is a diagram viewer API, not a claim that every editor workflow is exposed. |
-| Read-only embedding | A locally served HTML example mounts the public Viewer API and loads a repository-owned synthetic fixture. | The example disables pointer input for presentation only; that is not an authorization or security boundary. |
-
-The experimental `archimate-js/modeler` subpath exposes a public browser
-`Modeler` facade for eligible DTO editing sessions, including lifecycle,
-engine-neutral events, serializable edit commands, undo/redo, selection,
-projection, save, and viewport helpers. It is documented in
-[`docs/editor/modeler-api.md`](docs/editor/modeler-api.md); the diagram-js
-escape hatch remains explicitly unstable.
+| Import and render | The root entry exports `Viewer`, `mountViewer`, and `renderViewToSvg`. Use `Viewer.importXML(xml, view?)` or `mountViewer({ xml, viewId/viewName, container })` for browser embedding, and `renderViewToSvg({ xml, viewId/viewName })` for deterministic SVG strings. | XML/MEFF support is bounded and still being characterized; see the exchange-format status below. Rendering uses a browser DOM, not a pure Node renderer. |
+| Experimental modeler | `archimate-js/modeler` exports a public browser `Modeler` facade for eligible DTO editing sessions: lifecycle, content-minimized diagnostics, serializable commands, undo/redo, selection, projection, viewport helpers, save, and operation-log replay. | Stable-experimental while `0.y.z`: documented public API, but breaking changes can ship before `1.0.0`. The diagram-js capability escape hatch is explicitly unstable. |
+| Model DTO authority | Eligible editing sessions keep `ModelDto` as the authoritative semantic and view state; diagram-js elements are transient projections behind `DiagramJsAdapter`. | This applies to the DTO editing profile, not every imported MEFF record. Legacy moddle save compatibility remains a convergence path. |
+| Layout and routing | Root exports `routeViewConnections`, `optimizeDiagram`, and `applyLayoutPatch`; `archimate-js/layout` exposes async `layoutView`. Built-in layout and connection routing produce reversible geometry patches. `strategy: 'elk-layered'` optionally loads pinned `elkjs@0.12.0` for unlabeled compound views. | Layout is opt-in and never silently rewrites imported geometry. Unsupported ELK constraints, including labeled edges today, return diagnostics rather than falling back. |
+| App shell themes and accessibility | The read-only example and app shell CSS support five choices: `default` (system preference), `light`, `dark`, `high-contrast-light`, and `high-contrast-dark`, with forced-colors and reduced-motion handling. Browser tests cover theme contrast, chooser persistence, export invariance, zoom, focus, and accessible outline behavior. | Diagram notation colors remain ArchiMate notation colors; the app shell theme frames the experience rather than redefining the standard notation palette. |
+| Validator and linting | `archimate-js/validator` and `archimate-js/lint` provide bounded structure checks, deterministic diagnostics, and optional organization quality rules. The `archimate-js` CLI exposes `validate` and `lint`. | This is not full XSD validation, a complete ArchiMate semantic matrix, a conformance claim, or an automatic repair workflow. |
+| Export CLI | The `archimate-js` CLI exports selected views to SVG, PNG, and PDF through an existing Chrome/Chromium installation. The Node export service is available at `archimate-js/export`. | SVG is the deterministic report artifact. PNG/PDF bytes can vary with browser versions; the CLI blocks network traffic and avoids model payloads in diagnostics. |
 
 Supported imports, deep-import policy, version channels, and release criteria are documented in the [release policy](docs/releases.md).
 
 See the [read-only HTML example guide](docs/rendering/read-only-html-embed.md) for consumer integration notes.
 
-## Architecture at a glance
+## Architecture
 
 ```mermaid
 flowchart LR
-  XML["ArchiMate XML"] --> I["Bounded importer"]
-  I --> V["Viewer and diagram-js"]
-  V --> SVG["Accessible SVG"]
-  XML --> Q["Conservative validator"]
-  XML --> CLI["Validate / render CLI"]
+  Source["ArchiMate XML / MEFF"] --> Importer["Bounded importer"]
+  Importer --> DTO["ModelDto authoritative editing state<br/>(ADR-0010)"]
+  DTO --> Adapter["DiagramJsAdapter"]
+  Adapter --> Canvas["diagram-js canvas"]
+  DTO --> Layout["Layout strategies:<br/>built-in, elk-layered"]
+  Layout --> Patch["Reversible geometry patch"]
+  Patch --> DTO
+  Source --> Validator["Validator / lint"]
+  Validator --> CLI["archimate-js CLI"]
+  Canvas --> SVG["Deterministic SVG<br/>(ADR-0003)"]
   CLI --> SVG
-  SVG --> PNG["PNG / PDF"]
+  SVG --> Raster["PNG / PDF derivatives"]
 ```
 
-The public package surface is intentionally small. Browser consumers mount a
-selected view and can export it as SVG; the validator and CLI provide bounded
-input checks and deterministic diagnostics. The modeler/editor code remains
-internal and is not part of the root package API.
+The current architecture keeps ArchiMate semantics and editable view state in
+`ModelDto`; diagram-js is the current canvas engine behind an adapter, not the
+canonical domain model. See [ADR-0010](docs/adr/0010-diagram-engine-boundary.md).
+Report images use one model/view source and deterministic SVG as the canonical
+artifact; PNG and PDF are derived outputs. See
+[ADR-0003](docs/adr/0003-deterministic-report-rendering.md). Optional ELK
+layered layout is isolated behind `src/layout`, selected explicitly, and returns
+reversible patches. See
+[ADR-0012](docs/adr/0012-optional-elk-layered-adapter.md) and
+[diagram routing and reversible optimization](docs/layout/diagram-optimization.md).
 
-### What works today
+## What to expect first
 
-This screenshot is generated from the checked-in, hand-authored synthetic
-service-delivery fixture by the Playwright browser smoke test. It demonstrates
-the rendering path and visible business, application, and technology elements;
-it is not a screenshot of a customer model or evidence of full MEFF
-interoperability.
+Install the package and mount a selected view in a browser-controlled container:
 
-The [CI runs on `main`](https://github.com/Tigon32/archimate-js/actions/workflows/ci.yml?query=branch%3Amain)
-generate and validate the screenshot. Open the latest successful run and download
-`read-only-showcase-screenshot` from its **Artifacts** section to inspect the PNG.
+```sh
+npm install archimate-js
+```
 
-The sample includes these layers and relations:
+```js
+import { mountViewer, renderViewToSvg } from 'archimate-js';
+
+const viewer = await mountViewer({
+  xml,
+  viewId: 'view-id',
+  container: document.querySelector('#diagram')
+});
+
+const svg = await renderViewToSvg({ xml, viewId: 'view-id' });
+viewer.destroy();
+```
+
+Open the experimental modeler only for MEFF files that are eligible for the DTO
+editing profile:
+
+```js
+import Modeler from 'archimate-js/modeler';
+
+const modeler = new Modeler({ container: document.querySelector('#editor') });
+const opened = await modeler.open(xml, { viewId: 'view-id' });
+
+if (opened.eligible) {
+  modeler.execute({ type: 'move', viewId: opened.viewId, nodeId: 'node-id', x: 80, y: 120 });
+  modeler.undo();
+  modeler.redo();
+  const { xml: savedXml } = modeler.save();
+}
+```
+
+Use the published command name from [`package.json`](package.json), `archimate-js`,
+for validation, linting, and export:
+
+```sh
+npx archimate-js validate ./model.xml
+npx archimate-js lint ./model.xml --format json
+CHROME_BIN=/usr/bin/chromium npx archimate-js render ./model.xml --view-id view-id --output ./view.svg
+CHROME_BIN=/usr/bin/chromium npx archimate-js export ./model.xml --view-id view-id --format svg,png,pdf --output-dir ./exports
+```
+
+From a source checkout, use Node.js 22.12 or later, then run `npm run compile`.
+Useful repository scripts include `npm test`, `npm run test:browser`,
+`npm run test:typecheck`, and `npm run docs:screenshots`. The screenshot script
+regenerates the README SVGs; `npm run docs:screenshots:check` fails when the
+checked-in SVGs drift.
+
+Known limits to expect today:
+
+- MEFF/XML support is a reviewed subset, not a full conformance claim.
+- Rendering and export require a browser DOM; PNG/PDF require an installed local
+  Chrome or Chromium (`CHROME_BIN` or `--chrome`).
+- The modeler is public but experimental, and only eligible DTO-profile inputs
+  can be edited/saved through that facade.
+- Layout is opt-in; `elk-layered` currently rejects labeled edges and other
+  unsupported constraints without partial output.
+- CLI diagnostics intentionally omit model XML, local paths, view identifiers,
+  parser details, browser exception text, and stacks.
+
+## Screenshots
+
+These SVG screenshots are regenerated from
+[`test/fixtures/synthetic/read-only-showcase.xml`](test/fixtures/synthetic/read-only-showcase.xml),
+the hand-authored **SYNTHETIC** service-delivery fixture recorded in
+[`test/fixtures/manifest.json`](test/fixtures/manifest.json). They are not
+customer models, screenshots of private architecture, or evidence of full MEFF
+interoperability. Regenerate them with `npm run docs:screenshots`.
+
+![Read-only viewer render from the synthetic service-delivery fixture](docs/assets/readme/viewer.svg)
+
+![High contrast dark app-shell frame around the same synthetic render](docs/assets/readme/viewer-high-contrast-dark.svg)
+
+The fixture demonstrates these layers and relations:
 
 ```mermaid
 flowchart LR
