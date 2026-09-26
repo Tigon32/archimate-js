@@ -218,3 +218,24 @@ sources:
       - This is a documentation-only research note under docs/research/elkjs-license-and-provenance.md; it does not authorize adding the elkjs dependency.
       - Do not treat this entry as legal advice; unresolved licensing questions are recorded in the linked note.
     review_after: 2026-12-26
+
+  - id: diagram-js-minimap-license-provenance
+    title: bpmn-io/diagram-js-minimap package, license, and API-fit evidence
+    publisher: bpmn-io (Camunda Services GmbH)
+    url: https://github.com/bpmn-io/diagram-js-minimap
+    version: diagram-js-minimap 5.5.0 (npm dist-tag latest), tag https://github.com/bpmn-io/diagram-js-minimap/tree/v5.5.0
+    retrieved_at: 2026-09-26
+    license_or_terms: MIT
+    redistribution: Link and summarize only; do not bundle or vendor diagram-js-minimap source until adoption is decided in EE-M11 with required repository changes.
+    source_revision: diagram-js-minimap v5.5.0 tag; published 2026-09-23T11:43:13.310Z
+    confidence: high
+    claims:
+      - diagram-js-minimap's package.json declares MIT license with runtime dependencies min-dash, min-dom, and tiny-svg, all already MIT direct dependencies of this repository.
+      - The module exports a generic diagram-js DI module injecting only core diagram-js services (injector, eventBus, canvas, elementRegistry), with no BPMN-specific service names, dependencies, or devDependencies.
+      - The published package.json declares no peerDependencies; diagram-js appears only as a devDependency (^15.18.1) used for the package's own test suite.
+      - The repository was actively maintained as of retrieval: pushed 2026-09-24, 0 open issues, incremental CHANGELOG entries through 5.5.0.
+    constraints:
+      - This is a documentation-only research note under docs/research/minimap-license-and-provenance.md; it does not authorize adding the diagram-js-minimap dependency.
+      - Do not treat this entry as legal advice; unresolved compatibility and ArchiMate-rendering-fidelity questions are recorded in the linked note.
+      - No declared peerDependency range exists for diagram-js; version compatibility with this repository's diagram-js 15.26.0 must be integration-tested, not assumed, before any adoption.
+    review_after: 2026-12-26
