@@ -59,6 +59,7 @@
     "test/security/check-tracked-paths.test.mts",
     "test/security/supply-chain.test.mts",
     "test/security/public-source-exceptions.test.mts",
+    "test/spikes/elk-layered-layout.mts",
     "test/unit/cli-export.test.mts",
     "test/unit/lint-cli.test.mts",
     "test/unit/pr-drain.test.mts",
