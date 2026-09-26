@@ -4,7 +4,7 @@ import type {
   EditorEvent
 } from '../model-dto/editor.js';
 import { assessModelDtoEditingEligibility, type DtoEditingReason } from '../model-dto/eligibility.js';
-import { layoutView, type LayoutDiagnostic, type LayoutOptions,
+import { layoutViewInBrowser, type LayoutDiagnostic, type LayoutExecutionOptions,
   type LayoutPatch, type LayoutResult } from '../layout/index.js';
 import {
   attachConceptPicker,
@@ -51,7 +51,7 @@ export type { CanvasProjection, EditorCommand } from '../model-dto/editor.js';
 export type {
   EditorOperation, EditorOperationAction, EditorOperationLog, EditorOperationLogErrorCode
 } from '../model-dto/editor-operation-log.js';
-export type { LayoutOptions, LayoutPatch, LayoutMetrics } from '../layout/index.js';
+export type { LayoutExecutionOptions, LayoutOptions, LayoutPatch, LayoutMetrics } from '../layout/index.js';
 export type { Alignment, DistributionAxis } from './productivity.js';
 
 export interface ModelerOptions {
@@ -264,13 +264,13 @@ export default class Modeler {
     this.editor().replayOperationLog(input);
   }
 
-  async optimizeDiagram(options: Partial<LayoutOptions> = {}): Promise<
+  async optimizeDiagram(options: Partial<LayoutExecutionOptions> = {}): Promise<
     Pick<Extract<LayoutResult, { status: 'ok' }>, 'patch' | 'metrics'>> {
     const editor = this.editor();
     const viewId = this.activeViewId();
     const generation = this.generation;
     const model = editor.getModel();
-    const result = await layoutView(model, viewId, { strategy: 'builtin', ...options });
+    const result = await layoutViewInBrowser(model, viewId, { strategy: 'builtin', ...options });
     if (this.destroyed || generation !== this.generation || editor !== this.session?.editor) {
       throw new ModelerError(this.destroyed ? 'MODELER_DESTROYED' : 'MODELER_OPEN_SUPERSEDED');
     }

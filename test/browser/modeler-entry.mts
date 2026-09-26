@@ -23,7 +23,8 @@ await writeFile(entryPath, `
 `);
 try {
   const compiler = webpack({ mode: 'development', target: 'web', entry: entryPath,
-    output: { path: path.join(root, '.ci-build'), filename: 'modeler-entry-test.js' },
+    output: { path: path.join(root, '.ci-build'), filename: 'modeler-entry-test.js',
+      publicPath: '/.ci-build/' },
     module: { rules: [{ test: /\\.(css|svg|ttf|woff2?)$/, type: 'asset/inline' }] },
     resolve: { extensions: ['.ts', '.js', '.json'] }, stats: 'errors-warnings' });
   const stats = await new Promise<import('webpack').Stats>((resolve, reject) => {
@@ -38,7 +39,6 @@ try {
 }
 
 const files = new Map([
-  ['/.ci-build/modeler-entry-test.js', '.ci-build/modeler-entry-test.js'],
   ['/supported.xml', 'test/fixtures/synthetic/dto-export-view.xml']
 ]);
 const server = createServer((request: { url?: string }, response: {
@@ -49,7 +49,7 @@ const server = createServer((request: { url?: string }, response: {
     response.setHeader('content-type', 'text/html; charset=utf-8');
     return void response.writeHead(200).end('<!doctype html><html><body></body></html>');
   }
-  const name = files.get(route);
+  const name = route.startsWith('/.ci-build/') ? route.slice(1) : files.get(route);
   if (!name) return void response.writeHead(404).end();
   response.setHeader('content-type', name.endsWith('.xml') ? 'application/xml' : 'text/javascript');
   createReadStream(path.join(root, name)).pipe(response);
@@ -89,7 +89,7 @@ try {
     const reopened = modeler.project().nodes.find((node: any) => node.id === 'node-component');
     const initialDto = JSON.parse(modeler.save().dtoJson);
     const initialProjection = modeler.project();
-    const optimized = await modeler.optimizeDiagram();
+    const optimized = await modeler.optimizeDiagram({ workerThresholds: { minNodes: 0 }, timeoutMs: 5000 });
     const optimizedProjection = modeler.project();
     const optimizedSave = modeler.save();
     const optimizedDto = api.importMeffToModelDto(optimizedSave.xml);
