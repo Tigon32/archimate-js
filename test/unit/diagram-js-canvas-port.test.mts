@@ -41,6 +41,20 @@ function setup(supportedServing = false, rejectLegacyRules = false) {
   const shapes = new Map<string, Record<string, unknown>>();
   const connections = new Map<string, Record<string, unknown>>();
   const modeling = mockModeling(rejectLegacyRules);
+  const eventHandlers = new Map<string, Set<(event: unknown) => void>>();
+  const eventBus = {
+    on(event: string, handler: (event: unknown) => void) {
+      const handlers = eventHandlers.get(event) ?? new Set();
+      handlers.add(handler);
+      eventHandlers.set(event, handlers);
+    },
+    off(event: string, handler: (event: unknown) => void) {
+      eventHandlers.get(event)?.delete(handler);
+    },
+    fire(event: string) {
+      eventHandlers.get(event)?.forEach((handler) => handler({}));
+    }
+  };
   const canvas = {
     root: { id: 'root', children: [] as Array<Record<string, unknown>> },
     getRootElement() { return this.root; },
@@ -68,12 +82,12 @@ function setup(supportedServing = false, rejectLegacyRules = false) {
       createShape: (attributes) => ({ ...attributes, children: [] }),
       createConnection: (attributes) => ({ ...attributes })
     },
-    eventBus: { on() {}, off() {} },
+    eventBus,
     selection: { get: () => [], select() {} },
     modeling
   };
   const port = new DiagramJsCanvasPort(services);
-  return { editor, port, modeling, shapes, connections };
+  return { editor, port, modeling, shapes, connections, eventBus };
 }
 
 function diagnosticOf(action: () => unknown): RelationshipEditDiagnostic | undefined {
@@ -109,6 +123,7 @@ it('routes semantic connect, reconnect and view deletion through one history', (
   expect(changed.relationships.find((item) => item.id === relationship.id)).toMatchObject({
     sourceId: 'service-two', targetId: 'component-one'
   });
+
   expect(changed.views[0].connections.find((item) => item.id === 'new-connection')).toMatchObject({
     sourceId: 'node-service-nested', targetId: 'node-component'
   });
@@ -134,6 +149,28 @@ it('routes semantic connect, reconnect and view deletion through one history', (
   const detachOther = editor.attach('view-two', port);
   expect(editor.project('view-two').connections).toEqual([]);
   detachOther();
+});
+
+it('commits picker direct edits to the semantic name and clears canceled intent', () => {
+  const { editor, port, modeling, shapes, eventBus } = setup();
+  const detach = editor.attach('view-dto-export', port);
+  const originalName = editor.getModel().elements.find((item) => item.id === 'component-one')!.name;
+  port.beginSemanticNameEdit('node-component');
+  modeling.updateLabel(shapes.get('node-component'), 'Picker Created Service');
+  const renamed = editor.getModel();
+  expect(renamed.elements.find((item) => item.id === 'component-one')?.name)
+    .toBe('Picker Created Service');
+  expect(renamed.views[0].nodes[0].label).toBeUndefined();
+  expect(editor.undo()).toBe(true);
+  expect(editor.getModel().elements.find((item) => item.id === 'component-one')?.name).toBe(originalName);
+
+  port.beginSemanticNameEdit('node-component');
+  eventBus.fire('directEditing.cancel');
+  modeling.updateLabel(shapes.get('node-component'), 'View-only label');
+  const viewEdited = editor.getModel();
+  expect(viewEdited.elements.find((item) => item.id === 'component-one')?.name).toBe(originalName);
+  expect(viewEdited.views[0].nodes[0].label).toBe('View-only label');
+  detach();
 });
 
 it('rejects semantic endpoint mismatches and shared relationship retargeting atomically', () => {

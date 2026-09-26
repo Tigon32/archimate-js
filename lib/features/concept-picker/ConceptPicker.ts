@@ -38,8 +38,10 @@ export interface ConceptPickerOptions {
   viewId: string;
   host?: HTMLElement;
   registry?: ConceptRegistry;
-  returnFocus?: HTMLElement | null;
+  returnFocus?: FocusTarget | null;
 }
+
+interface FocusTarget { focus(): void }
 
 export interface ConceptPickerResult {
   label: string;
@@ -53,6 +55,20 @@ const NODE_HEIGHT = 70;
 
 export function conceptLabel(record: Pick<ConceptRecord, 'type'>): string {
   return record.type.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
+}
+
+export function clampPickerPosition(
+  anchor: ConceptPickerPosition,
+  dialog: { width: number; height: number },
+  viewport: { width: number; height: number },
+  margin = 12
+): ConceptPickerPosition {
+  const maxX = Math.max(margin, viewport.width - dialog.width - margin);
+  const maxY = Math.max(margin, viewport.height - dialog.height - margin);
+  return {
+    x: Math.min(Math.max(margin, anchor.x), maxX),
+    y: Math.min(Math.max(margin, anchor.y), maxY)
+  };
 }
 
 export function searchConcepts(query: string, registry: ConceptRegistry = CONCEPT_REGISTRY): ConceptPickerResult[] {
@@ -96,7 +112,7 @@ export class ConceptPicker {
   private readonly anchor?: ConceptPickerPosition;
   private readonly position: ConceptPickerPosition;
   private readonly registry: ConceptRegistry;
-  private readonly returnFocus: HTMLElement | null;
+  private readonly returnFocus: FocusTarget | null;
   private readonly viewId: string;
   private readonly dialog: HTMLDivElement;
   private readonly input: HTMLInputElement;
@@ -120,7 +136,7 @@ export class ConceptPicker {
     this.editor = options.editor;
     this.position = options.position;
     this.registry = options.registry ?? CONCEPT_REGISTRY;
-    this.returnFocus = options.returnFocus ?? document.activeElement as HTMLElement | null;
+    this.returnFocus = options.returnFocus ?? document.activeElement as FocusTarget | null;
     this.viewId = options.viewId;
     this.results = searchConcepts('', this.registry);
     this.dialog = document.createElement('div');
@@ -140,26 +156,78 @@ export class ConceptPicker {
   }
 
   private initialize(host: HTMLElement): void {
+    this.configureDialog();
+    this.configureInput();
+    this.configureList();
+    const title = document.createElement('h2');
+    title.id = 'am-concept-picker-title';
+    title.textContent = 'Create ArchiMate concept';
+    const label = document.createElement('label');
+    label.htmlFor = this.input.id;
+    label.textContent = 'Search concepts';
+    this.dialog.append(title, label, this.input, this.resultsStatus, this.list);
+    host.append(this.dialog);
+    if (this.anchor) {
+      const bounds = this.dialog.getBoundingClientRect();
+      const position = clampPickerPosition(this.anchor, {
+        width: bounds.width,
+        height: bounds.height
+      }, {
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+      this.dialog.style.left = `${position.x}px`;
+      this.dialog.style.top = `${position.y}px`;
+    }
+    this.bindEvents();
+    this.renderResults();
+    this.input.focus();
+  }
+
+  private configureDialog(): void {
     this.dialog.className = 'am-concept-picker';
     this.dialog.setAttribute('role', 'dialog');
     this.dialog.setAttribute('aria-modal', 'true');
     this.dialog.setAttribute('aria-labelledby', 'am-concept-picker-title');
     this.dialog.tabIndex = -1;
+    Object.assign(this.dialog.style, {
+      zIndex: '10000',
+      boxSizing: 'border-box',
+      width: 'min(360px, calc(100vw - 24px))',
+      maxHeight: 'min(480px, calc(100vh - 24px))',
+      overflow: 'auto',
+      padding: '16px',
+      border: '1px solid var(--am-color-border, #8b929a)',
+      borderRadius: '8px',
+      background: 'var(--am-color-surface, #fff)',
+      color: 'var(--am-color-text, #202124)',
+      boxShadow: '0 8px 28px rgb(0 0 0 / 24%)',
+      font: '14px/1.4 system-ui, sans-serif'
+    });
     if (this.anchor) {
       this.dialog.style.position = 'fixed';
       this.dialog.style.left = `${this.anchor.x}px`;
       this.dialog.style.top = `${this.anchor.y}px`;
     }
-    const title = document.createElement('h2');
-    title.id = 'am-concept-picker-title';
-    title.textContent = 'Create ArchiMate concept';
-    const label = document.createElement('label');
-    label.htmlFor = 'am-concept-picker-search';
-    label.textContent = 'Search concepts';
-    this.input.id = label.htmlFor;
+  }
+
+  private configureInput(): void {
+    this.input.id = 'am-concept-picker-search';
     this.input.type = 'search';
     this.input.autocomplete = 'off';
-    this.input.style.outline = '2px solid transparent';
+    Object.assign(this.input.style, {
+      boxSizing: 'border-box',
+      width: '100%',
+      minHeight: '40px',
+      padding: '8px 10px',
+      border: '1px solid var(--am-color-border, #62676d)',
+      borderRadius: '4px',
+      background: 'var(--am-color-input, #fff)',
+      color: 'inherit',
+      outline: '2px solid transparent',
+      outlineOffset: '2px',
+      font: 'inherit'
+    });
     this.input.addEventListener('focus', () => {
       this.input.style.outlineColor = '#005a9c';
     });
@@ -168,12 +236,21 @@ export class ConceptPicker {
     });
     this.input.setAttribute('aria-controls', 'am-concept-picker-results');
     this.input.setAttribute('aria-activedescendant', 'am-concept-picker-option-0');
+  }
+
+  private configureList(): void {
     this.list.id = 'am-concept-picker-results';
     this.list.setAttribute('role', 'listbox');
+    Object.assign(this.list.style, {
+      listStyle: 'none',
+      margin: '8px 0 0',
+      padding: '0'
+    });
     this.resultsStatus.setAttribute('aria-live', 'polite');
     this.resultsStatus.setAttribute('role', 'status');
-    this.dialog.append(title, label, this.input, this.resultsStatus, this.list);
-    host.append(this.dialog);
+  }
+
+  private bindEvents(): void {
     this.input.addEventListener('input', () => this.updateResults());
     this.input.addEventListener('keydown', (event) => this.handleKeydown(event));
     this.dialog.addEventListener('keydown', (event) => this.trapFocus(event));
@@ -181,8 +258,6 @@ export class ConceptPicker {
     document.addEventListener('pointerdown', this.preventBackgroundPointer, true);
     document.addEventListener('mousedown', this.preventBackgroundPointer, true);
     document.addEventListener('click', this.preventBackgroundPointer, true);
-    this.renderResults();
-    this.input.focus();
   }
 
   private updateResults(): void {
@@ -201,6 +276,12 @@ export class ConceptPicker {
       option.setAttribute('aria-selected', String(index === this.selectedIndex));
       option.tabIndex = -1;
       option.textContent = `${result.label} (${result.layer})`;
+      Object.assign(option.style, {
+        padding: '8px',
+        borderRadius: '4px',
+        cursor: 'pointer'
+      });
+      if (index === this.selectedIndex) option.style.background = 'var(--am-color-selected, #e8f0fe)';
       option.addEventListener('mousedown', (event) => event.preventDefault());
       option.addEventListener('click', () => this.choose(index));
       this.list.append(option);

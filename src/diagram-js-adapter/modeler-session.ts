@@ -20,6 +20,7 @@ export class DtoModelerSession {
   readonly editor?: DiagramAdapter;
   private readonly importedModel: unknown;
   private readonly detach?: () => void;
+  private readonly canvasPort?: DiagramJsCanvasPort;
   private readonly offNativeMutation?: () => void;
   private nativeMutation = false;
   private closed = false;
@@ -38,6 +39,7 @@ export class DtoModelerSession {
       modeling: modeler.get('modeling')
     } as DiagramJsCanvasServices;
     const port = new DiagramJsCanvasPort(services);
+    this.canvasPort = port;
     this.detach = entry.editor.attach(activeViewId, port);
     this.editor = entry.editor;
     const markMutation = (): void => { this.nativeMutation = true; };
@@ -67,5 +69,10 @@ export class DtoModelerSession {
     this.closed = true;
     this.offNativeMutation?.();
     this.detach?.();
+  }
+
+  startElementNameEditing(nodeId: string): void {
+    if (this.closed || !this.canvasPort) throw editingIneligibleError();
+    this.canvasPort.beginSemanticNameEdit(nodeId);
   }
 }

@@ -2,7 +2,7 @@
 // SYNTHETIC: Exercises public registry records and synthetic editor callbacks only.
 import { expect, it } from 'vitest';
 import {
-  ConceptPicker, conceptLabel, createConceptCommand, searchConcepts
+  ConceptPicker, clampPickerPosition, conceptLabel, createConceptCommand, searchConcepts
 } from '../../lib/features/concept-picker/ConceptPicker.js';
 import { CONCEPT_REGISTRY } from '../../src/language/concept-registry.mjs';
 
@@ -26,6 +26,13 @@ it('searches presentation label, canonical type, and layer without using rendere
   expect(searchConcepts('implementation & migration').map((option) => option.layer))
     .toEqual(expect.arrayContaining(['Implementation & Migration']));
   expect(conceptLabel({ type: 'ValueStream' })).toBe('Value Stream');
+});
+
+it('clamps picker placement inside the viewport while preserving room for its size', () => {
+  expect(clampPickerPosition({ x: 780, y: 750 }, { width: 360, height: 300 },
+    { width: 1024, height: 768 })).toEqual({ x: 652, y: 456 });
+  expect(clampPickerPosition({ x: 30, y: 45 }, { width: 360, height: 300 },
+    { width: 1024, height: 768 })).toEqual({ x: 30, y: 45 });
 });
 
 it('builds an exact DTO create command with caller-generated deterministic IDs', () => {

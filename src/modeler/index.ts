@@ -7,6 +7,7 @@ import { assessModelDtoEditingEligibility, type DtoEditingReason } from '../mode
 import { layoutView, type LayoutDiagnostic, type LayoutOptions,
   type LayoutPatch, type LayoutResult } from '../layout/index.js';
 import {
+  attachConceptPicker,
   createDiagramJsCapabilities,
   createDiagramJsViewport,
   createDiagramJsModeler,
@@ -15,12 +16,14 @@ import {
 } from '../diagram-js-adapter/index.js';
 import type {
   DiagramJsCapabilities,
+  ConceptPickerEditorService,
   DiagramJsViewport,
   DiagramJsViewportState,
   DiagramJsModelerInstance,
   DtoSaveResult
 } from '../diagram-js-adapter/index.js';
 import type { EditorOperationLog } from '../model-dto/editor-operation-log.js';
+import type { ModelDto } from '../model-dto/types.js';
 
 export { DiagramJsCanvasPort, DtoModelerSession };
 export { EditorOperationLogError } from '../model-dto/editor-operation-log.js';
@@ -36,6 +39,35 @@ export interface ModelerOptions {
   container: Element;
   width?: number | string;
   height?: number | string;
+}
+
+function createConceptIdFactory(editor: { getModel(): ModelDto }): ConceptPickerEditorService['createId'] {
+  let sequence = 1;
+  return (kind) => {
+    const used = collectModelIds(editor.getModel());
+    let id: string;
+    do {
+      id = `concept-${kind}-${sequence++}`;
+    } while (used.has(id));
+    return id;
+  };
+}
+
+function collectModelIds(model: ModelDto): Set<string> {
+  const ids = new Set<string>();
+  const stack: unknown[] = [model];
+  while (stack.length) {
+    const value = stack.pop();
+    if (Array.isArray(value)) {
+      stack.push(...value);
+    } else if (value && typeof value === 'object') {
+      for (const [key, child] of Object.entries(value)) {
+        if (key === 'id' && typeof child === 'string') ids.add(child);
+        else if (child && typeof child === 'object') stack.push(child);
+      }
+    }
+  }
+  return ids;
 }
 
 export interface OpenResult {
@@ -66,6 +98,7 @@ export default class Modeler {
   private session?: DtoModelerSession;
   private viewId?: string;
   private offEditor?: () => void;
+  private offConceptPicker?: () => void;
   private destroyed = false;
   private generation = 0;
   private readonly viewport: DiagramJsViewport;
@@ -89,7 +122,22 @@ export default class Modeler {
     }
     this.session = session;
     this.viewId = options.viewId || session.editor?.getModel().views[0]?.id;
-    if (session.editor) this.offEditor = session.editor.subscribe((event) => this.emitEditor(event));
+    if (session.editor) {
+      const editor = session.editor;
+      this.offEditor = editor.subscribe((event) => this.emitEditor(event));
+      if (this.viewId) {
+        const idFactory = createConceptIdFactory(editor);
+        this.offConceptPicker = attachConceptPicker({
+          modeler: this.modeler,
+          viewId: this.viewId,
+          editor: {
+            createId: idFactory,
+            execute: (command) => editor.execute(command),
+            startNameEditing: (nodeId) => session.startElementNameEditing(nodeId)
+          } satisfies ConceptPickerEditorService
+        });
+      }
+    }
     const result = { eligible: session.eligible, reasons: session.reasons, viewId: this.viewId };
     this.emit({ type: 'opened', ...result });
     return result;
@@ -217,6 +265,8 @@ export default class Modeler {
     if (!this.session) return;
     this.offEditor?.();
     this.offEditor = undefined;
+    this.offConceptPicker?.();
+    this.offConceptPicker = undefined;
     this.session.close();
     this.session = undefined;
     this.viewId = undefined;

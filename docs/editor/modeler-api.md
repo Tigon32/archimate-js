@@ -77,8 +77,10 @@ connection waypoints only, validates current geometry to reject stale patches,
 and commits as one undo step. `create-element` and `create-relationship` require
 deterministic caller-provided IDs and commit semantic and presentation records
 atomically; see [the DTO command boundary](diagram-adapter.md) for payloads and
-validation. Adapter gesture routing remains pending #372, and creation UI
-remains EE-M9/#351.
+validation. Relationship gesture validation is owned by the shared relationship
+decision service. Double-clicking blank canvas opens the searchable concept
+picker; the static palette remains available as a secondary workflow. See
+[the concept picker contract](concept-picker.md).
 
 The facade can export, serialize, and replay a version-1 operation log:
 

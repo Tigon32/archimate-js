@@ -17,6 +17,11 @@ guidance by default, with opt-in strictness for teams that enforce a viewpoint.
 Do not publish the extracted `spec/` or `catalog/` content or a copied viewpoint
 catalog in this repository.
 
+The searchable concept picker is the primary semantic creation workflow;
+the static diagram-js palette remains available as a secondary drag/create
+affordance. Picker options come from the project-owned concept registry rather
+than renderer shape names.
+
 ## Design system
 
 The public application is a Webpack-built browser package with an SVG renderer
