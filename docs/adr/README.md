@@ -10,6 +10,12 @@ ADRs record consequential decisions for this fork. They should be short, dated, 
 - `Superseded`: replaced by a newer ADR.
 - `Rejected`: considered but not adopted.
 
+Numbering: choose the next ADR number after checking the current `main` branch
+and open pull requests. `npm run check:adr-registry` enforces the local index
+and file sequence, and the pull request ADR collision CI check enforces open-PR
+collisions. If either gate fails, renumber the ADR file, its index row, and all
+links before retrying.
+
 ## ADR index
 
 | ADR | Title | Status |

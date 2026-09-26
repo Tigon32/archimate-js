@@ -15,6 +15,37 @@ permissions:
   contents: read
 
 jobs:
+  adr-collisions:
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    name: ADR collision check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Check ADR collisions
+        run: npm run check:adr-collisions
+        env:
+          ADR_BASE: ${{ github.event.pull_request.base.sha }}
+          ADR_SELF_PR: ${{ github.event.pull_request.number }}
+
   verify-primary:
     if: github.event_name == 'push' || github.event.pull_request.draft == false
     name: Primary qualification on Node.js 24
