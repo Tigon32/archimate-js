@@ -22,7 +22,7 @@ export interface CreateElementCommand {
 }
 
 export interface ConceptPickerEditor {
-  createId(kind: 'element' | 'node'): string;
+  createId(kind: 'element' | 'node' | 'relationship' | 'connection'): string;
   execute(command: CreateElementCommand): void;
   startNameEditing(nodeId: string): void;
 }
@@ -35,6 +35,7 @@ export interface ConceptPickerOptions {
   host?: HTMLElement;
   registry: ConceptRegistry;
   returnFocus?: FocusTarget | null;
+  onChoose?: (command: CreateElementCommand, result: ConceptPickerResult) => void;
 }
 
 interface FocusTarget { focus(): void }
@@ -111,6 +112,7 @@ export class ConceptPicker {
   private readonly registry: ConceptRegistry;
   private readonly returnFocus: FocusTarget | null;
   private readonly viewId: string;
+  private readonly onChoose?: ConceptPickerOptions['onChoose'];
   private readonly dialog: HTMLDivElement;
   private readonly input: HTMLInputElement;
   private readonly list: HTMLUListElement;
@@ -135,6 +137,7 @@ export class ConceptPicker {
     this.registry = options.registry;
     this.returnFocus = options.returnFocus ?? document.activeElement as FocusTarget | null;
     this.viewId = options.viewId;
+    this.onChoose = options.onChoose;
     this.results = searchConcepts('', this.registry);
     this.dialog = document.createElement('div');
     this.input = document.createElement('input');
@@ -320,8 +323,9 @@ export class ConceptPicker {
     const result = this.results[index];
     if (!result) return;
     const command = createConceptCommand(result.record, this.position, this.viewId, this.editor);
-    this.editor.execute(command);
+    this.onChoose?.(command, result);
+    if (!this.onChoose) this.editor.execute(command);
     this.close();
-    this.editor.startNameEditing(command.node.id);
+    if (!this.onChoose) this.editor.startNameEditing(command.node.id);
   }
 }

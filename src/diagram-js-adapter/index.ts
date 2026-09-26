@@ -1,10 +1,12 @@
 export { DiagramJsCanvasPort } from './canvas-port.js';
 export { attachConceptPicker } from './concept-picker.js';
+export { attachRelationshipChooser } from './relationship-chooser.js';
 export type {
   ConceptPickerAdapterOptions,
   ConceptPickerEditorService,
   DiagramJsConceptPickerServices
 } from './concept-picker.js';
+export type { RelationshipChooserAdapterOptions } from './relationship-chooser.js';
 export { DtoModelerSession } from './modeler-session.js';
 export {
   createDiagramJsCapabilities,

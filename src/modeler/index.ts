@@ -8,6 +8,7 @@ import { layoutView, type LayoutDiagnostic, type LayoutOptions,
   type LayoutPatch, type LayoutResult } from '../layout/index.js';
 import {
   attachConceptPicker,
+  attachRelationshipChooser,
   createDiagramJsCapabilities,
   createDiagramJsViewport,
   createDiagramJsModeler,
@@ -26,6 +27,18 @@ import type { EditorOperationLog } from '../model-dto/editor-operation-log.js';
 import type { ModelDto } from '../model-dto/types.js';
 
 export { DiagramJsCanvasPort, DtoModelerSession };
+export {
+  RelationshipChooser,
+  evaluateRelationshipChoices,
+  quickCreateCandidates,
+  relationshipLabel
+} from './relationship-chooser.js';
+export type {
+  QuickCreateCandidate,
+  RelationshipCandidate,
+  RelationshipChoice,
+  RelationshipChooserOptions
+} from './relationship-chooser.js';
 export { EditorOperationLogError } from '../model-dto/editor-operation-log.js';
 export type { DiagramJsCanvasServices } from '../diagram-js-adapter/index.js';
 export type { DtoModelerServices, DtoSaveResult } from '../diagram-js-adapter/index.js';
@@ -99,6 +112,7 @@ export default class Modeler {
   private viewId?: string;
   private offEditor?: () => void;
   private offConceptPicker?: () => void;
+  private offRelationshipChooser?: () => void;
   private destroyed = false;
   private generation = 0;
   private readonly viewport: DiagramJsViewport;
@@ -135,6 +149,15 @@ export default class Modeler {
             execute: (command) => editor.execute(command),
             startNameEditing: (nodeId) => session.startElementNameEditing(nodeId)
           } satisfies ConceptPickerEditorService
+        });
+        this.offRelationshipChooser = attachRelationshipChooser({
+          modeler: this.modeler,
+          viewId: this.viewId,
+          editor: {
+            createId: idFactory,
+            execute: (command) => editor.execute(command),
+            startNameEditing: (nodeId) => session.startElementNameEditing(nodeId)
+          }
         });
       }
     }
@@ -267,6 +290,8 @@ export default class Modeler {
     this.offEditor = undefined;
     this.offConceptPicker?.();
     this.offConceptPicker = undefined;
+    this.offRelationshipChooser?.();
+    this.offRelationshipChooser = undefined;
     this.session.close();
     this.session = undefined;
     this.viewId = undefined;

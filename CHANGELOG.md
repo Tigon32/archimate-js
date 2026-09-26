@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+* `FEAT`: add the EE-M10 reviewed relationship chooser decision surface:
+  unambiguous defaults, accessible multi-choice direction-aware selection,
+  explicit disallowed/unsupported feedback, and compatible quick-create
+  candidates. Creation remains split across existing deterministic DTO command
+  boundaries; the reviewed profile is 23 rows and does not claim full
+  ArchiMate conformance. Follow-up coverage remains #102.
 * `FIX`: align live diagram-js relationship rules with the shared domain
   decision service; reject reviewed disallowed tuples, defer unsupported
   gestures to strict DTO diagnostics, and retain structural relationship

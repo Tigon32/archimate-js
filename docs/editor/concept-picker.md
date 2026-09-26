@@ -40,3 +40,7 @@ workflow. The picker does not replace palette, context-pad, touch, or keyboard
 behavior. Browser coverage verifies double-click on blank canvas, layer/type
 search, deterministic semantic/view IDs, pointer-position projection, immediate
 semantic-name editing, and MEFF/DTO reimport using the SYNTHETIC DTO fixture.
+
+Relationship quick-create reuses the same registry and picker contract. Its
+results are filtered through the reviewed relationship semantics service before
+the existing `create-element` and `create-relationship` DTO commands run.

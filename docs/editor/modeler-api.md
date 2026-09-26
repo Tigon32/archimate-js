@@ -88,6 +88,10 @@ validation. Relationship gesture validation is owned by the shared relationship
 decision service. Double-clicking blank canvas opens the searchable concept
 picker; the static palette remains available as a secondary workflow. See
 [the concept picker contract](concept-picker.md).
+Element-to-element connector gestures use the reviewed tri-state relationship
+chooser and compatible quick-create workflow. See
+[the relationship chooser contract](relationship-chooser.md). The reviewed
+profile is limited to 23 rows and is not a full-conformance claim.
 
 The facade can export, serialize, and replay a version-1 operation log:
 
