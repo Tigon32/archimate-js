@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { cp, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -45,6 +45,26 @@ function pngDimensions(bytes: Buffer): { width: number; height: number } {
     width: bytes.readUInt32BE(16),
     height: bytes.readUInt32BE(20)
   };
+}
+
+function svgAttribute(markup: string, name: string): string {
+  const value = markup.match(new RegExp(`\\b${name}="([^"]+)"`))?.[1];
+  if (!value) throw new Error(`missing ${name} attribute`);
+  return value;
+}
+
+function rectByLabel(svg: string, label: string): Record<string, number> {
+  const markup = svg.match(new RegExp(`<rect\\b[^>]*aria-label="${label}"[^>]*/>`))?.[0];
+  if (!markup) throw new Error(`missing ${label} rect`);
+  return Object.fromEntries(['x', 'y', 'width', 'height'].map((name) =>
+    [name, Number(svgAttribute(markup, name))]));
+}
+
+function assertContains(bounds: Record<string, number>, rect: Record<string, number>): void {
+  assert.ok(rect.x >= bounds.x);
+  assert.ok(rect.y >= bounds.y);
+  assert.ok(rect.x + rect.width <= bounds.x + bounds.width);
+  assert.ok(rect.y + rect.height <= bounds.y + bounds.height);
 }
 
 async function validationTests(): Promise<void> {
@@ -196,13 +216,14 @@ async function renameCandidateCliTests(before: string, after: string, source: st
   await writeFile(after, renamedSource);
   const json = runCli(cli, ['diff', before, after, '--format', 'json'], 1);
   assert.deepEqual(json.json.renameCandidates, [{ beforeId: 'component-one', afterId: 'component-renamed',
+    heuristic: true, confidence: 0.9,
     reason: 'unique-content-match-except-id-and-name' }]);
   const changes = json.json.changes as Array<{ id: string; kind: string }>;
   assert.ok(changes.some(({ id, kind }) => id === 'component-one' && kind === 'removed'));
   assert.ok(changes.some(({ id, kind }) => id === 'component-renamed' && kind === 'added'));
   const human = runCliText(cli, ['diff', before, after], 1);
   assert.match(human, /Advisory element rename candidates \(1\):/);
-  assert.match(human, /component-one -> component-renamed/);
+  assert.match(human, /component-one -> component-renamed \(heuristic, confidence 0.9/);
 }
 
 async function browserTests(): Promise<void> {
@@ -219,6 +240,7 @@ async function runBrowserScenarios(directory: string): Promise<void> {
   await defaultExportTest(directory);
   await reportExportTest(directory);
   await transparentExportTest(directory);
+  await diffOverlayExportTest(directory);
   await invalidLayoutTest(directory);
   await missingViewTest(directory);
   await batchBrowserTests(directory);
@@ -278,6 +300,43 @@ async function transparentExportTest(directory: string): Promise<void> {
     assert.deepEqual(transparent.json.formats, ['png']);
     assert.deepEqual(pngDimensions(await readFile(path.join(directory, 'transparent.png'))),
       { width: 500, height: 160 });
+}
+
+async function diffOverlayExportTest(directory: string): Promise<void> {
+    const before = path.join(directory, 'dto-before.xml');
+    const after = path.join(directory, 'dto-after.xml');
+    const output = path.join(directory, 'dto-diff-overlay.svg');
+    const source = await readFile(dtoFixture, 'utf8');
+    await writeFile(before, source);
+    await writeFile(after, source.replace('x="300" y="40" w="140" h="70"',
+      'x="330" y="40" w="140" h="70"'));
+    const result = runCli(cli, [
+      'diff-overlay', before, after, '--view-id', 'view-dto-export', '--output', output
+    ], 0);
+    assert.equal(result.json.command, 'diff-overlay');
+    assert.equal(result.json.valid, true);
+    const svg = await readFile(output, 'utf8');
+    assert.match(svg, /^<svg[^>]+role="graphics-document document"/);
+    assert.ok(svg.includes('class="archimate-diff-overlay"'));
+    assert.ok(svg.includes('aria-label="modified diagram node before"'));
+    assert.ok(svg.includes('aria-label="modified diagram node after"'));
+    assert.ok(svg.includes('archimate-diff-before'));
+    assert.ok(svg.includes('stroke-dasharray'));
+    const viewBox = svgAttribute(svg.match(/^<svg\b[^>]*>/)![0], 'viewBox')
+      .split(/\s+/).map(Number);
+    const bounds = { x: viewBox[0], y: viewBox[1], width: viewBox[2], height: viewBox[3] };
+    assertContains(bounds, rectByLabel(svg, 'modified diagram node before'));
+    assert.deepEqual(rectByLabel(svg, 'modified diagram node after'),
+      { x: 330, y: 40, width: 140, height: 70 });
+    assert.equal(svg.includes('<svg class="archimate-diff-overlay"'), false);
+
+    const linkedBefore = path.join(directory, 'dto-before-link.xml');
+    await symlink(before, linkedBefore);
+    const blocked = runCli(cli, [
+      'diff-overlay', linkedBefore, after, '--view-id', 'view-dto-export', '--output', before
+    ], 2);
+    assert.deepEqual(codes(blocked), ['CLI_USAGE']);
+    assert.equal(await readFile(before, 'utf8'), source);
 }
 
 async function invalidLayoutTest(directory: string): Promise<void> {

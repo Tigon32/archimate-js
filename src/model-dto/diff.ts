@@ -27,6 +27,8 @@ export interface ModelDtoDiff {
 export interface ModelDtoRenameCandidate {
   beforeId: string;
   afterId: string;
+  heuristic: true;
+  confidence: number;
   reason: 'unique-content-match-except-id-and-name';
 }
 
@@ -41,6 +43,8 @@ export interface ModelDtoDiffEligibilityDiagnostic {
   code: ModelDtoDiffEligibilityCode;
   /** Number of projection diagnostics or unsupported fields; otherwise 1. */
   count: number;
+  /** Content-free field paths or construct codes that the supported DTO subset cannot preserve. */
+  details: string[];
 }
 
 export interface ModelDtoDiffEligibility {
@@ -50,6 +54,27 @@ export interface ModelDtoDiffEligibility {
 
 type DiffRecord = Record<string, unknown> & { id: string };
 type NodeRecord = DiffRecord & { viewId: string; parentId?: string };
+
+const SAFE_PROJECTION_CODES = new Set([
+  'DTO_UNSUPPORTED_FIELDS',
+  'IMPORT_PARSE_WARNING',
+  'IMPORT_REFERENCE_UNRESOLVED',
+  'IMPORT_TYPE_UNSUPPORTED',
+  'MEFF_DIAGRAMS_UNSUPPORTED',
+  'MEFF_DIAGRAM_NODE_TYPE_UNSUPPORTED',
+  'MEFF_DIAGRAM_CONNECTION_TYPE_UNSUPPORTED',
+  'MEFF_ELEMENTS_UNSUPPORTED',
+  'MEFF_EXTENSIONS_UNSUPPORTED',
+  'MEFF_MODEL_FIELDS_UNSUPPORTED',
+  'MEFF_MODEL_METADATA_UNSUPPORTED',
+  'MEFF_RELATIONSHIPS_UNSUPPORTED',
+  'MEFF_VIEWPOINT_FIELD_UNSUPPORTED',
+  'MEFF_VIEWS_UNSUPPORTED'
+]);
+
+const SAFE_PATH_ROOTS = new Set([
+  'diagnostics', 'elements', 'propertyDefinitions', 'relationships', 'views'
+]);
 
 function canonical(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonical);
@@ -132,6 +157,53 @@ function unsupportedFieldCount(input: unknown, validated: unknown): number {
   }, symbolCount);
 }
 
+function detailPath(path: string, key: string): string {
+  return `${path}/${key.replace(/~/g, '~0').replace(/\//g, '~1')}`;
+}
+
+function unsupportedFieldDetails(input: unknown, validated: unknown, path = ''): string[] {
+  if (Array.isArray(input) && Array.isArray(validated)) {
+    const keys = Object.keys(input);
+    const indices = new Set(keys.filter((key) => {
+      const index = Number(key);
+      return Number.isInteger(index) && index >= 0 && index < input.length && String(index) === key;
+    }));
+    const own = keys.filter((key) => !indices.has(key)).map((key) => detailPath(path, key));
+    const sparse = Array.from({ length: input.length }, (_, index) => index)
+      .filter((index) => !Object.hasOwn(input, index)).map((index) => `${path}/${index}`);
+    const symbols = Object.getOwnPropertySymbols(input).filter((key) =>
+      Object.getOwnPropertyDescriptor(input, key)?.enumerable).map(() => `${path}/[symbol]`);
+    const nested = [...indices].flatMap((key) =>
+      unsupportedFieldDetails(input[Number(key)], validated[Number(key)], detailPath(path, key)));
+    return [...own, ...sparse, ...symbols, ...nested];
+  }
+  if (!input || typeof input !== 'object' || Array.isArray(input) ||
+      !validated || typeof validated !== 'object' || Array.isArray(validated)) return [];
+  const source = input as Record<string, unknown>;
+  const target = validated as Record<string, unknown>;
+  const details = Object.keys(source).flatMap((key) => {
+    if (source[key] === undefined) return [];
+    return Object.hasOwn(target, key)
+      ? unsupportedFieldDetails(source[key], target[key], detailPath(path, key))
+      : [detailPath(path, key)];
+  });
+  return details.concat(Object.getOwnPropertySymbols(source).filter((key) =>
+    Object.getOwnPropertyDescriptor(source, key)?.enumerable).map(() => `${path}/[symbol]`));
+}
+
+function uniqueDetails(values: string[]): string[] {
+  return [...new Set(values)].sort();
+}
+
+function safeProjectionCode(code: string): string {
+  return SAFE_PROJECTION_CODES.has(code) ? code : 'unknown-construct';
+}
+
+function safeFieldDetail(detail: string): string {
+  const root = detail.split('/').filter(Boolean)[0];
+  return root && SAFE_PATH_ROOTS.has(root) ? `/${root}/unknown-field` : '/unknown-field';
+}
+
 function inspectEligibility(
   input: unknown, side: ModelDtoDiffEligibilityDiagnostic['input']
 ): ModelDtoDiffEligibilityDiagnostic[] {
@@ -141,12 +213,15 @@ function inspectEligibility(
   const diagnostics: ModelDtoDiffEligibilityDiagnostic[] = [];
   const projectionCount = model.diagnostics.reduce((count) => count + 1, 0);
   if (projectionCount) diagnostics.push({ input: side,
-    code: 'MODEL_DTO_DIFF_LOSSY_PROJECTION', count: projectionCount });
+    code: 'MODEL_DTO_DIFF_LOSSY_PROJECTION', count: projectionCount,
+    details: uniqueDetails(model.diagnostics.map((item) => safeProjectionCode(item.code))) });
   const unsupported = unsupportedFieldCount(input, model);
   if (unsupported) diagnostics.push({ input: side,
-    code: 'MODEL_DTO_DIFF_UNSUPPORTED_FIELDS', count: unsupported });
+    code: 'MODEL_DTO_DIFF_UNSUPPORTED_FIELDS', count: unsupported,
+    details: uniqueDetails(unsupportedFieldDetails(input, model).map(safeFieldDetail)) });
   if (!sameData(input, model) && !unsupported && !projectionCount) {
-    diagnostics.push({ input: side, code: 'MODEL_DTO_DIFF_NON_CANONICAL_DATA', count: 1 });
+    diagnostics.push({ input: side, code: 'MODEL_DTO_DIFF_NON_CANONICAL_DATA',
+      count: 1, details: ['/'] });
   }
   return diagnostics;
 }
@@ -247,6 +322,7 @@ function inferElementRenameCandidates(
     const newElement = newGroup[0];
     if (!oldElement.name || !newElement.name || oldElement.name === newElement.name) continue;
     candidates.push({ beforeId: oldElement.id, afterId: newElement.id,
+      heuristic: true, confidence: 0.9,
       reason: 'unique-content-match-except-id-and-name' });
   }
   return candidates.sort((left, right) => left.beforeId < right.beforeId ? -1 :
