@@ -10,6 +10,12 @@ ADRs record consequential decisions for this fork. They should be short, dated, 
 - `Superseded`: replaced by a newer ADR.
 - `Rejected`: considered but not adopted.
 
+Numbering: choose the next ADR number after checking the current `main` branch
+and open pull requests. `npm run check:adr-registry` enforces the local index
+and file sequence, and the pull request ADR collision CI check enforces open-PR
+collisions. If either gate fails, renumber the ADR file, its index row, and all
+links before retrying.
+
 ## ADR index
 
 | ADR | Title | Status |
@@ -25,6 +31,8 @@ ADRs record consequential decisions for this fork. They should be short, dated, 
 | 0009 | Apply fail-closed post-merge branch cleanup | Proposed |
 | 0010 | Keep diagram-js behind an engine-neutral editor boundary | Proposed |
 | 0011 | Delegate agent work through frugal queen/worker-bee subagents | Proposed |
+| 0012 | Use ELK Layered behind an optional compound-layout adapter | Accepted |
+| 0013 | Use one worktree root and remove worktrees when work ends | Proposed |
 
 ## Template
 

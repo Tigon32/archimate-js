@@ -176,8 +176,8 @@ Usage figures come from the harness's per-session usage records (premium units, 
     compliance.
   - **Verdict:** native queen/worker-bee — keep. DEC-008 and DEC-009 were
     added from this evidence.
-  - Per-issue premium-unit and token totals for this round will be recorded in
-    a closing entry after the round completes.
+  - Per-issue premium-unit and token totals for this round are in the closing
+    entry below.
 - **2026-09-26 — ruflo `hive-mind` probe (contained, read-only audit task;
   observed and recorded by the queen, not independently reviewed; raw output
   kept in the local session workspace):**
@@ -220,6 +220,31 @@ Usage figures come from the harness's per-session usage records (premium units, 
   - **Verdict: conditional keep.** Its value is as prompt-level queen and
     reviewer rules, adopted as DEC-008, not as a runtime. Keep the ledger out
     of the repository; it is local and may contain non-public context.
+- **2026-09-26 — Round closeout (native queen/worker-bee):**
+  - **Outcome:** #136 was closed, plus 10 more issues. Two were duplicates:
+    #338 and #359. Eight were implemented through reviewed PRs: #367 (#381),
+    #389 (#395), #390 (#394), #391 (#392), #361 (#398), #363 (#399), #340
+    (#400) and #408 (#409). ADR-0011 (#388, #396) and ADR-0013 (#403) also
+    merged. Two claimed issues (#364, #339) were released unstarted once the
+    target was met, so another agent can take them.
+  - **A shared worker brief removed most rework.** The first batch (#389,
+    #390, #391) produced 8 confirmed defects over 2–4 review cycles each. The
+    second batch (#361, #363, #340) received one shared brief encoding DEC-008
+    and DEC-009: no vacuous assertions, the real adapter instead of stubs, and
+    tracked-file gates. All three passed review on the first cycle.
+  - **The pre-push gate catches what reviewers miss.** It caught a 53-line
+    function (#340) that both the worker and the reviewer had passed, so
+    reviewer briefs should ask for an explicit function-length count.
+  - **Gates were missing for cross-branch identity.** Two branches claimed
+    ADR-0012 at the same time; this led to the #408 registry and collision
+    gates. The one-time worktree sweep recorded in ADR-0013 IMP-006 freed
+    about 14 GB.
+  - **Cost:** per-issue premium units and tokens for this round are **not
+    measurable** (MEA-003). The harness usage records for the session had not
+    been published at closeout, and a whole-session total would also include
+    earlier rounds. Re-query by session ID once they are available.
+  - **Verdict:** native queen/worker-bee — keep, with a shared worker brief as
+    standard practice. No change to the ruflo or `ruvnet-brain` verdicts.
 
 ## Consequences
 
