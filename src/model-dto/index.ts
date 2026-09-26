@@ -4,6 +4,7 @@ export { exportModelDtoToMeff } from './meff-export.js';
 export { validateModelDto, serializeModelDto, parseModelDto } from './validate.js';
 export { createAccessibleOutline, formatAccessibleOutline } from './accessible-outline.js';
 export { searchAccessibleOutline } from './outline-search.js';
+export { createModelTree, createModelTreeService } from './model-tree.js';
 export { validateViewpoint } from './viewpoint-validation.js';
 export type {
   ViewpointFinding, ViewpointRule, ViewpointRuleKind, ViewpointSeverity,
@@ -19,6 +20,10 @@ export type {
 export type { AccessibleOutlineSearchResult } from './outline-search.js';
 export type { AccessibleOutline, AccessibleOutlineNode, AccessibleOutlineRelationship,
   AccessibleOutlineOptions } from './accessible-outline.js';
+export type {
+  ModelTree, ModelTreeAdapter, ModelTreeAdapterEvent, ModelTreeEvent, ModelTreeItem,
+  ModelTreeItemKind, ModelTreeService
+} from './model-tree.js';
 export { DiagramAdapter } from './editor.js';
 export {
   EditorOperationLogError, MAX_EDITOR_OPERATIONS, parseOperationLog, serializeOperationLog,
